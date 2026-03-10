@@ -677,7 +677,8 @@
     <button class="nav-tab" id="tab-alumnos" onclick="showSection('alumnos')">👥 Alumnos</button>
     <button class="nav-tab" id="tab-registro" onclick="showSection('registro')">📋 Registro</button>
     <button class="nav-tab" id="tab-reportes" onclick="showSection('reportes')">📊 Reportes</button>
-    <button class="nav-tab" id="tab-usuarios" onclick="showSection('usuarios')" style="display:none;">⚙ Usuarios</button>
+    <button class="nav-tab" id="tab-usuarios" onclick="showSection('usuarios')" style="display:none;">👤 Usuarios</button>
+    <button class="nav-tab" id="tab-config" onclick="showSection('config')" style="display:none;">⚙ Configuración</button>
   </nav>
 </header>
 
@@ -940,6 +941,57 @@
     </div>
   </div>
 
+
+  <!-- ===== CONFIGURACION ===== -->
+  <div class="section" id="sec-config">
+    <div class="page-title">Configuración</div>
+    <div class="page-sub">Ajustes generales del sistema escolar</div>
+
+    <!-- Info del colegio -->
+    <div class="card" style="margin-bottom:20px;padding:20px 24px;">
+      <div style="font-family:var(--font-display);font-size:1rem;font-weight:700;margin-bottom:16px;color:var(--accent);">🏫 Datos del Colegio</div>
+      <div class="form-grid">
+        <div class="form-group form-full">
+          <label>Nombre del colegio</label>
+          <input type="text" id="cfg-nombre-colegio" placeholder="Ej: I.E. San Martín de Porres">
+        </div>
+        <div class="form-group">
+          <label>Año escolar</label>
+          <input type="text" id="cfg-anio" placeholder="2026" maxlength="4">
+        </div>
+      </div>
+      <button class="btn btn-primary" onclick="guardarInfoColegio()" style="margin-top:8px;">💾 Guardar</button>
+    </div>
+
+    <!-- Niveles y horarios -->
+    <div class="card" style="margin-bottom:20px;padding:20px 24px;">
+      <div style="font-family:var(--font-display);font-size:1rem;font-weight:700;margin-bottom:4px;color:var(--accent);">🕐 Horarios de Ingreso por Nivel</div>
+      <div style="color:var(--muted);font-size:0.82rem;margin-bottom:16px;">La hora límite se usará para determinar tardanzas al registrar asistencia</div>
+      <div id="cfg-niveles-list"></div>
+      <button class="btn btn-primary" onclick="guardarHorarios()" style="margin-top:12px;">💾 Guardar horarios</button>
+    </div>
+
+    <!-- Grados por nivel -->
+    <div class="card" style="margin-bottom:20px;padding:20px 24px;">
+      <div style="font-family:var(--font-display);font-size:1rem;font-weight:700;margin-bottom:4px;color:var(--accent);">🎓 Grados por Nivel</div>
+      <div style="color:var(--muted);font-size:0.82rem;margin-bottom:16px;">Define qué grados corresponden a cada nivel</div>
+      <div id="cfg-grados-list"></div>
+      <button class="btn btn-primary" onclick="guardarGrados()" style="margin-top:12px;">💾 Guardar grados</button>
+    </div>
+
+    <!-- Secciones -->
+    <div class="card" style="padding:20px 24px;">
+      <div style="font-family:var(--font-display);font-size:1rem;font-weight:700;margin-bottom:4px;color:var(--accent);">📋 Secciones disponibles</div>
+      <div style="color:var(--muted);font-size:0.82rem;margin-bottom:16px;">Secciones que aparecerán al registrar alumnos</div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+        <span style="font-size:0.85rem;color:var(--muted);">Secciones:</span>
+        <input type="text" id="cfg-secciones" placeholder="A, B, C, D, E" style="flex:1;min-width:200px;">
+      </div>
+      <div style="font-size:0.75rem;color:var(--muted);margin-top:6px;">Separadas por coma. Ej: A, B, C, D</div>
+      <button class="btn btn-primary" onclick="guardarSecciones()" style="margin-top:12px;">💾 Guardar secciones</button>
+    </div>
+  </div>
+
   <!-- ===== USUARIOS ===== -->
   <div class="section" id="sec-usuarios">
     <div class="page-title">Gestión de Usuarios</div>
@@ -1073,30 +1125,22 @@
         <input type="text" id="f-apellidos" placeholder="Ej: García López">
       </div>
       <div class="form-group">
+        <label>Nivel</label>
+        <select id="f-turno" onchange="cargarGradosPorNivel()">
+          <option value="">Seleccionar</option>
+        </select>
+      </div>
+      <div class="form-group">
         <label>Grado *</label>
         <select id="f-grado">
           <option value="">Seleccionar</option>
-          <option>1°</option><option>2°</option><option>3°</option>
-          <option>4°</option><option>5°</option><option>6°</option>
         </select>
       </div>
       <div class="form-group">
         <label>Sección</label>
         <select id="f-seccion">
-          <option>A</option><option>B</option><option>C</option><option>D</option>
+          <option value="">Seleccionar</option>
         </select>
-      </div>
-      <div class="form-group">
-        <label>Nivel</label>
-        <select id="f-turno">
-          <option value="Inicial">Inicial</option>
-          <option value="Primaria">Primaria</option>
-          <option value="Secundaria">Secundaria</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label>Hora límite ingreso</label>
-        <input type="time" id="f-limite" value="08:00">
       </div>
       <div class="form-group form-full">
         <label>Teléfono apoderado</label>
@@ -1299,13 +1343,14 @@ auth.onAuthStateChanged(async user => {
     // Aplicar permisos según rol (incluye mostrar/ocultar tab usuarios)
     aplicarPermisos(currentRol);
 
-    // Cargar datos
+    // Cargar datos y configuración
+    await actualizarTodosLosFiltros();
     updateStats();
   } else {
     currentUser = null;
     currentRol = null;
     // Ocultar todas las pestañas al cerrar sesión
-    ['scan','alumnos','registro','reportes','usuarios'].forEach(t => {
+    ['scan','alumnos','registro','reportes','usuarios','config'].forEach(t => {
       const el = document.getElementById('tab-'+t);
       if(el) el.style.display = 'none';
     });
@@ -1325,7 +1370,7 @@ auth.onAuthStateChanged(async user => {
 function aplicarPermisos(rol) {
   // Pestañas visibles según rol
   const permisos = {
-    admin:    ['scan','alumnos','registro','reportes','usuarios'],
+    admin:    ['scan','alumnos','registro','reportes','usuarios','config'],
     director: ['registro','reportes'],
     profesor: ['scan','alumnos','registro'],
     portero:  ['scan'],
@@ -1333,7 +1378,7 @@ function aplicarPermisos(rol) {
   const tabs = permisos[rol] || ['scan'];
 
   // Mostrar/ocultar tabs
-  ['scan','alumnos','registro','reportes','usuarios'].forEach(t => {
+  ['scan','alumnos','registro','reportes','usuarios','config'].forEach(t => {
     const el = document.getElementById('tab-'+t);
     if(el) el.style.display = tabs.includes(t) ? '' : 'none';
   });
@@ -1354,6 +1399,7 @@ function showSectionDirect(id) {
   if(id==='reportes') renderReportes();
   if(id==='scan') updateStats();
   if(id==='usuarios') renderUsuarios();
+  if(id==='config') renderConfig();
 }
 
 // ============================================================
@@ -1569,8 +1615,8 @@ async function showStudentResult(alumno) {
     let tipo = tieneIngreso ? 'SALIDA' : 'INGRESO';
     document.getElementById('stu-type').textContent = tipo;
 
-    const limite = alumno.limite || '08:00';
-    const [lh, lm] = limite.split(':').map(Number);
+    const limiteStr = await getLimiteByNivel(alumno.turno);
+    const [lh, lm] = limiteStr.split(':').map(Number);
     const tardanza = now.getHours() > lh || (now.getHours() === lh && now.getMinutes() > lm);
     let badgeHtml = '';
     if(tipo === 'INGRESO') {
@@ -1611,8 +1657,8 @@ async function confirmRegister(tipo) {
       }
     }
 
-    const limite = alumno.limite || '08:00';
-    const [lh, lm] = limite.split(':').map(Number);
+    const limiteStr = await getLimiteByNivel(alumno.turno);
+    const [lh, lm] = limiteStr.split(':').map(Number);
     const tardanza = tipo === 'INGRESO' && (now.getHours() > lh || (now.getHours() === lh && now.getMinutes() > lm));
     const estado = tipo === 'SALIDA' ? 'Salida normal' : (tardanza ? 'Tardanza' : 'A tiempo');
 
@@ -1659,7 +1705,6 @@ async function openModalAlumno(id) {
     document.getElementById('f-grado').value = a.grado;
     document.getElementById('f-seccion').value = a.seccion;
     document.getElementById('f-turno').value = a.turno;
-    document.getElementById('f-limite').value = a.limite||'08:00';
     document.getElementById('f-telefono').value = a.telefono||'';
     const fotoData = a.foto||'';
     document.getElementById('f-foto-data').value = fotoData;
@@ -1677,8 +1722,7 @@ async function openModalAlumno(id) {
     document.getElementById('foto-preview-placeholder').style.display='block';
     document.getElementById('f-grado').value = '';
     document.getElementById('f-seccion').value = 'A';
-    document.getElementById('f-turno').value = 'Primaria';
-    document.getElementById('f-limite').value = '08:00';
+    document.getElementById('f-turno').value = '';
   }
   document.getElementById('modal-alumno').classList.add('open');
 }
@@ -1699,7 +1743,7 @@ async function saveAlumno() {
       id, nombres, apellidos, grado,
       seccion: document.getElementById('f-seccion').value,
       turno: document.getElementById('f-turno').value,
-      limite: document.getElementById('f-limite').value,
+      limite: await getLimiteByNivel(document.getElementById('f-turno').value),
       telefono: document.getElementById('f-telefono').value.trim(),
       foto: document.getElementById('f-foto-data').value.trim(),
     };
@@ -2384,6 +2428,222 @@ async function renderUsuarios() {
       </tr>`;
     }).join('');
   } catch(e) { tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--muted);">Error al cargar usuarios</td></tr>'; }
+}
+
+
+// ============================================================
+// CONFIGURACIÓN — Firestore collection: 'config'
+// ============================================================
+
+// Config defaults
+const CONFIG_DEFAULTS = {
+  nombreColegio: 'Institución Educativa',
+  anio: '2026',
+  niveles: [
+    { nombre: 'Inicial',    horaLimite: '08:00' },
+    { nombre: 'Primaria',   horaLimite: '08:00' },
+    { nombre: 'Secundaria', horaLimite: '07:45' },
+  ],
+  grados: {
+    'Inicial':    ['3 años','4 años','5 años'],
+    'Primaria':   ['1°','2°','3°','4°','5°','6°'],
+    'Secundaria': ['1°','2°','3°','4°','5°'],
+  },
+  secciones: ['A','B','C','D'],
+};
+
+let configCache = null;
+
+async function getConfig() {
+  if(configCache) return configCache;
+  try {
+    const doc = await db.collection('config').doc('general').get();
+    configCache = doc.exists ? { ...CONFIG_DEFAULTS, ...doc.data() } : { ...CONFIG_DEFAULTS };
+  } catch(e) {
+    configCache = { ...CONFIG_DEFAULTS };
+  }
+  return configCache;
+}
+
+function invalidateConfig() { configCache = null; }
+
+async function getLimiteByNivel(nivel) {
+  const cfg = await getConfig();
+  const n = (cfg.niveles||[]).find(x => x.nombre === nivel);
+  return n ? n.horaLimite : '08:00';
+}
+
+async function renderConfig() {
+  const cfg = await getConfig();
+
+  // Info colegio
+  document.getElementById('cfg-nombre-colegio').value = cfg.nombreColegio || '';
+  document.getElementById('cfg-anio').value = cfg.anio || '';
+
+  // Niveles y horarios
+  const nivelesEl = document.getElementById('cfg-niveles-list');
+  nivelesEl.innerHTML = (cfg.niveles||[]).map((n,i) => `
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;flex-wrap:wrap;">
+      <div style="flex:1;min-width:120px;">
+        <div style="font-weight:600;font-size:0.9rem;">${n.nombre}</div>
+      </div>
+      <div class="form-group" style="flex:1;min-width:140px;margin:0;">
+        <label style="font-size:0.75rem;">Hora límite ingreso</label>
+        <input type="time" id="cfg-hora-${i}" value="${n.horaLimite||'08:00'}">
+      </div>
+    </div>
+  `).join('');
+
+  // Grados
+  const gradosEl = document.getElementById('cfg-grados-list');
+  gradosEl.innerHTML = (cfg.niveles||[]).map((n,i) => {
+    const grados = (cfg.grados||{})[n.nombre] || [];
+    return `
+      <div style="margin-bottom:14px;">
+        <div style="font-weight:600;font-size:0.9rem;margin-bottom:6px;">${n.nombre}</div>
+        <input type="text" id="cfg-grados-${i}" value="${grados.join(', ')}" placeholder="1°, 2°, 3°" style="width:100%;box-sizing:border-box;">
+        <div style="font-size:0.75rem;color:var(--muted);margin-top:4px;">Separados por coma</div>
+      </div>
+    `;
+  }).join('');
+
+  // Secciones
+  document.getElementById('cfg-secciones').value = (cfg.secciones||[]).join(', ');
+}
+
+async function guardarInfoColegio() {
+  const nombre = document.getElementById('cfg-nombre-colegio').value.trim();
+  const anio   = document.getElementById('cfg-anio').value.trim();
+  if(!nombre){ toast('Ingresa el nombre del colegio','warning'); return; }
+  try {
+    await db.collection('config').doc('general').set({ nombreColegio: nombre, anio }, { merge: true });
+    invalidateConfig();
+    toast('Información guardada','success');
+  } catch(e) { toast('Error al guardar','error'); }
+}
+
+async function guardarHorarios() {
+  const cfg = await getConfig();
+  const niveles = (cfg.niveles||[]).map((n,i) => ({
+    nombre: n.nombre,
+    horaLimite: document.getElementById('cfg-hora-'+i)?.value || '08:00'
+  }));
+  try {
+    await db.collection('config').doc('general').set({ niveles }, { merge: true });
+    invalidateConfig();
+    toast('Horarios guardados','success');
+  } catch(e) { toast('Error al guardar','error'); }
+}
+
+async function guardarGrados() {
+  const cfg = await getConfig();
+  const grados = {};
+  (cfg.niveles||[]).forEach((n,i) => {
+    const val = document.getElementById('cfg-grados-'+i)?.value || '';
+    grados[n.nombre] = val.split(',').map(x => x.trim()).filter(Boolean);
+  });
+  try {
+    await db.collection('config').doc('general').set({ grados }, { merge: true });
+    invalidateConfig();
+    // Update filter combos
+    await actualizarFiltrosGrado();
+    toast('Grados guardados','success');
+  } catch(e) { toast('Error al guardar','error'); }
+}
+
+async function guardarSecciones() {
+  const val = document.getElementById('cfg-secciones').value;
+  const secciones = val.split(',').map(x => x.trim()).filter(Boolean);
+  if(!secciones.length){ toast('Ingresa al menos una sección','warning'); return; }
+  try {
+    await db.collection('config').doc('general').set({ secciones }, { merge: true });
+    invalidateConfig();
+    await actualizarFiltrosSeccion();
+    toast('Secciones guardadas','success');
+  } catch(e) { toast('Error al guardar','error'); }
+}
+
+// Cargar grados en el formulario de alumno según nivel seleccionado
+async function cargarGradosPorNivel() {
+  const nivel = document.getElementById('f-turno').value;
+  const gradoSel = document.getElementById('f-grado');
+  gradoSel.innerHTML = '<option value="">Seleccionar</option>';
+  if(!nivel) return;
+  const cfg = await getConfig();
+  const grados = (cfg.grados||{})[nivel] || [];
+  grados.forEach(g => {
+    const opt = document.createElement('option');
+    opt.value = g; opt.textContent = g;
+    gradoSel.appendChild(opt);
+  });
+}
+
+// Cargar niveles, grados y secciones en todos los selects del sistema
+async function actualizarTodosLosFiltros() {
+  const cfg = await getConfig();
+  const niveles = (cfg.niveles||[]).map(n => n.nombre);
+  const secciones = cfg.secciones || ['A','B','C','D'];
+  const todosGrados = Object.values(cfg.grados||{}).flat();
+
+  // Helper to rebuild select
+  function rebuildSelect(id, opciones, addTodos=true) {
+    const el = document.getElementById(id);
+    if(!el) return;
+    const cur = el.value;
+    el.innerHTML = `<option value="" disabled selected>-- ${el.closest('.form-group')?.querySelector('label')?.textContent||''} --</option>`;
+    if(addTodos) el.innerHTML += `<option value="TODOS">Todos</option>`;
+    opciones.forEach(o => { el.innerHTML += `<option value="${o}">${o}</option>`; });
+    if(cur) el.value = cur;
+  }
+
+  // Filtros alumnos
+  rebuildSelect('fa-nivel', niveles);
+  rebuildSelect('fa-seccion', secciones);
+  rebuildSelect('fa-grado', todosGrados);
+
+  // Filtros registro
+  rebuildSelect('filter-nivel', niveles);
+  rebuildSelect('filter-seccion', secciones);
+  rebuildSelect('filter-grado', todosGrados);
+
+  // Modal alumno — nivel
+  const fTurno = document.getElementById('f-turno');
+  if(fTurno) {
+    fTurno.innerHTML = '<option value="">Seleccionar</option>';
+    niveles.forEach(n => { fTurno.innerHTML += `<option value="${n}">${n}</option>`; });
+  }
+
+  // Modal alumno — secciones
+  const fSeccion = document.getElementById('f-seccion');
+  if(fSeccion) {
+    fSeccion.innerHTML = '<option value="">Seleccionar</option>';
+    secciones.forEach(s => { fSeccion.innerHTML += `<option value="${s}">${s}</option>`; });
+  }
+}
+
+async function actualizarFiltrosGrado() {
+  const cfg = await getConfig();
+  const todosGrados = Object.values(cfg.grados||{}).flat();
+  ['fa-grado','filter-grado'].forEach(id => {
+    const el = document.getElementById(id);
+    if(!el) return;
+    el.innerHTML = `<option value="" disabled selected>-- Grado --</option><option value="TODOS">Todos los grados</option>`;
+    todosGrados.forEach(g => { el.innerHTML += `<option value="${g}">${g}</option>`; });
+  });
+}
+
+async function actualizarFiltrosSeccion() {
+  const cfg = await getConfig();
+  const secciones = cfg.secciones || ['A','B','C','D'];
+  ['fa-seccion','filter-seccion','f-seccion'].forEach(id => {
+    const el = document.getElementById(id);
+    if(!el) return;
+    const addTodos = id.startsWith('fa-') || id.startsWith('filter-');
+    el.innerHTML = addTodos
+      ? `<option value="" disabled selected>-- Sección --</option><option value="TODOS">Todas</option>`
+      : `<option value="">Seleccionar</option>`;
+    secciones.forEach(s => { el.innerHTML += `<option value="${s}">${s}</option>`; });
+  });
 }
 
 // INIT — auth listener maneja el inicio
