@@ -644,16 +644,16 @@
     <div class="login-error" id="login-error"></div>
     <div class="form-group" style="margin-bottom:14px;">
       <label>Correo electrónico</label>
-      <input type="email" id="login-email" placeholder="usuario@colegio.com" onkeydown="if(event.key==='Enter')doLogin()">
+      <input type="email" id="login-email" placeholder="usuario@colegio.com" onkeydown="if(event.key==='Enter' && window.doLogin) window.doLogin()">
     </div>
     <div class="form-group" style="margin-bottom:22px;">
       <label>Contraseña</label>
       <div style="position:relative;">
-        <input type="password" id="login-pass" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()" style="padding-right:44px;width:100%;">
-        <button type="button" onclick="togglePass()" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--muted);font-size:1.1rem;padding:4px;" id="btn-toggle-pass">👁</button>
+        <input type="password" id="login-pass" placeholder="••••••••" onkeydown="if(event.key==='Enter' && window.doLogin) window.doLogin()" style="padding-right:44px;width:100%;">
+        <button type="button" onclick="if(window.togglePass) window.togglePass()" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--muted);font-size:1.1rem;padding:4px;" id="btn-toggle-pass">👁</button>
       </div>
     </div>
-    <button class="btn btn-primary" onclick="doLogin()" id="btn-login" style="width:100%;justify-content:center;padding:12px;">
+    <button class="btn btn-primary" onclick="if(window.doLogin) window.doLogin()" id="btn-login" style="width:100%;justify-content:center;padding:12px;">
       Ingresar al sistema
     </button>
     <div id="login-loading" style="text-align:center;color:var(--muted);font-size:0.85rem;margin-top:12px;display:none;">
@@ -1194,14 +1194,14 @@ let currentRol = null; // admin | director | profesor | portero
 // ============================================================
 // LOGIN / AUTH
 // ============================================================
-function togglePass() {
+window.togglePass = function() {
   const inp = document.getElementById('login-pass');
   const btn = document.getElementById('btn-toggle-pass');
   if(inp.type === 'password') { inp.type = 'text'; btn.textContent = '🙈'; }
   else { inp.type = 'password'; btn.textContent = '👁'; }
-}
+};
 
-function doLogin() {
+window.doLogin = function() {
   const email = document.getElementById('login-email').value.trim();
   const pass  = document.getElementById('login-pass').value;
   const errEl = document.getElementById('login-error');
@@ -1216,8 +1216,9 @@ function doLogin() {
       document.getElementById('btn-login').disabled = false;
       errEl.textContent = 'Correo o contraseña incorrectos';
       errEl.style.display = 'block';
+      console.error('Login error:', err.code, err.message);
     });
-}
+};
 
 function doLogout() {
   if(!confirm('¿Cerrar sesión?')) return;
