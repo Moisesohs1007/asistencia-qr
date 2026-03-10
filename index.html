@@ -1373,11 +1373,18 @@ const DB = {
   },
   // REGISTROS
   async getRegistros(filtros={}) {
-    let q = db.collection('registros');
-    if(filtros.fecha) q = q.where('fecha','==',filtros.fecha);
-    if(filtros.alumnoId) q = q.where('alumnoId','==',filtros.alumnoId);
-    const snap = await q.orderBy('timestamp','desc').limit(500).get();
-    return snap.docs.map(d => d.data());
+    try {
+      let q = db.collection('registros');
+      if(filtros.fecha) q = q.where('fecha','==',filtros.fecha);
+      if(filtros.alumnoId) q = q.where('alumnoId','==',filtros.alumnoId);
+      const snap = await q.limit(500).get();
+      const docs = snap.docs.map(d => d.data());
+      // Sort by hora descending in memory
+      return docs.sort((a,b) => (b.hora||'').localeCompare(a.hora||''));
+    } catch(e) {
+      console.error('getRegistros error:', e);
+      return [];
+    }
   },
   async saveRegistro(reg) {
     reg.timestamp = firebase.firestore.FieldValue.serverTimestamp();
