@@ -2166,7 +2166,7 @@ function toast(msg, type='success') {
 // ============================================================
 let editingUsuarioId = null;
 
-function openModalUsuario(uid, nombre, rol) {
+function openModalUsuario(uid, nombre, rol, email) {
   editingUsuarioId = uid || null;
   document.getElementById('modal-usuario-title').textContent = uid ? 'Editar Usuario' : 'Nuevo Usuario';
   document.getElementById('u-pass').value = '';
@@ -2181,7 +2181,8 @@ function openModalUsuario(uid, nombre, rol) {
     document.getElementById('u-email').readOnly = true;
     document.getElementById('u-email').style.opacity = '0.6';
     if(nombre) document.getElementById('u-nombre').value = nombre;
-    if(rol) document.getElementById('u-rol').value = rol;
+    if(email)  document.getElementById('u-email').value  = email;
+    if(rol)    document.getElementById('u-rol').value    = rol;
   } else {
     // New user
     document.getElementById('u-pass-group').style.display = 'block';
@@ -2201,7 +2202,8 @@ async function saveUsuario() {
   const pass   = document.getElementById('u-pass').value;
   const rol    = document.getElementById('u-rol').value;
 
-  if(!nombre || !email){ toast('Completa nombre y correo','warning'); return; }
+  if(!nombre){ toast('Completa el nombre','warning'); return; }
+  if(!editingUsuarioId && !email){ toast('Completa el correo','warning'); return; }
 
   try {
     if(!editingUsuarioId) {
@@ -2263,7 +2265,7 @@ async function renderUsuarios() {
         <td style="color:var(--muted);font-size:0.85rem;">${u.email}</td>
         <td><span style="color:${rolColors[u.rol]||'#fff'};font-weight:600;">${rolLabels[u.rol]||u.rol}</span></td>
         <td style="display:flex;gap:6px;">
-          <button class="btn btn-ghost" style="padding:5px 10px;font-size:0.78rem;" onclick="openModalUsuario('${d.id}','${u.nombre}','${u.rol}')">✏</button>
+          <button class="btn btn-ghost" style="padding:5px 10px;font-size:0.78rem;" onclick="openModalUsuario('${d.id}','${u.nombre}','${u.rol}','${u.email}')">✏</button>
           ${d.id !== currentUser.uid ? `<button class="btn btn-danger" style="padding:5px 10px;font-size:0.78rem;" onclick="deleteUsuario('${d.id}')">✕</button>` : ''}
         </td>
       </tr>`;
