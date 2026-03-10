@@ -1,0 +1,1403 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Permissions-Policy" content="camera=*, microphone=*">
+<title>AsistenciaQR — Sistema Escolar</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
+<style>
+  :root {
+    --bg: #0a0e1a;
+    --surface: #111827;
+    --surface2: #1a2236;
+    --border: #1f2d45;
+    --accent: #38bdf8;
+    --accent2: #818cf8;
+    --success: #34d399;
+    --warning: #fbbf24;
+    --danger: #f87171;
+    --text: #e2e8f0;
+    --muted: #64748b;
+    --font-display: 'Syne', sans-serif;
+    --font-body: 'DM Sans', sans-serif;
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-body);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* BG GRID */
+  body::before {
+    content:'';
+    position:fixed;
+    inset:0;
+    background-image:
+      linear-gradient(rgba(56,189,248,0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(56,189,248,0.04) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events:none;
+    z-index:0;
+  }
+
+  /* HEADER */
+  header {
+    position: sticky; top:0; z-index:100;
+    background: rgba(10,14,26,0.85);
+    backdrop-filter: blur(16px);
+    border-bottom: 1px solid var(--border);
+    padding: 0 24px;
+    height: 64px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .logo {
+    font-family: var(--font-display);
+    font-size: 1.4rem;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+  }
+  .logo span { color: var(--accent); }
+
+  .nav-tabs {
+    display: flex;
+    gap: 4px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 4px;
+  }
+
+  .nav-tab {
+    padding: 7px 18px;
+    border-radius: 8px;
+    border: none;
+    background: transparent;
+    color: var(--muted);
+    font-family: var(--font-body);
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+  .nav-tab.active {
+    background: var(--accent);
+    color: #0a0e1a;
+    font-weight: 700;
+  }
+  .nav-tab:not(.active):hover { color: var(--text); background: var(--surface2); }
+
+  /* MAIN */
+  main {
+    position: relative; z-index:1;
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 28px 20px 60px;
+  }
+
+  /* SECTIONS */
+  .section { display: none; animation: fadeUp 0.3s ease; }
+  .section.active { display: block; }
+
+  @keyframes fadeUp {
+    from { opacity:0; transform: translateY(12px); }
+    to   { opacity:1; transform: translateY(0); }
+  }
+
+  /* PAGE TITLE */
+  .page-title {
+    font-family: var(--font-display);
+    font-size: 1.8rem;
+    font-weight: 800;
+    margin-bottom: 6px;
+  }
+  .page-sub {
+    color: var(--muted);
+    font-size: 0.9rem;
+    margin-bottom: 28px;
+  }
+
+  /* CARDS */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 24px;
+    margin-bottom: 20px;
+  }
+  .card-title {
+    font-family: var(--font-display);
+    font-size: 1rem;
+    font-weight: 700;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .card-title .dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--accent);
+    display: inline-block;
+  }
+
+  /* STATS ROW */
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    gap: 14px;
+    margin-bottom: 24px;
+  }
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 18px 20px;
+    position: relative;
+    overflow: hidden;
+  }
+  .stat-card::after {
+    content:'';
+    position:absolute;
+    top:0; right:0;
+    width:60px; height:60px;
+    border-radius: 0 14px 0 60px;
+    opacity: 0.12;
+  }
+  .stat-card.blue::after  { background: var(--accent); }
+  .stat-card.green::after { background: var(--success); }
+  .stat-card.yellow::after{ background: var(--warning); }
+  .stat-card.red::after   { background: var(--danger); }
+
+  .stat-num {
+    font-family: var(--font-display);
+    font-size: 2rem;
+    font-weight: 800;
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+  .stat-label { font-size: 0.78rem; color: var(--muted); }
+  .stat-card.blue  .stat-num { color: var(--accent); }
+  .stat-card.green .stat-num { color: var(--success); }
+  .stat-card.yellow .stat-num { color: var(--warning); }
+  .stat-card.red   .stat-num { color: var(--danger); }
+
+  /* QR SCANNER */
+  .scanner-layout {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+  }
+  @media(max-width:700px){ .scanner-layout { grid-template-columns: 1fr; } }
+
+  #qr-reader {
+    border-radius: 14px;
+    overflow: hidden;
+    background: #000;
+    min-height: 280px;
+    position: relative;
+  }
+  #qr-reader video { border-radius: 14px; }
+  #qr-reader img { border-radius: 14px; }
+
+  .scan-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+  }
+  .scan-frame {
+    width: 160px; height: 160px;
+    border: 2px solid var(--accent);
+    border-radius: 12px;
+    box-shadow: 0 0 0 9999px rgba(0,0,0,0.35);
+    position: relative;
+    animation: pulse-border 2s ease-in-out infinite;
+  }
+  @keyframes pulse-border {
+    0%,100%{ border-color: var(--accent); box-shadow: 0 0 0 9999px rgba(0,0,0,0.35), 0 0 16px rgba(56,189,248,0.4); }
+    50%    { border-color: var(--accent2); box-shadow: 0 0 0 9999px rgba(0,0,0,0.35), 0 0 28px rgba(129,140,248,0.5); }
+  }
+  .corner {
+    position: absolute;
+    width: 18px; height: 18px;
+    border-color: #fff;
+    border-style: solid;
+  }
+  .corner.tl { top:-2px; left:-2px; border-width:3px 0 0 3px; }
+  .corner.tr { top:-2px; right:-2px; border-width:3px 3px 0 0; }
+  .corner.bl { bottom:-2px; left:-2px; border-width:0 0 3px 3px; }
+  .corner.br { bottom:-2px; right:-2px; border-width:0 3px 3px 0; }
+
+  .scan-status {
+    text-align: center;
+    padding: 12px;
+    font-size: 0.85rem;
+    color: var(--muted);
+  }
+
+  /* RESULT CARD */
+  .result-box {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .result-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 280px;
+    color: var(--muted);
+    font-size: 0.85rem;
+    gap: 10px;
+  }
+  .result-empty svg { opacity: 0.3; }
+
+  .result-student { display: none; }
+  .student-avatar {
+    width: 72px; height: 72px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--font-display);
+    font-size: 1.6rem;
+    font-weight: 800;
+    color: #fff;
+    flex-shrink: 0;
+  }
+  .student-info { flex: 1; }
+  .student-name {
+    font-family: var(--font-display);
+    font-size: 1.1rem;
+    font-weight: 700;
+  }
+  .student-meta { font-size: 0.82rem; color: var(--muted); margin-top: 3px; }
+  .student-row { display: flex; align-items: center; gap: 14px; }
+
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 0.78rem;
+    font-weight: 600;
+  }
+  .badge.green { background: rgba(52,211,153,0.15); color: var(--success); border: 1px solid rgba(52,211,153,0.3); }
+  .badge.yellow { background: rgba(251,191,36,0.15); color: var(--warning); border: 1px solid rgba(251,191,36,0.3); }
+  .badge.red    { background: rgba(248,113,113,0.15); color: var(--danger);  border: 1px solid rgba(248,113,113,0.3); }
+  .badge.blue   { background: rgba(56,189,248,0.15);  color: var(--accent);  border: 1px solid rgba(56,189,248,0.3); }
+
+  .info-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .info-item { background: var(--surface); border-radius: 10px; padding: 10px 14px; }
+  .info-item label { font-size: 0.72rem; color: var(--muted); display: block; margin-bottom: 2px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .info-item span { font-size: 0.88rem; font-weight: 500; }
+
+  /* SCAN CONTROLS */
+  .scan-controls {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+  }
+
+  /* BUTTONS */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 9px 18px;
+    border-radius: 10px;
+    border: none;
+    font-family: var(--font-body);
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.18s;
+  }
+  .btn-primary { background: var(--accent); color: #0a0e1a; }
+  .btn-primary:hover { background: #7dd3fc; transform: translateY(-1px); }
+  .btn-ghost { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+  .btn-ghost:hover { background: var(--surface); }
+  .btn-danger { background: rgba(248,113,113,0.15); color: var(--danger); border: 1px solid rgba(248,113,113,0.3); }
+  .btn-danger:hover { background: rgba(248,113,113,0.25); }
+  .btn-success { background: rgba(52,211,153,0.15); color: var(--success); border: 1px solid rgba(52,211,153,0.3); }
+  .btn-success:hover { background: rgba(52,211,153,0.25); }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none !important; }
+
+  /* FORM */
+  .form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+  }
+  @media(max-width:560px){ .form-grid { grid-template-columns: 1fr; } }
+  .form-full { grid-column: 1 / -1; }
+
+  .form-group { display: flex; flex-direction: column; gap: 6px; }
+  .form-group label { font-size: 0.8rem; color: var(--muted); font-weight: 500; }
+  .form-group input, .form-group select {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 14px;
+    color: var(--text);
+    font-family: var(--font-body);
+    font-size: 0.88rem;
+    transition: border-color 0.2s;
+    outline: none;
+  }
+  .form-group input:focus, .form-group select:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(56,189,248,0.1);
+  }
+  .form-group select option { background: var(--surface); }
+
+  /* TABLE */
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.84rem; }
+  thead th {
+    text-align: left;
+    padding: 10px 14px;
+    color: var(--muted);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 1px solid var(--border);
+    font-weight: 600;
+  }
+  tbody tr {
+    border-bottom: 1px solid rgba(31,45,69,0.6);
+    transition: background 0.15s;
+  }
+  tbody tr:hover { background: var(--surface2); }
+  tbody td { padding: 11px 14px; }
+  .td-name { font-weight: 600; }
+  .td-id { color: var(--muted); font-size: 0.78rem; }
+
+  /* TOAST */
+  #toast-container {
+    position: fixed;
+    bottom: 24px; right: 24px;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-width: 340px;
+  }
+  .toast {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 18px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    animation: slideIn 0.3s ease;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+  }
+  .toast.success { border-left: 3px solid var(--success); }
+  .toast.error   { border-left: 3px solid var(--danger); }
+  .toast.warning { border-left: 3px solid var(--warning); }
+  .toast-msg { font-size: 0.85rem; flex:1; }
+  @keyframes slideIn {
+    from { opacity:0; transform: translateX(20px); }
+    to   { opacity:1; transform: translateX(0); }
+  }
+
+  /* SEARCH BAR */
+  .search-wrap { position: relative; margin-bottom: 16px; }
+  .search-wrap input {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 14px 10px 40px;
+    color: var(--text);
+    font-family: var(--font-body);
+    font-size: 0.88rem;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .search-wrap input:focus { border-color: var(--accent); }
+  .search-wrap svg { position:absolute; left:12px; top:50%; transform:translateY(-50%); pointer-events:none; }
+
+  /* QR INPUT MANUAL */
+  .manual-input {
+    display: flex;
+    gap: 10px;
+    align-items: flex-end;
+    margin-bottom: 14px;
+  }
+  .manual-input .form-group { flex: 1; }
+
+  /* TIMESTAMP BADGE */
+  .ts { font-size: 0.78rem; color: var(--muted); }
+
+  /* EMPTY STATE */
+  .empty-state {
+    text-align: center;
+    padding: 48px 20px;
+    color: var(--muted);
+    font-size: 0.88rem;
+  }
+  .empty-state svg { margin: 0 auto 12px; display: block; opacity:0.3; }
+
+  /* QR Code display */
+  .qr-display { text-align: center; }
+  #qr-canvas { border-radius: 10px; background: white; padding: 10px; display: none; }
+
+  /* Modal */
+  .modal-bg {
+    position: fixed; inset:0;
+    background: rgba(0,0,0,0.7);
+    z-index: 200;
+    display: flex; align-items: center; justify-content: center;
+    padding: 20px;
+    backdrop-filter: blur(4px);
+    display: none;
+  }
+  .modal-bg.open { display: flex; animation: fadeIn 0.2s; }
+  @keyframes fadeIn { from{opacity:0} to{opacity:1} }
+  .modal {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 28px;
+    width: 100%;
+    max-width: 500px;
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+  .modal-title {
+    font-family: var(--font-display);
+    font-size: 1.2rem;
+    font-weight: 800;
+    margin-bottom: 20px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+
+  .divider { border:none; border-top: 1px solid var(--border); margin: 16px 0; }
+
+  /* ASISTENCIA TABLE COLORS */
+  .row-ingreso td:first-child { border-left: 3px solid var(--success); }
+  .row-salida  td:first-child { border-left: 3px solid var(--accent2); }
+  .row-tarde   td:first-child { border-left: 3px solid var(--warning); }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  @media(max-width:640px){
+    header { padding: 0 14px; }
+    .nav-tab { padding: 6px 11px; font-size: 0.78rem; }
+    .logo { font-size: 1.1rem; }
+    .page-title { font-size: 1.4rem; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">Asistencia<span>QR</span></div>
+  <nav class="nav-tabs">
+    <button class="nav-tab active" onclick="showSection('scan')">📷 Escanear</button>
+    <button class="nav-tab" onclick="showSection('alumnos')">👥 Alumnos</button>
+    <button class="nav-tab" onclick="showSection('registro')">📋 Registro</button>
+    <button class="nav-tab" onclick="showSection('reportes')">📊 Reportes</button>
+  </nav>
+</header>
+
+<main>
+
+  <!-- ===== SCAN ===== -->
+  <div class="section active" id="sec-scan">
+    <div class="stats-row">
+      <div class="stat-card blue">
+        <div class="stat-num" id="stat-total">0</div>
+        <div class="stat-label">Alumnos registrados</div>
+      </div>
+      <div class="stat-card green">
+        <div class="stat-num" id="stat-hoy">0</div>
+        <div class="stat-label">Ingresos hoy</div>
+      </div>
+      <div class="stat-card yellow">
+        <div class="stat-num" id="stat-tarde">0</div>
+        <div class="stat-label">Tardanzas hoy</div>
+      </div>
+      <div class="stat-card red">
+        <div class="stat-num" id="stat-ausentes">0</div>
+        <div class="stat-label">Ausentes hoy</div>
+      </div>
+    </div>
+
+    <div class="scan-controls">
+      <button class="btn btn-primary" id="btn-start-scan" onclick="startScanner()">
+        <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9V5a2 2 0 012-2h4M3 15v4a2 2 0 002 2h4m6-18h4a2 2 0 012 2v4m0 6v4a2 2 0 01-2 2h-4"/></svg>
+        Iniciar Cámara
+      </button>
+      <button class="btn btn-ghost" id="btn-stop-scan" onclick="stopScanner()" disabled>
+        <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 10h6v4H9z"/></svg>
+        Detener
+      </button>
+      <button class="btn btn-ghost" onclick="switchCamera()" id="btn-switch">
+        🔄 Cambiar Cámara
+      </button>
+    </div>
+
+    <div class="manual-input">
+      <div class="form-group">
+        <label>O ingresa ID manualmente</label>
+        <input type="text" id="manual-id" placeholder="Ej: EST001" onkeydown="if(event.key==='Enter') manualRegister()">
+      </div>
+      <button class="btn btn-ghost" onclick="manualRegister()">Registrar</button>
+    </div>
+
+    <div class="scanner-layout">
+      <div>
+        <div id="qr-reader" style="width:100%; min-height:280px;">
+          <div class="result-empty" id="cam-placeholder">
+            <svg width="48" height="48" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 9V5a2 2 0 012-2h4M3 15v4a2 2 0 002 2h4m6-18h4a2 2 0 012 2v4m0 6v4a2 2 0 01-2 2h-4"/></svg>
+            Presiona "Iniciar Cámara" para escanear
+          </div>
+        </div>
+        <div class="scan-status" id="scan-status">Cámara inactiva</div>
+      </div>
+
+      <div class="result-box" id="result-box">
+        <div class="result-empty" id="result-empty">
+          <svg width="40" height="40" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+          Escanea un QR para ver el alumno
+        </div>
+        <div class="result-student" id="result-student">
+          <div class="student-row">
+            <div class="student-avatar" id="stu-avatar">?</div>
+            <div class="student-info">
+              <div class="student-name" id="stu-name">—</div>
+              <div class="student-meta" id="stu-meta">—</div>
+            </div>
+          </div>
+          <div id="stu-badge-wrap"></div>
+          <div class="info-grid">
+            <div class="info-item"><label>ID</label><span id="stu-id">—</span></div>
+            <div class="info-item"><label>Grado</label><span id="stu-grade">—</span></div>
+            <div class="info-item"><label>Hora</label><span id="stu-time">—</span></div>
+            <div class="info-item"><label>Tipo</label><span id="stu-type">—</span></div>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <button class="btn btn-success" onclick="confirmRegister('INGRESO')">✔ Confirmar Ingreso</button>
+            <button class="btn btn-ghost"   onclick="confirmRegister('SALIDA')">🚪 Registrar Salida</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== ALUMNOS ===== -->
+  <div class="section" id="sec-alumnos">
+    <div class="page-title">Gestión de Alumnos</div>
+    <div class="page-sub">Agrega, edita o genera QR para cada alumno</div>
+
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px;">
+      <div class="search-wrap" style="flex:1;min-width:200px;margin:0;">
+        <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="#64748b"><circle cx="11" cy="11" r="8"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35"/></svg>
+        <input type="text" id="search-alumnos" placeholder="Buscar alumno..." oninput="renderAlumnos()">
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-primary" onclick="openModalAlumno()">+ Nuevo Alumno</button>
+        <button class="btn btn-ghost" onclick="importCSV()">📥 Importar CSV</button>
+      </div>
+    </div>
+
+    <div class="card" style="padding:0;">
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Nombre completo</th>
+              <th>Grado</th>
+              <th>Sección</th>
+              <th>Turno</th>
+              <th>Estado hoy</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="alumnos-tbody"></tbody>
+        </table>
+      </div>
+      <div class="empty-state" id="alumnos-empty" style="display:none;">
+        <svg width="40" height="40" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0"/></svg>
+        No hay alumnos registrados aún
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== REGISTRO ===== -->
+  <div class="section" id="sec-registro">
+    <div class="page-title">Registro de Asistencia</div>
+    <div class="page-sub">Historial completo de ingresos y salidas</div>
+
+    <div class="card" style="margin-bottom:16px;padding:16px 20px;">
+      <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;">
+        <div class="form-group">
+          <label>Filtrar por fecha</label>
+          <input type="date" id="filter-date" onchange="renderRegistro()" style="width:auto;">
+        </div>
+        <div class="form-group">
+          <label>Grado</label>
+          <select id="filter-grado" onchange="renderRegistro()" style="width:auto;">
+            <option value="">Todos</option>
+            <option>1°</option><option>2°</option><option>3°</option>
+            <option>4°</option><option>5°</option><option>6°</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Tipo</label>
+          <select id="filter-tipo" onchange="renderRegistro()" style="width:auto;">
+            <option value="">Todos</option>
+            <option value="INGRESO">Ingreso</option>
+            <option value="SALIDA">Salida</option>
+          </select>
+        </div>
+        <button class="btn btn-ghost" onclick="exportCSV()">📤 Exportar CSV</button>
+        <button class="btn btn-danger" onclick="clearToday()">🗑 Limpiar hoy</button>
+      </div>
+    </div>
+
+    <div class="card" style="padding:0;">
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Hora</th>
+              <th>ID</th>
+              <th>Nombre</th>
+              <th>Grado</th>
+              <th>Tipo</th>
+              <th>Estado</th>
+              <th>Fecha</th>
+            </tr>
+          </thead>
+          <tbody id="registro-tbody"></tbody>
+        </table>
+      </div>
+      <div class="empty-state" id="registro-empty" style="display:none;">
+        <svg width="40" height="40" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+        No hay registros para este filtro
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== REPORTES ===== -->
+  <div class="section" id="sec-reportes">
+    <div class="page-title">Reportes y Estadísticas</div>
+    <div class="page-sub">Resumen general de asistencia</div>
+
+    <div class="stats-row" style="grid-template-columns: repeat(auto-fit, minmax(200px,1fr));">
+      <div class="stat-card blue">
+        <div class="stat-num" id="rep-total">0</div>
+        <div class="stat-label">Total alumnos</div>
+      </div>
+      <div class="stat-card green">
+        <div class="stat-num" id="rep-puntual">0%</div>
+        <div class="stat-label">Puntualidad promedio</div>
+      </div>
+      <div class="stat-card yellow">
+        <div class="stat-num" id="rep-tardanzas">0</div>
+        <div class="stat-label">Tardanzas del mes</div>
+      </div>
+      <div class="stat-card red">
+        <div class="stat-num" id="rep-faltas">0</div>
+        <div class="stat-label">Faltas del mes</div>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+      <div class="card">
+        <div class="card-title"><span class="dot"></span>Asistencia por grado (hoy)</div>
+        <div id="chart-grados"></div>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="dot" style="background:var(--accent2)"></span>Últimos 7 días</div>
+        <div id="chart-semana"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><span class="dot" style="background:var(--warning)"></span>Alumnos con más tardanzas</div>
+      <div id="top-tardanzas"></div>
+    </div>
+  </div>
+
+</main>
+
+<!-- MODAL ALUMNO -->
+<div class="modal-bg" id="modal-alumno">
+  <div class="modal">
+    <div class="modal-title">
+      <span id="modal-title-text">Nuevo Alumno</span>
+      <button class="btn btn-ghost" onclick="closeModal('modal-alumno')" style="padding:5px 10px;">✕</button>
+    </div>
+    <div class="form-grid">
+      <div class="form-group">
+        <label>ID Alumno *</label>
+        <input type="text" id="f-id" placeholder="Ej: EST001">
+      </div>
+      <div class="form-group">
+        <label>DNI</label>
+        <input type="text" id="f-dni" placeholder="12345678">
+      </div>
+      <div class="form-group form-full">
+        <label>Nombres *</label>
+        <input type="text" id="f-nombres" placeholder="Ej: Juan Carlos">
+      </div>
+      <div class="form-group form-full">
+        <label>Apellidos *</label>
+        <input type="text" id="f-apellidos" placeholder="Ej: García López">
+      </div>
+      <div class="form-group">
+        <label>Grado *</label>
+        <select id="f-grado">
+          <option value="">Seleccionar</option>
+          <option>1°</option><option>2°</option><option>3°</option>
+          <option>4°</option><option>5°</option><option>6°</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Sección</label>
+        <select id="f-seccion">
+          <option>A</option><option>B</option><option>C</option><option>D</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Turno</label>
+        <select id="f-turno">
+          <option value="Mañana">Mañana</option>
+          <option value="Tarde">Tarde</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Hora límite ingreso</label>
+        <input type="time" id="f-limite" value="08:00">
+      </div>
+      <div class="form-group form-full">
+        <label>Teléfono apoderado</label>
+        <input type="text" id="f-telefono" placeholder="+51 999 000 000">
+      </div>
+    </div>
+    <hr class="divider">
+    <div style="display:flex;justify-content:flex-end;gap:10px;">
+      <button class="btn btn-ghost" onclick="closeModal('modal-alumno')">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveAlumno()">Guardar Alumno</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL QR -->
+<div class="modal-bg" id="modal-qr">
+  <div class="modal" style="text-align:center;">
+    <div class="modal-title">
+      <span>Carnet QR</span>
+      <button class="btn btn-ghost" onclick="closeModal('modal-qr')" style="padding:5px 10px;">✕</button>
+    </div>
+    <div id="qr-card-display" style="margin:10px auto;"></div>
+    <p id="qr-student-label" style="font-family:var(--font-display);font-weight:700;font-size:1rem;margin:10px 0 4px;"></p>
+    <p id="qr-student-sub" style="color:var(--muted);font-size:0.82rem;margin-bottom:14px;"></p>
+    <button class="btn btn-primary" onclick="printQR()">🖨 Imprimir / Guardar</button>
+  </div>
+</div>
+
+<!-- TOAST CONTAINER -->
+<div id="toast-container"></div>
+
+<!-- INPUT CSV oculto -->
+<input type="file" id="csv-input" accept=".csv" style="display:none" onchange="handleCSV(event)">
+
+<script>
+// ============================================================
+// DATA STORE (localStorage para persistencia)
+// ============================================================
+const DB = {
+  get alumnos() { return JSON.parse(localStorage.getItem('alumnos')||'[]'); },
+  set alumnos(v){ localStorage.setItem('alumnos', JSON.stringify(v)); },
+  get registros() { return JSON.parse(localStorage.getItem('registros')||'[]'); },
+  set registros(v){ localStorage.setItem('registros', JSON.stringify(v)); },
+};
+
+// ============================================================
+// NAVIGATION
+// ============================================================
+function showSection(id) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('sec-'+id).classList.add('active');
+  event.target.classList.add('active');
+  if(id==='alumnos') renderAlumnos();
+  if(id==='registro') { setTodayFilter(); renderRegistro(); }
+  if(id==='reportes') renderReportes();
+  if(id==='scan') updateStats();
+}
+
+// ============================================================
+// QR SCANNER
+// ============================================================
+let html5Qr = null;
+let cameras = [];
+let camIdx = 0;
+let scannerRunning = false;
+let lastScanned = '';
+let lastScanTime = 0;
+let pendingStudent = null;
+
+function startScanner() {
+  document.getElementById('cam-placeholder').style.display = 'none';
+  navigator.mediaDevices.getUserMedia({ video: true })
+    .then(stream => {
+      stream.getTracks().forEach(t => t.stop());
+      return Html5Qrcode.getCameras();
+    })
+    .then(devs => {
+      cameras = devs;
+      if(!devs.length){ toast('No se encontró cámara','error'); return; }
+      camIdx = devs.length > 1 ? 1 : 0; // back camera
+      launchCamera();
+    })
+    .catch(err => {
+      toast('No se pudo acceder a la cámara: '+err.message,'error');
+      document.getElementById('scan-status').textContent = '⚠ Sin acceso a cámara';
+      document.getElementById('cam-placeholder').style.display = 'flex';
+    });
+}
+
+function launchCamera() {
+  if(html5Qr) html5Qr.clear().catch(()=>{});
+  html5Qr = new Html5Qrcode('qr-reader');
+  const cam = cameras[camIdx];
+  html5Qr.start(
+    { deviceId: { exact: cam.id } },
+    { fps: 12, qrbox: { width: 220, height: 220 }, aspectRatio: 1.0 },
+    onQRSuccess,
+    () => {}
+  ).then(() => {
+    scannerRunning = true;
+    document.getElementById('btn-start-scan').disabled = true;
+    document.getElementById('btn-stop-scan').disabled = false;
+    document.getElementById('scan-status').textContent = '🟢 Cámara activa — apunta al QR del alumno';
+  }).catch(err => {
+    toast('Error al iniciar: '+err,'error');
+    document.getElementById('cam-placeholder').style.display = 'flex';
+  });
+}
+
+function stopScanner() {
+  if(html5Qr) html5Qr.stop().then(() => {
+    html5Qr.clear();
+    scannerRunning = false;
+    document.getElementById('btn-start-scan').disabled = false;
+    document.getElementById('btn-stop-scan').disabled = true;
+    document.getElementById('scan-status').textContent = 'Cámara detenida';
+    document.getElementById('cam-placeholder').style.display = 'flex';
+  });
+}
+
+function switchCamera() {
+  if(!cameras.length){ toast('Inicia la cámara primero','warning'); return; }
+  camIdx = (camIdx+1) % cameras.length;
+  if(scannerRunning) launchCamera();
+  else toast('Cambia iniciando la cámara','warning');
+}
+
+function onQRSuccess(text) {
+  const now = Date.now();
+  if(text === lastScanned && now - lastScanTime < 3000) return;
+  lastScanned = text; lastScanTime = now;
+  processQR(text.trim().toUpperCase());
+}
+
+function processQR(id) {
+  const alumnos = DB.alumnos;
+  const alumno = alumnos.find(a => a.id === id);
+  if(!alumno) {
+    toast(`ID "${id}" no encontrado en la base de datos`, 'error');
+    return;
+  }
+  showStudentResult(alumno);
+}
+
+function manualRegister() {
+  const id = document.getElementById('manual-id').value.trim().toUpperCase();
+  if(!id){ toast('Ingresa un ID', 'warning'); return; }
+  processQR(id);
+  document.getElementById('manual-id').value = '';
+}
+
+function showStudentResult(alumno) {
+  pendingStudent = alumno;
+  const initials = (alumno.nombres[0]||'?') + (alumno.apellidos[0]||'?');
+  document.getElementById('stu-avatar').textContent = initials.toUpperCase();
+  document.getElementById('stu-name').textContent = alumno.nombres + ' ' + alumno.apellidos;
+  document.getElementById('stu-meta').textContent = alumno.grado + ' ' + alumno.seccion + ' — ' + alumno.turno;
+  document.getElementById('stu-id').textContent = alumno.id;
+  document.getElementById('stu-grade').textContent = alumno.grado + ' ' + alumno.seccion;
+
+  const now = new Date();
+  document.getElementById('stu-time').textContent = now.toLocaleTimeString('es-PE', {hour:'2-digit',minute:'2-digit'});
+
+  // Determinar tipo (ingreso/salida)
+  const today = hoy();
+  const regs = DB.registros.filter(r => r.alumnoId === alumno.id && r.fecha === today);
+  const tieneIngreso = regs.some(r => r.tipo === 'INGRESO');
+  const tieneSalida  = regs.some(r => r.tipo === 'SALIDA');
+  let tipo = tieneIngreso ? 'SALIDA' : 'INGRESO';
+  document.getElementById('stu-type').textContent = tipo;
+
+  // Estado
+  const limite = alumno.limite || '08:00';
+  const [lh, lm] = limite.split(':').map(Number);
+  const tardanza = now.getHours() > lh || (now.getHours() === lh && now.getMinutes() > lm);
+  let badgeHtml = '';
+  if(tipo === 'INGRESO') {
+    if(tardanza) badgeHtml = '<span class="badge yellow">⚠ Tardanza</span>';
+    else         badgeHtml = '<span class="badge green">✓ A tiempo</span>';
+  } else {
+    badgeHtml = '<span class="badge blue">🚪 Salida</span>';
+    if(tieneSalida) badgeHtml = '<span class="badge red">⚠ Ya registró salida hoy</span>';
+  }
+  document.getElementById('stu-badge-wrap').innerHTML = badgeHtml;
+
+  document.getElementById('result-empty').style.display = 'none';
+  document.getElementById('result-student').style.display = 'flex';
+  document.getElementById('result-student').style.flexDirection = 'column';
+  document.getElementById('result-student').style.gap = '12px';
+}
+
+function confirmRegister(tipo) {
+  if(!pendingStudent){ toast('Escanea un alumno primero','warning'); return; }
+  const alumno = pendingStudent;
+  const now = new Date();
+  const today = hoy();
+  const regs = DB.registros;
+
+  if(tipo === 'INGRESO') {
+    if(regs.some(r => r.alumnoId === alumno.id && r.fecha === today && r.tipo === 'INGRESO')){
+      toast(alumno.nombres + ' ya tiene ingreso registrado hoy','warning'); return;
+    }
+  }
+  if(tipo === 'SALIDA') {
+    if(!regs.some(r => r.alumnoId === alumno.id && r.fecha === today && r.tipo === 'INGRESO')){
+      toast('No hay ingreso registrado para '+alumno.nombres,'warning'); return;
+    }
+    if(regs.some(r => r.alumnoId === alumno.id && r.fecha === today && r.tipo === 'SALIDA')){
+      toast(alumno.nombres + ' ya tiene salida registrada hoy','warning'); return;
+    }
+  }
+
+  const limite = alumno.limite || '08:00';
+  const [lh, lm] = limite.split(':').map(Number);
+  const tardanza = tipo === 'INGRESO' && (now.getHours() > lh || (now.getHours() === lh && now.getMinutes() > lm));
+  const estado = tipo === 'SALIDA' ? 'Salida normal' : (tardanza ? 'Tardanza' : 'A tiempo');
+
+  const reg = {
+    id: Date.now(),
+    alumnoId: alumno.id,
+    nombre: alumno.nombres + ' ' + alumno.apellidos,
+    grado: alumno.grado,
+    seccion: alumno.seccion,
+    tipo,
+    estado,
+    hora: now.toLocaleTimeString('es-PE', {hour:'2-digit', minute:'2-digit', second:'2-digit'}),
+    fecha: today,
+  };
+
+  regs.push(reg);
+  DB.registros = regs;
+  updateStats();
+  pendingStudent = null;
+  document.getElementById('result-empty').style.display = 'flex';
+  document.getElementById('result-student').style.display = 'none';
+  toast(`${tipo} registrado: ${alumno.nombres} — ${estado}`, tipo==='INGRESO' ? 'success' : 'info');
+}
+
+// ============================================================
+// ALUMNOS
+// ============================================================
+let editingId = null;
+
+function openModalAlumno(id) {
+  editingId = id || null;
+  document.getElementById('modal-title-text').textContent = id ? 'Editar Alumno' : 'Nuevo Alumno';
+  if(id) {
+    const a = DB.alumnos.find(x => x.id === id);
+    document.getElementById('f-id').value = a.id;
+    document.getElementById('f-id').disabled = true;
+    document.getElementById('f-dni').value = a.dni||'';
+    document.getElementById('f-nombres').value = a.nombres;
+    document.getElementById('f-apellidos').value = a.apellidos;
+    document.getElementById('f-grado').value = a.grado;
+    document.getElementById('f-seccion').value = a.seccion;
+    document.getElementById('f-turno').value = a.turno;
+    document.getElementById('f-limite').value = a.limite||'08:00';
+    document.getElementById('f-telefono').value = a.telefono||'';
+  } else {
+    document.getElementById('f-id').disabled = false;
+    ['f-id','f-dni','f-nombres','f-apellidos','f-telefono'].forEach(x => document.getElementById(x).value='');
+    document.getElementById('f-grado').value = '';
+    document.getElementById('f-seccion').value = 'A';
+    document.getElementById('f-turno').value = 'Mañana';
+    document.getElementById('f-limite').value = '08:00';
+  }
+  document.getElementById('modal-alumno').classList.add('open');
+}
+
+function saveAlumno() {
+  const id = document.getElementById('f-id').value.trim().toUpperCase();
+  const nombres = document.getElementById('f-nombres').value.trim();
+  const apellidos = document.getElementById('f-apellidos').value.trim();
+  const grado = document.getElementById('f-grado').value;
+  if(!id||!nombres||!apellidos||!grado){ toast('Completa los campos obligatorios','warning'); return; }
+
+  let alumnos = DB.alumnos;
+  if(!editingId && alumnos.find(a => a.id === id)){ toast('El ID ya existe','error'); return; }
+
+  const alumno = {
+    id, dni: document.getElementById('f-dni').value.trim(),
+    nombres, apellidos, grado,
+    seccion: document.getElementById('f-seccion').value,
+    turno: document.getElementById('f-turno').value,
+    limite: document.getElementById('f-limite').value,
+    telefono: document.getElementById('f-telefono').value.trim(),
+  };
+
+  if(editingId) {
+    alumnos = alumnos.map(a => a.id === editingId ? alumno : a);
+    toast('Alumno actualizado','success');
+  } else {
+    alumnos.push(alumno);
+    toast('Alumno registrado','success');
+  }
+  DB.alumnos = alumnos;
+  closeModal('modal-alumno');
+  renderAlumnos();
+  updateStats();
+}
+
+function deleteAlumno(id) {
+  if(!confirm('¿Eliminar este alumno?')) return;
+  DB.alumnos = DB.alumnos.filter(a => a.id !== id);
+  toast('Alumno eliminado','info');
+  renderAlumnos();
+  updateStats();
+}
+
+function renderAlumnos() {
+  const q = (document.getElementById('search-alumnos').value||'').toLowerCase();
+  let alumnos = DB.alumnos.filter(a =>
+    !q || a.nombres.toLowerCase().includes(q) || a.apellidos.toLowerCase().includes(q) || a.id.toLowerCase().includes(q)
+  );
+  const tbody = document.getElementById('alumnos-tbody');
+  const empty = document.getElementById('alumnos-empty');
+  if(!alumnos.length){ tbody.innerHTML=''; empty.style.display='block'; return; }
+  empty.style.display='none';
+  const today = hoy();
+  tbody.innerHTML = alumnos.map(a => {
+    const regs = DB.registros.filter(r => r.alumnoId === a.id && r.fecha === today);
+    const tieneIngreso = regs.some(r=>r.tipo==='INGRESO');
+    const tieneSalida  = regs.some(r=>r.tipo==='SALIDA');
+    const tardanza = regs.find(r=>r.tipo==='INGRESO'&&r.estado==='Tardanza');
+    let estadoHtml = tieneIngreso
+      ? (tardanza ? '<span class="badge yellow">Tarde</span>' : '<span class="badge green">Presente</span>')
+      : '<span class="badge red">Ausente</span>';
+    if(tieneSalida) estadoHtml += ' <span class="badge blue">Salió</span>';
+    return `<tr>
+      <td class="td-id">${a.id}</td>
+      <td class="td-name">${a.nombres} ${a.apellidos}</td>
+      <td>${a.grado}</td>
+      <td>${a.seccion}</td>
+      <td>${a.turno}</td>
+      <td>${estadoHtml}</td>
+      <td style="display:flex;gap:6px;flex-wrap:wrap;">
+        <button class="btn btn-ghost" style="padding:5px 10px;font-size:0.78rem;" onclick="showQR('${a.id}')">QR</button>
+        <button class="btn btn-ghost" style="padding:5px 10px;font-size:0.78rem;" onclick="openModalAlumno('${a.id}')">✏</button>
+        <button class="btn btn-danger" style="padding:5px 10px;font-size:0.78rem;" onclick="deleteAlumno('${a.id}')">✕</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+// ============================================================
+// QR GENERATION (via API)
+// ============================================================
+function showQR(id) {
+  const a = DB.alumnos.find(x => x.id === id);
+  if(!a) return;
+  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(a.id)}&bgcolor=ffffff&color=0a0e1a&margin=10`;
+  document.getElementById('qr-card-display').innerHTML =
+    `<img src="${qrUrl}" style="border-radius:12px;width:180px;height:180px;" alt="QR ${a.id}">`;
+  document.getElementById('qr-student-label').textContent = a.nombres + ' ' + a.apellidos;
+  document.getElementById('qr-student-sub').textContent = `ID: ${a.id} | ${a.grado} ${a.seccion}`;
+  document.getElementById('modal-qr').classList.add('open');
+}
+
+function printQR() {
+  window.print();
+}
+
+// ============================================================
+// REGISTRO
+// ============================================================
+function setTodayFilter() {
+  document.getElementById('filter-date').value = hoy();
+}
+
+function renderRegistro() {
+  const fecha = document.getElementById('filter-date').value;
+  const grado = document.getElementById('filter-grado').value;
+  const tipo  = document.getElementById('filter-tipo').value;
+  let regs = DB.registros;
+  if(fecha) regs = regs.filter(r => r.fecha === fecha);
+  if(grado) regs = regs.filter(r => r.grado === grado);
+  if(tipo)  regs = regs.filter(r => r.tipo === tipo);
+  regs = [...regs].reverse();
+
+  const tbody = document.getElementById('registro-tbody');
+  const empty = document.getElementById('registro-empty');
+  if(!regs.length){ tbody.innerHTML=''; empty.style.display='block'; return; }
+  empty.style.display='none';
+
+  tbody.innerHTML = regs.map(r => {
+    const cls = r.tipo==='SALIDA' ? 'row-salida' : (r.estado==='Tardanza' ? 'row-tarde' : 'row-ingreso');
+    const badgeColor = r.tipo==='SALIDA' ? 'blue' : (r.estado==='Tardanza' ? 'yellow' : 'green');
+    return `<tr class="${cls}">
+      <td class="ts">${r.hora}</td>
+      <td class="td-id">${r.alumnoId}</td>
+      <td class="td-name">${r.nombre}</td>
+      <td>${r.grado} ${r.seccion}</td>
+      <td>${r.tipo}</td>
+      <td><span class="badge ${badgeColor}">${r.estado}</span></td>
+      <td class="ts">${r.fecha}</td>
+    </tr>`;
+  }).join('');
+}
+
+function clearToday() {
+  if(!confirm('¿Borrar todos los registros de hoy?')) return;
+  DB.registros = DB.registros.filter(r => r.fecha !== hoy());
+  renderRegistro();
+  updateStats();
+  toast('Registros de hoy eliminados','info');
+}
+
+function exportCSV() {
+  const regs = DB.registros;
+  if(!regs.length){ toast('No hay registros','warning'); return; }
+  const header = 'Fecha,Hora,ID,Nombre,Grado,Seccion,Tipo,Estado';
+  const rows = regs.map(r => `${r.fecha},${r.hora},${r.alumnoId},"${r.nombre}",${r.grado},${r.seccion},${r.tipo},${r.estado}`);
+  const csv = [header, ...rows].join('\n');
+  const a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+  a.download = `asistencia_${hoy()}.csv`;
+  a.click();
+  toast('CSV exportado','success');
+}
+
+// ============================================================
+// IMPORT CSV
+// ============================================================
+function importCSV() {
+  document.getElementById('csv-input').click();
+}
+
+function handleCSV(e) {
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = function(ev) {
+    const lines = ev.target.result.split('\n').filter(l => l.trim());
+    const alumnos = DB.alumnos;
+    let added = 0;
+    lines.forEach((line, idx) => {
+      if(idx === 0 && line.toLowerCase().includes('id')) return; // skip header
+      const cols = line.split(',').map(c => c.replace(/"/g,'').trim());
+      if(cols.length < 5) return;
+      const [id, nombres, apellidos, grado, seccion, turno] = cols;
+      if(!id || alumnos.find(a => a.id === id.toUpperCase())) return;
+      alumnos.push({ id: id.toUpperCase(), nombres, apellidos, grado, seccion: seccion||'A', turno: turno||'Mañana', limite:'08:00', dni:'', telefono:'' });
+      added++;
+    });
+    DB.alumnos = alumnos;
+    renderAlumnos();
+    updateStats();
+    toast(`${added} alumnos importados`, 'success');
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+}
+
+// ============================================================
+// REPORTES
+// ============================================================
+function renderReportes() {
+  const alumnos = DB.alumnos;
+  const registros = DB.registros;
+  const today = hoy();
+
+  document.getElementById('rep-total').textContent = alumnos.length;
+
+  // puntualidad: ingresos a tiempo / total ingresos este mes
+  const mesActual = today.slice(0,7);
+  const ingMes = registros.filter(r => r.fecha.startsWith(mesActual) && r.tipo==='INGRESO');
+    const tiempoMes = ingMes.filter(r => r.estado === 'A tiempo');
+  const pct = ingMes.length ? Math.round(tiempoMes.length / ingMes.length * 100) : 0;
+  document.getElementById('rep-puntual').textContent = pct + '%';
+  document.getElementById('rep-tardanzas').textContent = ingMes.filter(r=>r.estado==='Tardanza').length;
+
+  // faltas
+  const diasMes = new Set(registros.filter(r=>r.fecha.startsWith(mesActual)).map(r=>r.fecha));
+  let faltas = 0;
+  diasMes.forEach(dia => {
+    const presentes = new Set(registros.filter(r=>r.fecha===dia&&r.tipo==='INGRESO').map(r=>r.alumnoId));
+    faltas += alumnos.filter(a => !presentes.has(a.id)).length;
+  });
+  document.getElementById('rep-faltas').textContent = faltas;
+
+  // Chart grados hoy
+  const grados = [...new Set(alumnos.map(a=>a.grado))].sort();
+  const chartGrados = document.getElementById('chart-grados');
+  if(!grados.length){ chartGrados.innerHTML = '<p style="color:var(--muted);font-size:.85rem;">Sin datos</p>'; }
+  else {
+    chartGrados.innerHTML = grados.map(g => {
+      const total = alumnos.filter(a=>a.grado===g).length;
+      const pres  = new Set(registros.filter(r=>r.fecha===today&&r.tipo==='INGRESO'&&r.grado===g).map(r=>r.alumnoId)).size;
+      const pctG  = total ? Math.round(pres/total*100) : 0;
+      return `<div style="margin-bottom:10px;">
+        <div style="display:flex;justify-content:space-between;font-size:.8rem;margin-bottom:4px;">
+          <span>${g}</span><span style="color:var(--muted);">${pres}/${total}</span>
+        </div>
+        <div style="background:var(--surface2);border-radius:6px;height:8px;overflow:hidden;">
+          <div style="background:var(--accent);width:${pctG}%;height:100%;border-radius:6px;transition:width .4s;"></div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  // Chart semana
+  const semana = [];
+  for(let i=6;i>=0;i--){
+    const d = new Date(); d.setDate(d.getDate()-i);
+    semana.push(d.toISOString().slice(0,10));
+  }
+  const chartSemana = document.getElementById('chart-semana');
+  const maxV = Math.max(1, ...semana.map(d => new Set(registros.filter(r=>r.fecha===d&&r.tipo==='INGRESO').map(r=>r.alumnoId)).size));
+  chartSemana.innerHTML = `<div style="display:flex;align-items:flex-end;gap:6px;height:80px;">` +
+    semana.map(d => {
+      const cnt = new Set(registros.filter(r=>r.fecha===d&&r.tipo==='INGRESO').map(r=>r.alumnoId)).size;
+      const h = Math.max(4, Math.round(cnt/maxV*72));
+      const isToday = d===today;
+      const label = new Date(d+'T12:00').toLocaleDateString('es-PE',{weekday:'short'});
+      return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;">
+        <span style="font-size:.7rem;color:var(--muted);">${cnt}</span>
+        <div style="width:100%;height:${h}px;background:${isToday?'var(--accent)':'var(--surface2)'};border-radius:4px;border:1px solid ${isToday?'var(--accent)':'var(--border)'};"></div>
+        <span style="font-size:.68rem;color:${isToday?'var(--accent)':'var(--muted)'};">${label}</span>
+      </div>`;
+    }).join('') + `</div>`;
+
+  // Top tardanzas
+  const tardMap = {};
+  registros.filter(r=>r.estado==='Tardanza').forEach(r => {
+    tardMap[r.alumnoId] = (tardMap[r.alumnoId]||0) + 1;
+  });
+  const sorted = Object.entries(tardMap).sort((a,b)=>b[1]-a[1]).slice(0,5);
+  const topEl = document.getElementById('top-tardanzas');
+  if(!sorted.length){ topEl.innerHTML='<p style="color:var(--muted);font-size:.85rem;">Sin tardanzas registradas 🎉</p>'; return; }
+  topEl.innerHTML = sorted.map(([id,cnt]) => {
+    const a = alumnos.find(x=>x.id===id);
+    const name = a ? a.nombres+' '+a.apellidos : id;
+    return `<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);">
+      <span style="font-weight:500;">${name}</span>
+      <span class="badge yellow">${cnt} tardanza${cnt>1?'s':''}</span>
+    </div>`;
+  }).join('');
+}
+
+// ============================================================
+// STATS
+// ============================================================
+function updateStats() {
+  const alumnos = DB.alumnos;
+  const today = hoy();
+  const regsHoy = DB.registros.filter(r => r.fecha === today);
+  const ingresosHoy = new Set(regsHoy.filter(r=>r.tipo==='INGRESO').map(r=>r.alumnoId));
+  const tardanzasHoy = regsHoy.filter(r=>r.estado==='Tardanza').length;
+
+  document.getElementById('stat-total').textContent = alumnos.length;
+  document.getElementById('stat-hoy').textContent = ingresosHoy.size;
+  document.getElementById('stat-tarde').textContent = tardanzasHoy;
+  document.getElementById('stat-ausentes').textContent = Math.max(0, alumnos.length - ingresosHoy.size);
+}
+
+// ============================================================
+// UTILS
+// ============================================================
+function hoy() {
+  return new Date().toISOString().slice(0,10);
+}
+
+function closeModal(id) {
+  document.getElementById(id).classList.remove('open');
+}
+
+function toast(msg, type='success') {
+  const icons = { success:'✓', error:'✕', warning:'⚠', info:'ℹ' };
+  const el = document.createElement('div');
+  el.className = `toast ${type==='info'?'success':type}`;
+  el.innerHTML = `<span style="font-size:1rem;">${icons[type]||'ℹ'}</span><span class="toast-msg">${msg}</span>`;
+  document.getElementById('toast-container').appendChild(el);
+  setTimeout(() => el.remove(), 3500);
+}
+
+// Close modals clicking outside
+document.querySelectorAll('.modal-bg').forEach(bg => {
+  bg.addEventListener('click', e => { if(e.target===bg) bg.classList.remove('open'); });
+});
+
+// INIT
+updateStats();
+
+// Pre-cargar demo si está vacío
+if(!DB.alumnos.length) {
+  const demo = [
+    {id:'EST001',nombres:'Ana Lucía',apellidos:'Ramírez Torres',grado:'3°',seccion:'A',turno:'Mañana',limite:'08:00',dni:'',telefono:''},
+    {id:'EST002',nombres:'Carlos',apellidos:'Mendoza Vega',grado:'3°',seccion:'A',turno:'Mañana',limite:'08:00',dni:'',telefono:''},
+    {id:'EST003',nombres:'Sofía',apellidos:'Gutierrez Paz',grado:'4°',seccion:'B',turno:'Mañana',limite:'08:00',dni:'',telefono:''},
+    {id:'EST004',nombres:'Diego Alonso',apellidos:'Torres Huanca',grado:'5°',seccion:'A',turno:'Mañana',limite:'08:00',dni:'',telefono:''},
+    {id:'EST005',nombres:'Valentina',apellidos:'Cruz Ríos',grado:'2°',seccion:'C',turno:'Tarde',limite:'13:00',dni:'',telefono:''},
+  ];
+  DB.alumnos = demo;
+  updateStats();
+}
+</script>
+</body>
+</html>
