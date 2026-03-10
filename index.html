@@ -648,7 +648,10 @@
     </div>
     <div class="form-group" style="margin-bottom:22px;">
       <label>Contraseña</label>
-      <input type="password" id="login-pass" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()">
+      <div style="position:relative;">
+        <input type="password" id="login-pass" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()" style="padding-right:44px;width:100%;">
+        <button type="button" onclick="togglePass()" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--muted);font-size:1.1rem;padding:4px;" id="btn-toggle-pass">👁</button>
+      </div>
     </div>
     <button class="btn btn-primary" onclick="doLogin()" id="btn-login" style="width:100%;justify-content:center;padding:12px;">
       Ingresar al sistema
@@ -1191,6 +1194,13 @@ let currentRol = null; // admin | director | profesor | portero
 // ============================================================
 // LOGIN / AUTH
 // ============================================================
+function togglePass() {
+  const inp = document.getElementById('login-pass');
+  const btn = document.getElementById('btn-toggle-pass');
+  if(inp.type === 'password') { inp.type = 'text'; btn.textContent = '🙈'; }
+  else { inp.type = 'password'; btn.textContent = '👁'; }
+}
+
 function doLogin() {
   const email = document.getElementById('login-email').value.trim();
   const pass  = document.getElementById('login-pass').value;
@@ -1685,57 +1695,57 @@ function renderAlumnos() {
   const filtroActivo = grado || seccion || nivel || q;
   if(!filtroActivo) { mostrarEstadoInicial(); return; }
 
-  let alumnos = DB.alumnos;
-  if(grado   && grado   !== 'TODOS') alumnos = alumnos.filter(a => a.grado === grado);
-  if(seccion && seccion !== 'TODOS') alumnos = alumnos.filter(a => a.seccion === seccion);
-  if(nivel && nivel !== 'TODOS') alumnos = alumnos.filter(a => a.turno === nivel);
-  if(q) alumnos = alumnos.filter(a =>
-    a.nombres.toLowerCase().includes(q) ||
-    a.apellidos.toLowerCase().includes(q) ||
-    a.id.includes(q)
-  );
-
   const tbody = document.getElementById('alumnos-tbody');
   const empty = document.getElementById('alumnos-empty');
   const count = document.getElementById('alumnos-count');
-  const totalDB = DB.alumnos.length;
 
-  count.textContent = 'Mostrando ' + alumnos.length + ' de ' + totalDB + ' alumno' + (totalDB!==1?'s':'');
+  try {
+    let alumnos = await DB.getAlumnos();
+    const totalDB = alumnos.length;
+    if(grado   && grado   !== 'TODOS') alumnos = alumnos.filter(a => a.grado === grado);
+    if(seccion && seccion !== 'TODOS') alumnos = alumnos.filter(a => a.seccion === seccion);
+    if(nivel   && nivel   !== 'TODOS') alumnos = alumnos.filter(a => a.turno === nivel);
+    if(q) alumnos = alumnos.filter(a =>
+      a.nombres.toLowerCase().includes(q) ||
+      a.apellidos.toLowerCase().includes(q) ||
+      a.id.includes(q)
+    );
 
-  if(!alumnos.length) {
-    tbody.innerHTML = '';
-    empty.style.display = 'block';
-    empty.querySelector('p').textContent = 'No se encontraron alumnos con ese filtro';
-    return;
-  }
-  empty.style.display = 'none';
+    count.textContent = 'Mostrando ' + alumnos.length + ' de ' + totalDB + ' alumno' + (totalDB!==1?'s':'');
 
-  const today = hoy();
-  // Ordenar por apellido
-  alumnos = [...alumnos].sort((a,b) => a.apellidos.localeCompare(b.apellidos));
+    if(!alumnos.length) {
+      tbody.innerHTML = '';
+      empty.style.display = 'block';
+      empty.querySelector('p').textContent = 'No se encontraron alumnos con ese filtro';
+      return;
+    }
+    empty.style.display = 'none';
 
-  tbody.innerHTML = alumnos.map(a => {
-    const regs = DB.registros.filter(r => r.alumnoId === a.id && r.fecha === today);
-    const tieneIngreso = regs.some(r=>r.tipo==='INGRESO');
-    const tieneSalida  = regs.some(r=>r.tipo==='SALIDA');
-    const tardanza = regs.find(r=>r.tipo==='INGRESO'&&r.estado==='Tardanza');
-    let estadoHtml = tieneIngreso
-      ? (tardanza ? '<span class="badge yellow">Tarde</span>' : '<span class="badge green">Presente</span>')
-      : '<span class="badge red">Ausente</span>';
-    if(tieneSalida) estadoHtml += ' <span class="badge blue">Salió</span>';
-    return `<tr>
-      <td class="td-id">${a.id}</td>
-      <td class="td-name">${a.nombres} ${a.apellidos}</td>
-      <td>${a.grado}</td>
-      <td>${a.seccion}</td>
-      <td>${a.turno}</td>
-      <td>${estadoHtml}</td>
-      <td style="display:flex;gap:6px;flex-wrap:wrap;">
-        <button class="btn btn-ghost" style="padding:5px 10px;font-size:0.78rem;" onclick="showQR('${a.id}')">QR</button>
-        <button class="btn btn-ghost" style="padding:5px 10px;font-size:0.78rem;" onclick="openModalAlumno('${a.id}')">✏</button>
-        <button class="btn btn-danger" style="padding:5px 10px;font-size:0.78rem;" onclick="deleteAlumno('${a.id}')">✕</button>
-      </td>
-    </tr>`;
+    alumnos = [...alumnos].sort((a,b) => a.apellidos.localeCompare(b.apellidos));
+    const regsHoy = await DB.getRegistros({fecha: hoy()});
+
+    tbody.innerHTML = alumnos.map(a => {
+      const regs = regsHoy.filter(r => r.alumnoId === a.id);
+      const tieneIngreso = regs.some(r=>r.tipo==='INGRESO');
+      const tieneSalida  = regs.some(r=>r.tipo==='SALIDA');
+      const tardanza = regs.find(r=>r.tipo==='INGRESO'&&r.estado==='Tardanza');
+      let estadoHtml = tieneIngreso
+        ? (tardanza ? '<span class="badge yellow">Tarde</span>' : '<span class="badge green">Presente</span>')
+        : '<span class="badge red">Ausente</span>';
+      if(tieneSalida) estadoHtml += ' <span class="badge blue">Salió</span>';
+      return `<tr>
+        <td class="td-id">${a.id}</td>
+        <td class="td-name">${a.nombres} ${a.apellidos}</td>
+        <td>${a.grado}</td>
+        <td>${a.seccion}</td>
+        <td>${a.turno}</td>
+        <td>${estadoHtml}</td>
+        <td style="display:flex;gap:6px;flex-wrap:wrap;">
+          <button class="btn btn-ghost" style="padding:5px 10px;font-size:0.78rem;" onclick="showQR('${a.id}')">QR</button>
+          <button class="btn btn-ghost" style="padding:5px 10px;font-size:0.78rem;" onclick="openModalAlumno('${a.id}')">✏</button>
+          <button class="btn btn-danger" style="padding:5px 10px;font-size:0.78rem;" onclick="deleteAlumno('${a.id}')">✕</button>
+        </td>
+      </tr>`;
     }).join('');
   } catch(e) { console.error('renderAlumnos:', e); toast('Error al cargar alumnos','error'); }
 }
@@ -1846,7 +1856,7 @@ function limpiarFiltrosRegistro() {
   document.getElementById('registro-tbody').innerHTML = '';
   document.getElementById('registro-empty').style.display = 'block';
   document.getElementById('registro-empty').querySelector('p').textContent = 'Selecciona una fecha u otro filtro para ver los registros';
-  document.getElementById('registro-count').textContent = DB.registros.length + ' registros en total';
+  DB.getRegistros({}).then(r => document.getElementById('registro-count').textContent = r.length + ' registros en total').catch(()=>{});
 }
 
 function renderRegistro() {
@@ -1866,7 +1876,7 @@ function renderRegistro() {
     tbody.innerHTML = '';
     empty.style.display = 'block';
     empty.querySelector('p').textContent = 'Selecciona una fecha u otro filtro para ver los registros';
-    count.textContent = DB.registros.length + ' registros en total';
+    DB.getRegistros({}).then(r => count.textContent = r.length + ' registros en total').catch(()=>{});
     return;
   }
 
@@ -1941,7 +1951,7 @@ function handleCSV(e) {
   const reader = new FileReader();
   reader.onload = function(ev) {
     const lines = ev.target.result.split('\n').filter(l => l.trim());
-    const alumnos = DB.alumnos;
+    const alumnos = await DB.getAlumnos();
     let added = 0;
     lines.forEach((line, idx) => {
       if(idx === 0 && (line.toLowerCase().includes('dni') || line.toLowerCase().includes('nombres'))) return;
