@@ -1211,12 +1211,24 @@ window.doLogin = function() {
   document.getElementById('btn-login').disabled = true;
   loadEl.style.display = 'block';
   auth.signInWithEmailAndPassword(email, pass)
+    .then(cred => {
+      console.log('Auth OK, uid:', cred.user.uid);
+    })
     .catch(err => {
       loadEl.style.display = 'none';
       document.getElementById('btn-login').disabled = false;
-      errEl.textContent = 'Correo o contraseña incorrectos';
-      errEl.style.display = 'block';
       console.error('Login error:', err.code, err.message);
+      const msgs = {
+        'auth/invalid-email': 'Correo inválido',
+        'auth/user-not-found': 'Usuario no encontrado',
+        'auth/wrong-password': 'Contraseña incorrecta',
+        'auth/invalid-credential': 'Correo o contraseña incorrectos',
+        'auth/too-many-requests': 'Demasiados intentos, espera unos minutos',
+        'auth/network-request-failed': 'Error de conexión a internet',
+        'auth/user-disabled': 'Usuario desactivado',
+      };
+      errEl.textContent = msgs[err.code] || ('Error: ' + err.code);
+      errEl.style.display = 'block';
     });
 };
 
@@ -1229,8 +1241,29 @@ function doLogout() {
 auth.onAuthStateChanged(async user => {
   if(user) {
     // Obtener rol del usuario desde Firestore
-    const doc = await db.collection('usuarios').doc(user.uid).get();
-    if(!doc.exists) { auth.signOut(); return; }
+    let doc;
+    try {
+      doc = await db.collection('usuarios').doc(user.uid).get();
+    } catch(e) {
+      console.error('Firestore error:', e);
+      document.getElementById('login-screen').style.display = 'flex';
+      document.getElementById('login-loading').style.display = 'none';
+      document.getElementById('btn-login').disabled = false;
+      const errEl = document.getElementById('login-error');
+      errEl.textContent = 'Error de conexión a la base de datos: ' + e.message;
+      errEl.style.display = 'block';
+      auth.signOut();
+      return;
+    }
+    if(!doc.exists) {
+      auth.signOut();
+      const errEl = document.getElementById('login-error');
+      errEl.textContent = 'Usuario no tiene permisos configurados. Contacta al administrador.';
+      errEl.style.display = 'block';
+      document.getElementById('login-loading').style.display = 'none';
+      document.getElementById('btn-login').disabled = false;
+      return;
+    }
     currentUser = user;
     currentRol = doc.data().rol;
     const nombre = doc.data().nombre || user.email;
