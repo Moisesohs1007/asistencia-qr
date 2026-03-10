@@ -1704,9 +1704,11 @@ async function openModalAlumno(id) {
     document.getElementById('f-id').title = '';
     document.getElementById('f-nombres').value = a.nombres;
     document.getElementById('f-apellidos').value = a.apellidos;
-    document.getElementById('f-grado').value = a.grado;
-    document.getElementById('f-seccion').value = a.seccion;
     document.getElementById('f-turno').value = a.turno;
+    await cargarGradosPorNivel();
+    document.getElementById('f-grado').value = a.grado;
+    await cargarSeccionesPorGrado();
+    document.getElementById('f-seccion').value = a.seccion;
     document.getElementById('f-telefono').value = a.telefono||'';
     const fotoData = a.foto||'';
     document.getElementById('f-foto-data').value = fotoData;
@@ -2885,6 +2887,20 @@ async function cargarGradosPorNivel() {
     const opt = document.createElement('option');
     opt.value = g; opt.textContent = g;
     gradoSel.appendChild(opt);
+  });
+  await cargarSeccionesPorGrado();
+}
+
+async function cargarSeccionesPorGrado() {
+  const seccionSel = document.getElementById('f-seccion');
+  if(!seccionSel) return;
+  const cfg = await getConfig();
+  const secciones = cfg.secciones || ['A','B','C','D'];
+  seccionSel.innerHTML = '<option value="">Seleccionar</option>';
+  secciones.forEach(s => {
+    const opt = document.createElement('option');
+    opt.value = s; opt.textContent = s;
+    seccionSel.appendChild(opt);
   });
 }
 
