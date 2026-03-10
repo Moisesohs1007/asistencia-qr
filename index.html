@@ -1704,8 +1704,16 @@ async function openModalAlumno(id) {
     document.getElementById('f-id').title = '';
     document.getElementById('f-nombres').value = a.nombres;
     document.getElementById('f-apellidos').value = a.apellidos;
-    document.getElementById('f-turno').value = a.turno;
-    await cargarGradosPorNivel();
+    // Primero poblar el select de nivel con opciones de config
+    const cfgTemp = await getConfig();
+    const fTurno = document.getElementById('f-turno');
+    fTurno.innerHTML = '<option value="">Seleccionar</option>';
+    (cfgTemp.niveles||[]).forEach(n => {
+      fTurno.innerHTML += `<option value="${n.nombre}">${n.nombre}</option>`;
+    });
+    fTurno.value = a.turno;
+    // Luego cargar grados y secciones
+    await cargarGradosPorNivel(a.turno);
     document.getElementById('f-grado').value = a.grado;
     await cargarSeccionesPorGrado();
     document.getElementById('f-seccion').value = a.seccion;
@@ -2876,8 +2884,8 @@ async function guardarSecciones() {
 }
 
 // Cargar grados en el formulario de alumno según nivel seleccionado
-async function cargarGradosPorNivel() {
-  const nivel = document.getElementById('f-turno').value;
+async function cargarGradosPorNivel(nivelParam) {
+  const nivel = nivelParam || document.getElementById('f-turno').value;
   const gradoSel = document.getElementById('f-grado');
   gradoSel.innerHTML = '<option value="">Seleccionar</option>';
   if(!nivel) return;
