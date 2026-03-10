@@ -1290,12 +1290,7 @@ auth.onAuthStateChanged(async user => {
     document.getElementById('user-rol-badge').style.display = 'inline-flex';
     document.getElementById('btn-logout').style.display = 'inline-flex';
 
-    // Si es admin, mostrar tab usuarios
-    if(currentRol === 'admin') {
-      const tabU = document.getElementById('tab-usuarios');
-      if(tabU) tabU.style.display = '';
-    }
-    // Aplicar permisos según rol
+    // Aplicar permisos según rol (incluye mostrar/ocultar tab usuarios)
     aplicarPermisos(currentRol);
 
     // Cargar datos
@@ -1303,6 +1298,11 @@ auth.onAuthStateChanged(async user => {
   } else {
     currentUser = null;
     currentRol = null;
+    // Ocultar todas las pestañas al cerrar sesión
+    ['scan','alumnos','registro','reportes','usuarios'].forEach(t => {
+      const el = document.getElementById('tab-'+t);
+      if(el) el.style.display = 'none';
+    });
     // Resetear pantalla de login completamente
     document.getElementById('login-screen').style.display = 'flex';
     document.getElementById('login-loading').style.display = 'none';
