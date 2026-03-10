@@ -2679,10 +2679,19 @@ async function poblarFiltroSeccion(selectId, grado) {
   const el = document.getElementById(selectId);
   if(!el) return;
   let secciones = cfg.secciones || ['A','B','C','D'];
-  // Si es profesor con restricciones, filtrar secciones del grado
-  if(currentRol === 'profesor' && currentPrivilegios.restringir && grado && grado !== 'TODOS') {
-    const seccsAsig = (currentPrivilegios.asignaciones||{})[grado] || [];
-    if(seccsAsig.length) secciones = secciones.filter(s => seccsAsig.includes(s));
+
+  if(currentRol === 'profesor' && currentPrivilegios.restringir) {
+    const asig = currentPrivilegios.asignaciones || {};
+    if(grado && grado !== 'TODOS') {
+      // Secciones del grado específico
+      const seccsAsig = asig[grado] || [];
+      if(seccsAsig.length) secciones = secciones.filter(s => seccsAsig.includes(s));
+    } else {
+      // Sin grado seleccionado: unión de todas las secciones permitidas del profesor
+      const todasPermitidas = new Set();
+      Object.values(asig).forEach(seccs => seccs.forEach(s => todasPermitidas.add(s)));
+      if(todasPermitidas.size) secciones = secciones.filter(s => todasPermitidas.has(s));
+    }
   }
   el.innerHTML = `<option value="" disabled selected>-- Sección --</option><option value="TODOS">Todas</option>`;
   secciones.forEach(s => { el.innerHTML += `<option value="${s}">${s}</option>`; });
