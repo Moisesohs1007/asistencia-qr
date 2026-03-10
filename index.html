@@ -1289,7 +1289,13 @@ auth.onAuthStateChanged(async user => {
   } else {
     currentUser = null;
     currentRol = null;
+    // Resetear pantalla de login completamente
     document.getElementById('login-screen').style.display = 'flex';
+    document.getElementById('login-loading').style.display = 'none';
+    document.getElementById('login-error').style.display = 'none';
+    document.getElementById('btn-login').disabled = false;
+    document.getElementById('login-email').value = '';
+    document.getElementById('login-pass').value = '';
     document.getElementById('user-name-display').style.display = 'none';
     document.getElementById('user-rol-badge').style.display = 'none';
     document.getElementById('btn-logout').style.display = 'none';
