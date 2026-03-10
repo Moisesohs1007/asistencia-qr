@@ -761,30 +761,61 @@
   <!-- ===== REGISTRO ===== -->
   <div class="section" id="sec-registro">
     <div class="page-title">Registro de Asistencia</div>
-    <div class="page-sub">Historial completo de ingresos y salidas</div>
+    <div class="page-sub">Historial de ingresos y salidas</div>
 
+    <!-- Filtros -->
     <div class="card" style="margin-bottom:16px;padding:16px 20px;">
       <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;">
-        <div class="form-group">
-          <label>Filtrar por fecha</label>
+        <div class="form-group" style="min-width:140px;">
+          <label>Fecha</label>
           <input type="date" id="filter-date" onchange="renderRegistro()" style="width:auto;">
         </div>
-        <div class="form-group">
+        <div class="form-group" style="min-width:120px;">
           <label>Grado</label>
-          <select id="filter-grado" onchange="renderRegistro()" style="width:auto;">
-            <option value="">Todos</option>
+          <select id="filter-grado" onchange="renderRegistro()">
+            <option value="" disabled selected>-- Grado --</option>
+            <option value="TODOS">Todos los grados</option>
             <option>1°</option><option>2°</option><option>3°</option>
             <option>4°</option><option>5°</option><option>6°</option>
           </select>
         </div>
-        <div class="form-group">
+        <div class="form-group" style="min-width:100px;">
+          <label>Sección</label>
+          <select id="filter-seccion" onchange="renderRegistro()">
+            <option value="" disabled selected>-- Sección --</option>
+            <option value="TODOS">Todas</option>
+            <option>A</option><option>B</option><option>C</option><option>D</option>
+          </select>
+        </div>
+        <div class="form-group" style="min-width:110px;">
+          <label>Turno</label>
+          <select id="filter-turno" onchange="renderRegistro()">
+            <option value="" disabled selected>-- Turno --</option>
+            <option value="TODOS">Todos</option>
+            <option>Mañana</option><option>Tarde</option>
+          </select>
+        </div>
+        <div class="form-group" style="min-width:110px;">
           <label>Tipo</label>
-          <select id="filter-tipo" onchange="renderRegistro()" style="width:auto;">
-            <option value="">Todos</option>
+          <select id="filter-tipo" onchange="renderRegistro()">
+            <option value="" disabled selected>-- Tipo --</option>
+            <option value="TODOS">Todos</option>
             <option value="INGRESO">Ingreso</option>
             <option value="SALIDA">Salida</option>
           </select>
         </div>
+        <div class="search-wrap" style="flex:1;min-width:160px;margin:0;">
+          <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="#64748b"><circle cx="11" cy="11" r="8"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35"/></svg>
+          <input type="text" id="filter-search" placeholder="Buscar nombre o DNI..." oninput="renderRegistro()">
+        </div>
+        <button class="btn btn-ghost" onclick="limpiarFiltrosRegistro()" style="align-self:flex-end;">✕ Limpiar</button>
+      </div>
+    </div>
+
+    <!-- Contador + acciones -->
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
+      <span id="registro-count" style="color:var(--muted);font-size:0.85rem;"></span>
+      <div style="display:flex;gap:8px;">
         <button class="btn btn-ghost" onclick="exportCSV()">📤 Exportar CSV</button>
         <button class="btn btn-danger" onclick="clearToday()">🗑 Limpiar hoy</button>
       </div>
@@ -796,9 +827,10 @@
           <thead>
             <tr>
               <th>Hora</th>
-              <th>ID</th>
+              <th>DNI</th>
               <th>Nombre</th>
               <th>Grado</th>
+              <th>Turno</th>
               <th>Tipo</th>
               <th>Estado</th>
               <th>Fecha</th>
@@ -807,9 +839,9 @@
           <tbody id="registro-tbody"></tbody>
         </table>
       </div>
-      <div class="empty-state" id="registro-empty" style="display:none;">
-        <svg width="40" height="40" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
-        No hay registros para este filtro
+      <div class="empty-state" id="registro-empty">
+        <svg width="40" height="40" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2a1 1 0 01-.293.707L13 13.414V19a1 1 0 01-.553.894l-4 2A1 1 0 017 21v-7.586L3.293 6.707A1 1 0 013 6V4z"/></svg>
+        <p>Selecciona una fecha u otro filtro para ver los registros</p>
       </div>
     </div>
   </div>
@@ -1007,7 +1039,7 @@ function showSection(id) {
   document.getElementById('sec-'+id).classList.add('active');
   event.target.classList.add('active');
   if(id==='alumnos') { limpiarFiltrosAlumnos(); }
-  if(id==='registro') { setTodayFilter(); renderRegistro(); }
+  if(id==='registro') { limpiarFiltrosRegistro(); }
   if(id==='reportes') renderReportes();
   if(id==='scan') updateStats();
 }
@@ -1503,20 +1535,60 @@ function setTodayFilter() {
   document.getElementById('filter-date').value = hoy();
 }
 
-function renderRegistro() {
-  const fecha = document.getElementById('filter-date').value;
-  const grado = document.getElementById('filter-grado').value;
-  const tipo  = document.getElementById('filter-tipo').value;
-  let regs = DB.registros;
-  if(fecha) regs = regs.filter(r => r.fecha === fecha);
-  if(grado) regs = regs.filter(r => r.grado === grado);
-  if(tipo)  regs = regs.filter(r => r.tipo === tipo);
-  regs = [...regs].reverse();
+function limpiarFiltrosRegistro() {
+  document.getElementById('filter-date').value = '';
+  document.getElementById('filter-grado').value = '';
+  document.getElementById('filter-seccion').value = '';
+  document.getElementById('filter-turno').value = '';
+  document.getElementById('filter-tipo').value = '';
+  document.getElementById('filter-search').value = '';
+  document.getElementById('registro-tbody').innerHTML = '';
+  document.getElementById('registro-empty').style.display = 'block';
+  document.getElementById('registro-empty').querySelector('p').textContent = 'Selecciona una fecha u otro filtro para ver los registros';
+  document.getElementById('registro-count').textContent = DB.registros.length + ' registros en total';
+}
 
+function renderRegistro() {
+  const fecha   = document.getElementById('filter-date').value;
+  const grado   = document.getElementById('filter-grado').value;
+  const seccion = document.getElementById('filter-seccion').value;
+  const turno   = document.getElementById('filter-turno').value;
+  const tipo    = document.getElementById('filter-tipo').value;
+  const q       = (document.getElementById('filter-search').value||'').toLowerCase();
+
+  const filtroActivo = fecha || grado || seccion || turno || tipo || q;
   const tbody = document.getElementById('registro-tbody');
   const empty = document.getElementById('registro-empty');
-  if(!regs.length){ tbody.innerHTML=''; empty.style.display='block'; return; }
-  empty.style.display='none';
+  const count = document.getElementById('registro-count');
+
+  if(!filtroActivo) {
+    tbody.innerHTML = '';
+    empty.style.display = 'block';
+    empty.querySelector('p').textContent = 'Selecciona una fecha u otro filtro para ver los registros';
+    count.textContent = DB.registros.length + ' registros en total';
+    return;
+  }
+
+  let regs = DB.registros;
+  if(fecha)                    regs = regs.filter(r => r.fecha === fecha);
+  if(grado   && grado   !== 'TODOS') regs = regs.filter(r => r.grado === grado);
+  if(seccion && seccion !== 'TODOS') regs = regs.filter(r => r.seccion === seccion);
+  if(turno   && turno   !== 'TODOS') regs = regs.filter(r => r.turno === turno);
+  if(tipo    && tipo    !== 'TODOS') regs = regs.filter(r => r.tipo === tipo);
+  if(q) regs = regs.filter(r =>
+    r.nombre.toLowerCase().includes(q) || r.alumnoId.includes(q)
+  );
+  regs = [...regs].reverse();
+
+  count.textContent = 'Mostrando ' + regs.length + ' de ' + DB.registros.length + ' registros';
+
+  if(!regs.length) {
+    tbody.innerHTML = '';
+    empty.style.display = 'block';
+    empty.querySelector('p').textContent = 'No hay registros con ese filtro';
+    return;
+  }
+  empty.style.display = 'none';
 
   tbody.innerHTML = regs.map(r => {
     const cls = r.tipo==='SALIDA' ? 'row-salida' : (r.estado==='Tardanza' ? 'row-tarde' : 'row-ingreso');
@@ -1526,6 +1598,7 @@ function renderRegistro() {
       <td class="td-id">${r.alumnoId}</td>
       <td class="td-name">${r.nombre}</td>
       <td>${r.grado} ${r.seccion}</td>
+      <td>${r.turno||'-'}</td>
       <td>${r.tipo}</td>
       <td><span class="badge ${badgeColor}">${r.estado}</span></td>
       <td class="ts">${r.fecha}</td>
