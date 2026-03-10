@@ -963,8 +963,8 @@
   </div>
 
   <!-- Modal Usuario -->
-  <div class="modal-overlay" id="modal-usuario" onclick="closeModal('modal-usuario')">
-    <div class="modal-box" onclick="event.stopPropagation()">
+  <div class="modal-bg" id="modal-usuario" onclick="closeModal('modal-usuario')">
+    <div class="modal" onclick="event.stopPropagation()" style="max-width:440px;">
       <div class="modal-header">
         <div class="modal-title" id="modal-usuario-title">Nuevo Usuario</div>
         <button class="modal-close" onclick="closeModal('modal-usuario')">✕</button>
@@ -1647,7 +1647,7 @@ async function openModalAlumno(id) {
     document.getElementById('f-turno').value = 'Primaria';
     document.getElementById('f-limite').value = '08:00';
   }
-  document.getElementById('modal-alumno').classList.add('active');
+  document.getElementById('modal-alumno').classList.add('open');
 }
 
 async function saveAlumno() {
@@ -1818,7 +1818,7 @@ async function showQR(id) {
   const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(a.id)}&bgcolor=ffffff&color=0a0e1a&margin=8&ecc=M`;
   document.getElementById('carnet-qr').src = qrUrl;
 
-  document.getElementById('modal-qr').classList.add('active');
+  document.getElementById('modal-qr').classList.add('open');
 }
 
 function printCarnet() {
@@ -2121,8 +2121,8 @@ function hoy() {
 }
 
 function closeModal(id) {
-  document.getElementById(id).classList.remove('active');
-  document.getElementById(id).classList.remove('open');
+  const el = document.getElementById(id);
+  if(el) { el.classList.remove('open'); el.classList.remove('active'); }
 }
 
 function toast(msg, type='success') {
@@ -2152,7 +2152,7 @@ function openModalUsuario(uid) {
     ['u-nombre','u-email','u-pass'].forEach(x => document.getElementById(x).value = '');
     document.getElementById('u-rol').value = 'profesor';
   }
-  document.getElementById('modal-usuario').classList.add('active');
+  document.getElementById('modal-usuario').classList.add('open');
 }
 
 async function saveUsuario() {
