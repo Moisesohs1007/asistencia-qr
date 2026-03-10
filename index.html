@@ -978,8 +978,14 @@
         <input type="email" id="u-email" placeholder="usuario@colegio.com">
       </div>
       <div class="form-group" id="u-pass-group">
-        <label>Contraseña</label>
-        <input type="password" id="u-pass" placeholder="Mínimo 6 caracteres">
+        <label id="u-pass-label">Contraseña</label>
+        <div style="position:relative;">
+          <input type="password" id="u-pass" placeholder="Mínimo 6 caracteres" style="padding-right:44px;width:100%;box-sizing:border-box;">
+          <button type="button" onclick="toggleUsuarioPass()" id="btn-toggle-upass" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--muted);font-size:1.1rem;padding:4px;">👁</button>
+        </div>
+        <div id="u-pass-note" style="font-size:0.75rem;color:var(--muted);margin-top:4px;display:none;">
+          Deja vacío para no cambiar la contraseña actual
+        </div>
       </div>
       <div class="form-group">
         <label>Rol / Permisos</label>
@@ -1194,6 +1200,14 @@ let currentRol = null; // admin | director | profesor | portero
 // ============================================================
 // LOGIN / AUTH
 // ============================================================
+window.toggleUsuarioPass = function() {
+  const inp = document.getElementById('u-pass');
+  const btn = document.getElementById('btn-toggle-upass');
+  if(!inp) return;
+  if(inp.type === 'password') { inp.type = 'text'; btn.textContent = '🙈'; }
+  else { inp.type = 'password'; btn.textContent = '👁'; }
+};
+
 window.togglePass = function() {
   const inp = document.getElementById('login-pass');
   const btn = document.getElementById('btn-toggle-pass');
@@ -2152,12 +2166,30 @@ function toast(msg, type='success') {
 // ============================================================
 let editingUsuarioId = null;
 
-function openModalUsuario(uid) {
+function openModalUsuario(uid, nombre, rol) {
   editingUsuarioId = uid || null;
   document.getElementById('modal-usuario-title').textContent = uid ? 'Editar Usuario' : 'Nuevo Usuario';
-  document.getElementById('u-pass-group').style.display = uid ? 'none' : 'block';
-  if(!uid) {
-    ['u-nombre','u-email','u-pass'].forEach(x => document.getElementById(x).value = '');
+  document.getElementById('u-pass').value = '';
+  document.getElementById('btn-toggle-upass').textContent = '👁';
+  document.getElementById('u-pass').type = 'password';
+
+  if(uid) {
+    // Editing: show password field as optional change
+    document.getElementById('u-pass-group').style.display = 'block';
+    document.getElementById('u-pass-label').textContent = 'Nueva contraseña (opcional)';
+    document.getElementById('u-pass-note').style.display = 'block';
+    document.getElementById('u-email').readOnly = true;
+    document.getElementById('u-email').style.opacity = '0.6';
+    if(nombre) document.getElementById('u-nombre').value = nombre;
+    if(rol) document.getElementById('u-rol').value = rol;
+  } else {
+    // New user
+    document.getElementById('u-pass-group').style.display = 'block';
+    document.getElementById('u-pass-label').textContent = 'Contraseña';
+    document.getElementById('u-pass-note').style.display = 'none';
+    document.getElementById('u-email').readOnly = false;
+    document.getElementById('u-email').style.opacity = '1';
+    ['u-nombre','u-email'].forEach(x => document.getElementById(x).value = '');
     document.getElementById('u-rol').value = 'profesor';
   }
   document.getElementById('modal-usuario').classList.add('open');
@@ -2173,23 +2205,28 @@ async function saveUsuario() {
 
   try {
     if(!editingUsuarioId) {
-      // Crear usuario en Firebase Auth usando Admin SDK no disponible en cliente
-      // Usamos función alternativa: crear en Firestore y mostrar instrucciones
+      // NUEVO usuario
       if(!pass || pass.length < 6){ toast('La contraseña debe tener al menos 6 caracteres','warning'); return; }
-
-      // Crear auth user con email/pass secundario
       const secondaryApp = firebase.initializeApp(firebaseConfig, 'secondary_' + Date.now());
       const secondaryAuth = secondaryApp.auth();
       const cred = await secondaryAuth.createUserWithEmailAndPassword(email, pass);
       const uid = cred.user.uid;
       await secondaryAuth.signOut();
       await secondaryApp.delete();
-
       await db.collection('usuarios').doc(uid).set({ nombre, email, rol, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
       toast('Usuario creado correctamente','success');
     } else {
+      // EDITAR usuario
       await db.collection('usuarios').doc(editingUsuarioId).update({ nombre, rol });
-      toast('Usuario actualizado','success');
+      // Si se ingresó nueva contraseña, cambiarla
+      if(pass && pass.length >= 6) {
+        // Re-autenticar como admin no es posible en client SDK para otros usuarios
+        // Usamos workaround: crear app secundaria con las credenciales actuales no es posible
+        // Mejor opción: mostrar mensaje informativo
+        toast('Datos actualizados. Para cambiar la contraseña el usuario debe usar "¿Olvidé mi contraseña?" en el login.','info');
+      } else {
+        toast('Usuario actualizado correctamente','success');
+      }
     }
     closeModal('modal-usuario');
     renderUsuarios();
@@ -2226,7 +2263,7 @@ async function renderUsuarios() {
         <td style="color:var(--muted);font-size:0.85rem;">${u.email}</td>
         <td><span style="color:${rolColors[u.rol]||'#fff'};font-weight:600;">${rolLabels[u.rol]||u.rol}</span></td>
         <td style="display:flex;gap:6px;">
-          <button class="btn btn-ghost" style="padding:5px 10px;font-size:0.78rem;" onclick="openModalUsuario('${d.id}');document.getElementById('u-nombre').value='${u.nombre}';document.getElementById('u-rol').value='${u.rol}';">✏</button>
+          <button class="btn btn-ghost" style="padding:5px 10px;font-size:0.78rem;" onclick="openModalUsuario('${d.id}','${u.nombre}','${u.rol}')">✏</button>
           ${d.id !== currentUser.uid ? `<button class="btn btn-danger" style="padding:5px 10px;font-size:0.78rem;" onclick="deleteUsuario('${d.id}')">✕</button>` : ''}
         </td>
       </tr>`;
