@@ -2170,10 +2170,11 @@ function handleCSV(e) {
       if(idx === 0 && (line.toLowerCase().includes('dni') || line.toLowerCase().includes('nombres'))) continue;
       const cols = line.split(',').map(c => c.replace(/"/g,'').trim());
       if(cols.length < 4) continue;
-      const [id, nombres, apellidos, grado, seccion, turno, limite, telefono, foto] = cols;
+      const [id, nombres, apellidos, turno, grado, seccion, telefono, foto] = cols;
       if(!id || !/^\d{8}$/.test(id)) continue;
       if(existingIds.has(id)) continue;
-      await DB.saveAlumno({ id, nombres, apellidos, grado, seccion: seccion||'A', turno: turno||'Primaria', limite: limite||'08:00', telefono: telefono||'', foto: foto||'' });
+      const limite = await getLimiteByNivel(turno||'Primaria');
+      await DB.saveAlumno({ id, nombres, apellidos, grado: grado||'', seccion: seccion||'A', turno: turno||'Primaria', limite, telefono: telefono||'', foto: foto||'' });
       added++;
     }
     renderAlumnos();
