@@ -8,6 +8,9 @@
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jsQR/1.4.0/jsQR.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
 <style>
   :root {
     --bg: #0a0e1a;
@@ -570,6 +573,59 @@
     }
   }
 
+  /* LOGIN */
+  #login-screen {
+    position: fixed; inset: 0; z-index: 9999;
+    background: var(--bg);
+    display: flex; align-items: center; justify-content: center;
+    padding: 20px;
+  }
+  #login-screen::before {
+    content:'';
+    position:fixed; inset:0;
+    background-image:
+      linear-gradient(rgba(56,189,248,0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(56,189,248,0.04) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events:none;
+  }
+  .login-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 36px 32px;
+    width: 100%; max-width: 380px;
+    position: relative; z-index: 1;
+    box-shadow: 0 24px 64px rgba(0,0,0,0.4);
+  }
+  .login-logo {
+    font-family: var(--font-display);
+    font-size: 1.8rem; font-weight: 800;
+    text-align: center; margin-bottom: 6px;
+  }
+  .login-logo span { color: var(--accent); }
+  .login-sub {
+    text-align: center; color: var(--muted);
+    font-size: 0.85rem; margin-bottom: 28px;
+  }
+  .login-error {
+    background: rgba(248,113,113,0.15);
+    border: 1px solid rgba(248,113,113,0.3);
+    color: var(--danger);
+    border-radius: 10px; padding: 10px 14px;
+    font-size: 0.83rem; margin-bottom: 14px;
+    display: none;
+  }
+  .rol-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 4px 12px; border-radius: 20px;
+    font-size: 0.75rem; font-weight: 600;
+    background: rgba(56,189,248,0.15);
+    color: var(--accent);
+    border: 1px solid rgba(56,189,248,0.3);
+    margin-left: 10px;
+  }
+
   @media(max-width:640px){
     header { padding: 0 14px; }
     .nav-tab { padding: 6px 11px; font-size: 0.78rem; }
@@ -580,13 +636,42 @@
 </head>
 <body>
 
+<!-- LOGIN SCREEN -->
+<div id="login-screen">
+  <div class="login-box">
+    <div class="login-logo">Asistencia<span>QR</span></div>
+    <div class="login-sub">Sistema de Registro Escolar</div>
+    <div class="login-error" id="login-error"></div>
+    <div class="form-group" style="margin-bottom:14px;">
+      <label>Correo electrónico</label>
+      <input type="email" id="login-email" placeholder="usuario@colegio.com" onkeydown="if(event.key==='Enter')doLogin()">
+    </div>
+    <div class="form-group" style="margin-bottom:22px;">
+      <label>Contraseña</label>
+      <input type="password" id="login-pass" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()">
+    </div>
+    <button class="btn btn-primary" onclick="doLogin()" id="btn-login" style="width:100%;justify-content:center;padding:12px;">
+      Ingresar al sistema
+    </button>
+    <div id="login-loading" style="text-align:center;color:var(--muted);font-size:0.85rem;margin-top:12px;display:none;">
+      ⏳ Verificando...
+    </div>
+  </div>
+</div>
+
 <header>
   <div class="logo">Asistencia<span>QR</span></div>
-  <nav class="nav-tabs">
-    <button class="nav-tab active" onclick="showSection('scan')">📷 Escanear</button>
-    <button class="nav-tab" onclick="showSection('alumnos')">👥 Alumnos</button>
-    <button class="nav-tab" onclick="showSection('registro')">📋 Registro</button>
-    <button class="nav-tab" onclick="showSection('reportes')">📊 Reportes</button>
+  <div style="display:flex;align-items:center;gap:10px;">
+    <span id="user-name-display" style="font-size:0.8rem;color:var(--muted);display:none;"></span>
+    <span id="user-rol-badge" class="rol-badge" style="display:none;"></span>
+    <button class="btn btn-ghost" onclick="doLogout()" id="btn-logout" style="display:none;padding:6px 12px;font-size:0.8rem;">🚪 Salir</button>
+  </div>
+  <nav class="nav-tabs" id="nav-tabs">
+    <button class="nav-tab active" id="tab-scan" onclick="showSection('scan')">📷 Escanear</button>
+    <button class="nav-tab" id="tab-alumnos" onclick="showSection('alumnos')">👥 Alumnos</button>
+    <button class="nav-tab" id="tab-registro" onclick="showSection('registro')">📋 Registro</button>
+    <button class="nav-tab" id="tab-reportes" onclick="showSection('reportes')">📊 Reportes</button>
+    <button class="nav-tab" id="tab-usuarios" onclick="showSection('usuarios')" style="display:none;">⚙ Usuarios</button>
   </nav>
 </header>
 
@@ -846,6 +931,69 @@
     </div>
   </div>
 
+  <!-- ===== USUARIOS ===== -->
+  <div class="section" id="sec-usuarios">
+    <div class="page-title">Gestión de Usuarios</div>
+    <div class="page-sub">Crea y administra los accesos al sistema</div>
+
+    <div style="display:flex;justify-content:flex-end;margin-bottom:16px;">
+      <button class="btn btn-primary" onclick="openModalUsuario()">+ Nuevo Usuario</button>
+    </div>
+
+    <div class="card" style="padding:0;">
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Nombre</th>
+              <th>Correo</th>
+              <th>Rol</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="usuarios-tbody">
+            <tr><td colspan="4" style="text-align:center;color:var(--muted);padding:20px;">Cargando usuarios...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Usuario -->
+  <div class="modal-overlay" id="modal-usuario" onclick="closeModal('modal-usuario')">
+    <div class="modal-box" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <div class="modal-title" id="modal-usuario-title">Nuevo Usuario</div>
+        <button class="modal-close" onclick="closeModal('modal-usuario')">✕</button>
+      </div>
+      <div class="form-group">
+        <label>Nombre completo</label>
+        <input type="text" id="u-nombre" placeholder="Ej: Juan Pérez">
+      </div>
+      <div class="form-group">
+        <label>Correo electrónico</label>
+        <input type="email" id="u-email" placeholder="usuario@colegio.com">
+      </div>
+      <div class="form-group" id="u-pass-group">
+        <label>Contraseña</label>
+        <input type="password" id="u-pass" placeholder="Mínimo 6 caracteres">
+      </div>
+      <div class="form-group">
+        <label>Rol / Permisos</label>
+        <select id="u-rol">
+          <option value="portero">🚪 Portero — Solo escanear QR</option>
+          <option value="profesor">👨‍🏫 Profesor — Escanear, Alumnos y Registro</option>
+          <option value="director">🏫 Director — Solo Reportes y Registro</option>
+          <option value="admin">⚙ Administrador — Acceso total</option>
+        </select>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:20px;">
+        <button class="btn btn-primary" onclick="saveUsuario()" style="flex:1;justify-content:center;">Guardar</button>
+        <button class="btn btn-ghost" onclick="closeModal('modal-usuario')" style="flex:1;justify-content:center;">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
   <!-- ===== REPORTES ===== -->
   <div class="section" id="sec-reportes">
     <div class="page-title">Reportes y Estadísticas</div>
@@ -1022,27 +1170,172 @@
 
 <script>
 // ============================================================
-// DATA STORE (localStorage para persistencia)
+// FIREBASE CONFIG
+// ============================================================
+const firebaseConfig = {
+  apiKey: "AIzaSyBLI0I41vWjMK2q1ZjH1c1BK4SAFno7sfY",
+  authDomain: "asistencia-qr-a3346.firebaseapp.com",
+  projectId: "asistencia-qr-a3346",
+  storageBucket: "asistencia-qr-a3346.firebasestorage.app",
+  messagingSenderId: "617000910031",
+  appId: "1:617000910031:web:ccc2454260d8b4e7704bba"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+const auth = firebase.auth();
+
+// Usuario actual
+let currentUser = null;
+let currentRol = null; // admin | director | profesor | portero
+
+// ============================================================
+// LOGIN / AUTH
+// ============================================================
+function doLogin() {
+  const email = document.getElementById('login-email').value.trim();
+  const pass  = document.getElementById('login-pass').value;
+  const errEl = document.getElementById('login-error');
+  const loadEl= document.getElementById('login-loading');
+  errEl.style.display = 'none';
+  if(!email||!pass){ errEl.textContent='Completa todos los campos'; errEl.style.display='block'; return; }
+  document.getElementById('btn-login').disabled = true;
+  loadEl.style.display = 'block';
+  auth.signInWithEmailAndPassword(email, pass)
+    .catch(err => {
+      loadEl.style.display = 'none';
+      document.getElementById('btn-login').disabled = false;
+      errEl.textContent = 'Correo o contraseña incorrectos';
+      errEl.style.display = 'block';
+    });
+}
+
+function doLogout() {
+  if(!confirm('¿Cerrar sesión?')) return;
+  auth.signOut();
+}
+
+// Escuchar cambios de sesión
+auth.onAuthStateChanged(async user => {
+  if(user) {
+    // Obtener rol del usuario desde Firestore
+    const doc = await db.collection('usuarios').doc(user.uid).get();
+    if(!doc.exists) { auth.signOut(); return; }
+    currentUser = user;
+    currentRol = doc.data().rol;
+    const nombre = doc.data().nombre || user.email;
+
+    // Ocultar login, mostrar app
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('user-name-display').textContent = nombre;
+    document.getElementById('user-name-display').style.display = 'inline';
+    document.getElementById('user-rol-badge').textContent = currentRol.toUpperCase();
+    document.getElementById('user-rol-badge').style.display = 'inline-flex';
+    document.getElementById('btn-logout').style.display = 'inline-flex';
+
+    // Si es admin, mostrar tab usuarios
+    if(currentRol === 'admin') {
+      const tabU = document.getElementById('tab-usuarios');
+      if(tabU) tabU.style.display = '';
+    }
+    // Aplicar permisos según rol
+    aplicarPermisos(currentRol);
+
+    // Cargar datos
+    updateStats();
+  } else {
+    currentUser = null;
+    currentRol = null;
+    document.getElementById('login-screen').style.display = 'flex';
+    document.getElementById('user-name-display').style.display = 'none';
+    document.getElementById('user-rol-badge').style.display = 'none';
+    document.getElementById('btn-logout').style.display = 'none';
+  }
+});
+
+function aplicarPermisos(rol) {
+  // Pestañas visibles según rol
+  const permisos = {
+    admin:    ['scan','alumnos','registro','reportes','usuarios'],
+    director: ['registro','reportes'],
+    profesor: ['scan','alumnos','registro'],
+    portero:  ['scan'],
+  };
+  const tabs = permisos[rol] || ['scan'];
+
+  // Mostrar/ocultar tabs
+  ['scan','alumnos','registro','reportes'].forEach(t => {
+    const el = document.getElementById('tab-'+t);
+    if(el) el.style.display = tabs.includes(t) ? '' : 'none';
+  });
+
+  // Ir a la primera pestaña permitida
+  showSectionDirect(tabs[0]);
+}
+
+function showSectionDirect(id) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  const sec = document.getElementById('sec-'+id);
+  const tab = document.getElementById('tab-'+id);
+  if(sec) sec.classList.add('active');
+  if(tab) tab.classList.add('active');
+  if(id==='alumnos') { limpiarFiltrosAlumnos(); }
+  if(id==='registro') { setTimeout(limpiarFiltrosRegistro, 50); }
+  if(id==='reportes') renderReportes();
+  if(id==='scan') updateStats();
+  if(id==='usuarios') renderUsuarios();
+}
+
+// ============================================================
+// DB — Firebase Firestore (reemplaza localStorage)
 // ============================================================
 const DB = {
-  get alumnos() { return JSON.parse(localStorage.getItem('alumnos')||'[]'); },
-  set alumnos(v){ localStorage.setItem('alumnos', JSON.stringify(v)); },
-  get registros() { return JSON.parse(localStorage.getItem('registros')||'[]'); },
-  set registros(v){ localStorage.setItem('registros', JSON.stringify(v)); },
+  // ALUMNOS
+  async getAlumnos() {
+    const snap = await db.collection('alumnos').get();
+    return snap.docs.map(d => ({id: d.id, ...d.data()}));
+  },
+  async saveAlumno(alumno) {
+    await db.collection('alumnos').doc(alumno.id).set(alumno);
+  },
+  async deleteAlumno(id) {
+    await db.collection('alumnos').doc(id).delete();
+  },
+  async updateAlumnoId(oldId, newData) {
+    const batch = db.batch();
+    batch.delete(db.collection('alumnos').doc(oldId));
+    batch.set(db.collection('alumnos').doc(newData.id), newData);
+    await batch.commit();
+  },
+  // REGISTROS
+  async getRegistros(filtros={}) {
+    let q = db.collection('registros');
+    if(filtros.fecha) q = q.where('fecha','==',filtros.fecha);
+    if(filtros.alumnoId) q = q.where('alumnoId','==',filtros.alumnoId);
+    const snap = await q.orderBy('timestamp','desc').limit(500).get();
+    return snap.docs.map(d => d.data());
+  },
+  async saveRegistro(reg) {
+    reg.timestamp = firebase.firestore.FieldValue.serverTimestamp();
+    await db.collection('registros').add(reg);
+  },
+  async deleteRegistrosByFecha(fecha) {
+    const snap = await db.collection('registros').where('fecha','==',fecha).get();
+    const batch = db.batch();
+    snap.docs.forEach(d => batch.delete(d.ref));
+    await batch.commit();
+  },
 };
 
 // ============================================================
 // NAVIGATION
 // ============================================================
 function showSection(id) {
-  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  showSectionDirect(id);
+  // mark clicked tab active
   document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
-  document.getElementById('sec-'+id).classList.add('active');
-  event.target.classList.add('active');
-  if(id==='alumnos') { limpiarFiltrosAlumnos(); }
-  if(id==='registro') { setTimeout(limpiarFiltrosRegistro, 50); }
-  if(id==='reportes') renderReportes();
-  if(id==='scan') updateStats();
+  if(event && event.target) event.target.classList.add('active');
+  else { const t = document.getElementById('tab-'+id); if(t) t.classList.add('active'); }
 }
 
 // ============================================================
@@ -1164,14 +1457,13 @@ function onQRSuccess(text) {
   processQR(text.trim());
 }
 
-function processQR(id) {
-  const alumnos = DB.alumnos;
-  const alumno = alumnos.find(a => a.id === id);
-  if(!alumno) {
-    toast(`ID "${id}" no encontrado en la base de datos`, 'error');
-    return;
-  }
-  showStudentResult(alumno);
+async function processQR(id) {
+  try {
+    const alumnos = await DB.getAlumnos();
+    const alumno = alumnos.find(a => a.id === id);
+    if(!alumno) { toast(`DNI "${id}" no encontrado`, 'error'); return; }
+    showStudentResult(alumno);
+  } catch(e) { toast('Error al buscar alumno','error'); }
 }
 
 function manualRegister() {
@@ -1181,7 +1473,7 @@ function manualRegister() {
   document.getElementById('manual-id').value = '';
 }
 
-function showStudentResult(alumno) {
+async function showStudentResult(alumno) {
   pendingStudent = alumno;
   const initials = (alumno.nombres[0]||'?') + (alumno.apellidos[0]||'?');
   document.getElementById('stu-avatar').textContent = initials.toUpperCase();
@@ -1193,27 +1485,26 @@ function showStudentResult(alumno) {
   const now = new Date();
   document.getElementById('stu-time').textContent = now.toLocaleTimeString('es-PE', {hour:'2-digit',minute:'2-digit'});
 
-  // Determinar tipo (ingreso/salida)
-  const today = hoy();
-  const regs = DB.registros.filter(r => r.alumnoId === alumno.id && r.fecha === today);
-  const tieneIngreso = regs.some(r => r.tipo === 'INGRESO');
-  const tieneSalida  = regs.some(r => r.tipo === 'SALIDA');
-  let tipo = tieneIngreso ? 'SALIDA' : 'INGRESO';
-  document.getElementById('stu-type').textContent = tipo;
+  try {
+    const regs = await DB.getRegistros({fecha: hoy(), alumnoId: alumno.id});
+    const tieneIngreso = regs.some(r => r.tipo === 'INGRESO');
+    const tieneSalida  = regs.some(r => r.tipo === 'SALIDA');
+    let tipo = tieneIngreso ? 'SALIDA' : 'INGRESO';
+    document.getElementById('stu-type').textContent = tipo;
 
-  // Estado
-  const limite = alumno.limite || '08:00';
-  const [lh, lm] = limite.split(':').map(Number);
-  const tardanza = now.getHours() > lh || (now.getHours() === lh && now.getMinutes() > lm);
-  let badgeHtml = '';
-  if(tipo === 'INGRESO') {
-    if(tardanza) badgeHtml = '<span class="badge yellow">⚠ Tardanza</span>';
-    else         badgeHtml = '<span class="badge green">✓ A tiempo</span>';
-  } else {
-    badgeHtml = '<span class="badge blue">🚪 Salida</span>';
-    if(tieneSalida) badgeHtml = '<span class="badge red">⚠ Ya registró salida hoy</span>';
+    const limite = alumno.limite || '08:00';
+    const [lh, lm] = limite.split(':').map(Number);
+    const tardanza = now.getHours() > lh || (now.getHours() === lh && now.getMinutes() > lm);
+    let badgeHtml = '';
+    if(tipo === 'INGRESO') {
+      badgeHtml = tardanza ? '<span class="badge yellow">⚠ Tardanza</span>' : '<span class="badge green">✓ A tiempo</span>';
+    } else {
+      badgeHtml = tieneSalida ? '<span class="badge red">⚠ Ya registró salida hoy</span>' : '<span class="badge blue">🚪 Salida</span>';
+    }
+    document.getElementById('stu-badge-wrap').innerHTML = badgeHtml;
+  } catch(e) {
+    document.getElementById('stu-badge-wrap').innerHTML = '';
   }
-  document.getElementById('stu-badge-wrap').innerHTML = badgeHtml;
 
   document.getElementById('result-empty').style.display = 'none';
   document.getElementById('result-student').style.display = 'flex';
@@ -1221,51 +1512,54 @@ function showStudentResult(alumno) {
   document.getElementById('result-student').style.gap = '12px';
 }
 
-function confirmRegister(tipo) {
+async function confirmRegister(tipo) {
   if(!pendingStudent){ toast('Escanea un alumno primero','warning'); return; }
   const alumno = pendingStudent;
   const now = new Date();
   const today = hoy();
-  const regs = DB.registros;
 
-  if(tipo === 'INGRESO') {
-    if(regs.some(r => r.alumnoId === alumno.id && r.fecha === today && r.tipo === 'INGRESO')){
-      toast(alumno.nombres + ' ya tiene ingreso registrado hoy','warning'); return;
+  try {
+    const regsHoy = await DB.getRegistros({fecha: today, alumnoId: alumno.id});
+    if(tipo === 'INGRESO') {
+      if(regsHoy.some(r => r.tipo === 'INGRESO')){
+        toast(alumno.nombres + ' ya tiene ingreso registrado hoy','warning'); return;
+      }
     }
+    if(tipo === 'SALIDA') {
+      if(!regsHoy.some(r => r.tipo === 'INGRESO')){
+        toast('No hay ingreso registrado para '+alumno.nombres,'warning'); return;
+      }
+      if(regsHoy.some(r => r.tipo === 'SALIDA')){
+        toast(alumno.nombres + ' ya tiene salida registrada hoy','warning'); return;
+      }
+    }
+
+    const limite = alumno.limite || '08:00';
+    const [lh, lm] = limite.split(':').map(Number);
+    const tardanza = tipo === 'INGRESO' && (now.getHours() > lh || (now.getHours() === lh && now.getMinutes() > lm));
+    const estado = tipo === 'SALIDA' ? 'Salida normal' : (tardanza ? 'Tardanza' : 'A tiempo');
+
+    const reg = {
+      alumnoId: alumno.id,
+      nombre: alumno.nombres + ' ' + alumno.apellidos,
+      grado: alumno.grado,
+      seccion: alumno.seccion,
+      turno: alumno.turno,
+      tipo, estado,
+      hora: now.toLocaleTimeString('es-PE', {hour:'2-digit', minute:'2-digit', second:'2-digit'}),
+      fecha: today,
+    };
+
+    await DB.saveRegistro(reg);
+    await updateStats();
+    pendingStudent = null;
+    document.getElementById('result-empty').style.display = 'flex';
+    document.getElementById('result-student').style.display = 'none';
+    toast(`${tipo} registrado: ${alumno.nombres} — ${estado}`, tipo==='INGRESO' ? 'success' : 'info');
+  } catch(e) {
+    toast('Error al guardar registro','error');
+    console.error(e);
   }
-  if(tipo === 'SALIDA') {
-    if(!regs.some(r => r.alumnoId === alumno.id && r.fecha === today && r.tipo === 'INGRESO')){
-      toast('No hay ingreso registrado para '+alumno.nombres,'warning'); return;
-    }
-    if(regs.some(r => r.alumnoId === alumno.id && r.fecha === today && r.tipo === 'SALIDA')){
-      toast(alumno.nombres + ' ya tiene salida registrada hoy','warning'); return;
-    }
-  }
-
-  const limite = alumno.limite || '08:00';
-  const [lh, lm] = limite.split(':').map(Number);
-  const tardanza = tipo === 'INGRESO' && (now.getHours() > lh || (now.getHours() === lh && now.getMinutes() > lm));
-  const estado = tipo === 'SALIDA' ? 'Salida normal' : (tardanza ? 'Tardanza' : 'A tiempo');
-
-  const reg = {
-    id: Date.now(),
-    alumnoId: alumno.id,
-    nombre: alumno.nombres + ' ' + alumno.apellidos,
-    grado: alumno.grado,
-    seccion: alumno.seccion,
-    tipo,
-    estado,
-    hora: now.toLocaleTimeString('es-PE', {hour:'2-digit', minute:'2-digit', second:'2-digit'}),
-    fecha: today,
-  };
-
-  regs.push(reg);
-  DB.registros = regs;
-  updateStats();
-  pendingStudent = null;
-  document.getElementById('result-empty').style.display = 'flex';
-  document.getElementById('result-student').style.display = 'none';
-  toast(`${tipo} registrado: ${alumno.nombres} — ${estado}`, tipo==='INGRESO' ? 'success' : 'info');
 }
 
 // ============================================================
@@ -1273,11 +1567,12 @@ function confirmRegister(tipo) {
 // ============================================================
 let editingId = null;
 
-function openModalAlumno(id) {
+async function openModalAlumno(id) {
   editingId = id || null;
   document.getElementById('modal-title-text').textContent = id ? 'Editar Alumno' : 'Nuevo Alumno';
   if(id) {
-    const a = DB.alumnos.find(x => x.id === id);
+    const alumnos = await DB.getAlumnos();
+    const a = alumnos.find(x => x.id === id);
     document.getElementById('f-id').value = a.id;
     document.getElementById('f-id').readOnly = false;
     document.getElementById('f-id').style.opacity = '1';
@@ -1311,7 +1606,7 @@ function openModalAlumno(id) {
   document.getElementById('modal-alumno').classList.add('open');
 }
 
-function saveAlumno() {
+async function saveAlumno() {
   const id = document.getElementById('f-id').value.trim();
   const nombres = document.getElementById('f-nombres').value.trim();
   const apellidos = document.getElementById('f-apellidos').value.trim();
@@ -1319,44 +1614,45 @@ function saveAlumno() {
   if(!id||!nombres||!apellidos||!grado){ toast('Completa los campos obligatorios','warning'); return; }
   if(!/^\d{8}$/.test(id)){ toast('El DNI debe tener exactamente 8 dígitos','warning'); return; }
 
-  let alumnos = DB.alumnos;
-  if(alumnos.find(a => a.id === id && a.id !== editingId)){ toast('Ese DNI ya está registrado en otro alumno','error'); return; }
+  try {
+    const alumnos = await DB.getAlumnos();
+    if(alumnos.find(a => a.id === id && a.id !== editingId)){ toast('Ese DNI ya está registrado','error'); return; }
 
-  const alumno = {
-    id,
-    nombres, apellidos, grado,
-    seccion: document.getElementById('f-seccion').value,
-    turno: document.getElementById('f-turno').value,
-    limite: document.getElementById('f-limite').value,
-    telefono: document.getElementById('f-telefono').value.trim(),
-    foto: document.getElementById('f-foto-data').value.trim(),
-  };
+    const alumno = {
+      id, nombres, apellidos, grado,
+      seccion: document.getElementById('f-seccion').value,
+      turno: document.getElementById('f-turno').value,
+      limite: document.getElementById('f-limite').value,
+      telefono: document.getElementById('f-telefono').value.trim(),
+      foto: document.getElementById('f-foto-data').value.trim(),
+    };
 
-  if(editingId) {
-    alumnos = alumnos.map(a => a.id === editingId ? alumno : a);
-    // Si cambió el DNI, actualizar también los registros de asistencia
-    if(editingId !== id) {
-      let regs = DB.registros;
-      regs = regs.map(r => r.alumnoId === editingId ? {...r, alumnoId: id} : r);
-      DB.registros = regs;
+    if(editingId && editingId !== id) {
+      await DB.updateAlumnoId(editingId, alumno);
+      // Actualizar registros con nuevo ID
+      const snap = await db.collection('registros').where('alumnoId','==',editingId).get();
+      const batch = db.batch();
+      snap.docs.forEach(d => batch.update(d.ref, {alumnoId: id}));
+      await batch.commit();
+      toast('Alumno actualizado','success');
+    } else {
+      await DB.saveAlumno(alumno);
+      toast(editingId ? 'Alumno actualizado' : 'Alumno registrado','success');
     }
-    toast('Alumno actualizado','success');
-  } else {
-    alumnos.push(alumno);
-    toast('Alumno registrado','success');
-  }
-  DB.alumnos = alumnos;
-  closeModal('modal-alumno');
-  renderAlumnos();
-  updateStats();
+    closeModal('modal-alumno');
+    renderAlumnos();
+    updateStats();
+  } catch(e) { toast('Error al guardar','error'); console.error(e); }
 }
 
-function deleteAlumno(id) {
+async function deleteAlumno(id) {
   if(!confirm('¿Eliminar este alumno?')) return;
-  DB.alumnos = DB.alumnos.filter(a => a.id !== id);
-  toast('Alumno eliminado','info');
-  renderAlumnos();
-  updateStats();
+  try {
+    await DB.deleteAlumno(id);
+    toast('Alumno eliminado','info');
+    renderAlumnos();
+    updateStats();
+  } catch(e) { toast('Error al eliminar','error'); }
 }
 
 function limpiarFiltrosAlumnos() {
@@ -1367,14 +1663,16 @@ function limpiarFiltrosAlumnos() {
   mostrarEstadoInicial();
 }
 
-function mostrarEstadoInicial() {
+async function mostrarEstadoInicial() {
   document.getElementById('alumnos-tbody').innerHTML = '';
   document.getElementById('alumnos-empty').style.display = 'block';
   document.getElementById('alumnos-empty').querySelector('p').textContent =
     'Usa los filtros de arriba para buscar alumnos';
-  const total = DB.alumnos.length;
-  document.getElementById('alumnos-count').textContent =
-    total + ' alumno' + (total!==1?'s':'') + ' registrado' + (total!==1?'s':'') + ' en total';
+  try {
+    const alumnos = await DB.getAlumnos();
+    document.getElementById('alumnos-count').textContent =
+      alumnos.length + ' alumno' + (alumnos.length!==1?'s':'') + ' registrado' + (alumnos.length!==1?'s':'') + ' en total';
+  } catch(e) { document.getElementById('alumnos-count').textContent = ''; }
 }
 
 function renderAlumnos() {
@@ -1438,14 +1736,16 @@ function renderAlumnos() {
         <button class="btn btn-danger" style="padding:5px 10px;font-size:0.78rem;" onclick="deleteAlumno('${a.id}')">✕</button>
       </td>
     </tr>`;
-  }).join('');
+    }).join('');
+  } catch(e) { console.error('renderAlumnos:', e); toast('Error al cargar alumnos','error'); }
 }
 
 // ============================================================
 // QR GENERATION (via API)
 // ============================================================
-function showQR(id) {
-  const a = DB.alumnos.find(x => x.id === id);
+async function showQR(id) {
+  const alumnos = await DB.getAlumnos();
+  const a = alumnos.find(x => x.id === id);
   if(!a) return;
 
   // School name (could be customized)
@@ -1570,53 +1870,53 @@ function renderRegistro() {
     return;
   }
 
-  let regs = DB.registros;
-  if(fecha)                    regs = regs.filter(r => r.fecha === fecha);
-  if(grado   && grado   !== 'TODOS') regs = regs.filter(r => r.grado === grado);
-  if(seccion && seccion !== 'TODOS') regs = regs.filter(r => r.seccion === seccion);
-  if(nivel && nivel !== 'TODOS') regs = regs.filter(r => r.turno === nivel);
-  if(tipo    && tipo    !== 'TODOS') regs = regs.filter(r => r.tipo === tipo);
-  if(q) regs = regs.filter(r =>
-    r.nombre.toLowerCase().includes(q) || r.alumnoId.includes(q)
-  );
-  regs = [...regs].reverse();
+  try {
+    let regs = await DB.getRegistros(fecha ? {fecha} : {});
+    if(grado   && grado   !== 'TODOS') regs = regs.filter(r => r.grado === grado);
+    if(seccion && seccion !== 'TODOS') regs = regs.filter(r => r.seccion === seccion);
+    if(nivel   && nivel   !== 'TODOS') regs = regs.filter(r => r.turno === nivel);
+    if(tipo    && tipo    !== 'TODOS') regs = regs.filter(r => r.tipo === tipo);
+    if(q) regs = regs.filter(r => r.nombre.toLowerCase().includes(q) || r.alumnoId.includes(q));
 
-  count.textContent = 'Mostrando ' + regs.length + ' de ' + DB.registros.length + ' registros';
+    count.textContent = 'Mostrando ' + regs.length + ' registros';
 
-  if(!regs.length) {
-    tbody.innerHTML = '';
-    empty.style.display = 'block';
-    empty.querySelector('p').textContent = 'No hay registros con ese filtro';
-    return;
-  }
-  empty.style.display = 'none';
+    if(!regs.length) {
+      tbody.innerHTML = '';
+      empty.style.display = 'block';
+      empty.querySelector('p').textContent = 'No hay registros con ese filtro';
+      return;
+    }
+    empty.style.display = 'none';
 
-  tbody.innerHTML = regs.map(r => {
-    const cls = r.tipo==='SALIDA' ? 'row-salida' : (r.estado==='Tardanza' ? 'row-tarde' : 'row-ingreso');
-    const badgeColor = r.tipo==='SALIDA' ? 'blue' : (r.estado==='Tardanza' ? 'yellow' : 'green');
-    return `<tr class="${cls}">
-      <td class="ts">${r.hora}</td>
-      <td class="td-id">${r.alumnoId}</td>
-      <td class="td-name">${r.nombre}</td>
-      <td>${r.grado} ${r.seccion}</td>
-      <td>${r.turno||r.nivel||'-'}</td>
-      <td>${r.tipo}</td>
-      <td><span class="badge ${badgeColor}">${r.estado}</span></td>
-      <td class="ts">${r.fecha}</td>
-    </tr>`;
-  }).join('');
+    tbody.innerHTML = regs.map(r => {
+      const cls = r.tipo==='SALIDA' ? 'row-salida' : (r.estado==='Tardanza' ? 'row-tarde' : 'row-ingreso');
+      const badgeColor = r.tipo==='SALIDA' ? 'blue' : (r.estado==='Tardanza' ? 'yellow' : 'green');
+      return `<tr class="${cls}">
+        <td class="ts">${r.hora}</td>
+        <td class="td-id">${r.alumnoId}</td>
+        <td class="td-name">${r.nombre}</td>
+        <td>${r.grado} ${r.seccion}</td>
+        <td>${r.turno||'-'}</td>
+        <td>${r.tipo}</td>
+        <td><span class="badge ${badgeColor}">${r.estado}</span></td>
+        <td class="ts">${r.fecha}</td>
+      </tr>`;
+    }).join('');
+  } catch(e) { console.error('renderRegistro:', e); toast('Error al cargar registros','error'); }
 }
 
-function clearToday() {
+async function clearToday() {
   if(!confirm('¿Borrar todos los registros de hoy?')) return;
-  DB.registros = DB.registros.filter(r => r.fecha !== hoy());
-  renderRegistro();
-  updateStats();
-  toast('Registros de hoy eliminados','info');
+  try {
+    await DB.deleteRegistrosByFecha(hoy());
+    renderRegistro();
+    updateStats();
+    toast('Registros de hoy eliminados','info');
+  } catch(e) { toast('Error al eliminar','error'); }
 }
 
-function exportCSV() {
-  const regs = DB.registros;
+async function exportCSV() {
+  const regs = await DB.getRegistros({});
   if(!regs.length){ toast('No hay registros','warning'); return; }
   const header = 'Fecha,Hora,ID,Nombre,Grado,Seccion,Tipo,Estado';
   const rows = regs.map(r => `${r.fecha},${r.hora},${r.alumnoId},"${r.nombre}",${r.grado},${r.seccion},${r.tipo},${r.estado}`);
@@ -1650,13 +1950,12 @@ function handleCSV(e) {
       const [id, nombres, apellidos, grado, seccion, turno, limite, telefono, foto] = cols;
       if(!id || !/^\d{8}$/.test(id)) return;
       if(alumnos.find(a => a.id === id)) return;
-      alumnos.push({ id, nombres, apellidos, grado, seccion: seccion||'A', turno: turno||'Primaria', limite: limite||'08:00', telefono: telefono||'', foto: foto||'' });
+      await DB.saveAlumno({ id, nombres, apellidos, grado, seccion: seccion||'A', turno: turno||'Primaria', limite: limite||'08:00', telefono: telefono||'', foto: foto||'' });
       added++;
     });
-    DB.alumnos = alumnos;
     renderAlumnos();
     updateStats();
-    toast(`${added} alumnos importados`, 'success');
+    toast(added + ' alumnos importados', 'success');
   };
   reader.readAsText(file);
   e.target.value = '';
@@ -1665,9 +1964,10 @@ function handleCSV(e) {
 // ============================================================
 // REPORTES
 // ============================================================
-function renderReportes() {
-  const alumnos = DB.alumnos;
-  const registros = DB.registros;
+async function renderReportes() {
+  try {
+  const alumnos = await DB.getAlumnos();
+  const registros = await DB.getRegistros({});
   const today = hoy();
 
   document.getElementById('rep-total').textContent = alumnos.length;
@@ -1746,22 +2046,25 @@ function renderReportes() {
       <span class="badge yellow">${cnt} tardanza${cnt>1?'s':''}</span>
     </div>`;
   }).join('');
+  } catch(e) { console.error('renderReportes:', e); }
 }
 
 // ============================================================
 // STATS
 // ============================================================
-function updateStats() {
-  const alumnos = DB.alumnos;
-  const today = hoy();
-  const regsHoy = DB.registros.filter(r => r.fecha === today);
-  const ingresosHoy = new Set(regsHoy.filter(r=>r.tipo==='INGRESO').map(r=>r.alumnoId));
-  const tardanzasHoy = regsHoy.filter(r=>r.estado==='Tardanza').length;
-
-  document.getElementById('stat-total').textContent = alumnos.length;
-  document.getElementById('stat-hoy').textContent = ingresosHoy.size;
-  document.getElementById('stat-tarde').textContent = tardanzasHoy;
-  document.getElementById('stat-ausentes').textContent = Math.max(0, alumnos.length - ingresosHoy.size);
+async function updateStats() {
+  try {
+    const [alumnos, regsHoy] = await Promise.all([
+      DB.getAlumnos(),
+      DB.getRegistros({fecha: hoy()})
+    ]);
+    const ingresosHoy = new Set(regsHoy.filter(r=>r.tipo==='INGRESO').map(r=>r.alumnoId));
+    const tardanzasHoy = regsHoy.filter(r=>r.estado==='Tardanza').length;
+    document.getElementById('stat-total').textContent = alumnos.length;
+    document.getElementById('stat-hoy').textContent = ingresosHoy.size;
+    document.getElementById('stat-tarde').textContent = tardanzasHoy;
+    document.getElementById('stat-ausentes').textContent = Math.max(0, alumnos.length - ingresosHoy.size);
+  } catch(e) { console.error('updateStats:', e); }
 }
 
 // ============================================================
@@ -1789,21 +2092,94 @@ document.querySelectorAll('.modal-bg').forEach(bg => {
   bg.addEventListener('click', e => { if(e.target===bg) bg.classList.remove('open'); });
 });
 
-// INIT
-updateStats();
+// ============================================================
+// GESTIÓN DE USUARIOS
+// ============================================================
+let editingUsuarioId = null;
 
-// Pre-cargar demo si está vacío
-if(!DB.alumnos.length) {
-  const demo = [
-    {id:'12345601',nombres:'Ana Lucía',apellidos:'Ramírez Torres',grado:'3°',seccion:'A',turno:'Primaria',limite:'08:00',telefono:''},
-    {id:'12345602',nombres:'Carlos',apellidos:'Mendoza Vega',grado:'3°',seccion:'A',turno:'Primaria',limite:'08:00',telefono:''},
-    {id:'12345603',nombres:'Sofía',apellidos:'Gutierrez Paz',grado:'4°',seccion:'B',turno:'Primaria',limite:'08:00',telefono:''},
-    {id:'12345604',nombres:'Diego Alonso',apellidos:'Torres Huanca',grado:'5°',seccion:'A',turno:'Primaria',limite:'08:00',telefono:''},
-    {id:'12345605',nombres:'Valentina',apellidos:'Cruz Ríos',grado:'2°',seccion:'C',turno:'Secundaria',limite:'13:00',telefono:''},
-  ];
-  DB.alumnos = demo;
-  updateStats();
+function openModalUsuario(uid) {
+  editingUsuarioId = uid || null;
+  document.getElementById('modal-usuario-title').textContent = uid ? 'Editar Usuario' : 'Nuevo Usuario';
+  document.getElementById('u-pass-group').style.display = uid ? 'none' : 'block';
+  if(!uid) {
+    ['u-nombre','u-email','u-pass'].forEach(x => document.getElementById(x).value = '');
+    document.getElementById('u-rol').value = 'profesor';
+  }
+  document.getElementById('modal-usuario').classList.add('active');
 }
+
+async function saveUsuario() {
+  const nombre = document.getElementById('u-nombre').value.trim();
+  const email  = document.getElementById('u-email').value.trim();
+  const pass   = document.getElementById('u-pass').value;
+  const rol    = document.getElementById('u-rol').value;
+
+  if(!nombre || !email){ toast('Completa nombre y correo','warning'); return; }
+
+  try {
+    if(!editingUsuarioId) {
+      // Crear usuario en Firebase Auth usando Admin SDK no disponible en cliente
+      // Usamos función alternativa: crear en Firestore y mostrar instrucciones
+      if(!pass || pass.length < 6){ toast('La contraseña debe tener al menos 6 caracteres','warning'); return; }
+
+      // Crear auth user con email/pass secundario
+      const secondaryApp = firebase.initializeApp(firebaseConfig, 'secondary_' + Date.now());
+      const secondaryAuth = secondaryApp.auth();
+      const cred = await secondaryAuth.createUserWithEmailAndPassword(email, pass);
+      const uid = cred.user.uid;
+      await secondaryAuth.signOut();
+      await secondaryApp.delete();
+
+      await db.collection('usuarios').doc(uid).set({ nombre, email, rol, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+      toast('Usuario creado correctamente','success');
+    } else {
+      await db.collection('usuarios').doc(editingUsuarioId).update({ nombre, rol });
+      toast('Usuario actualizado','success');
+    }
+    closeModal('modal-usuario');
+    renderUsuarios();
+  } catch(e) {
+    console.error(e);
+    if(e.code === 'auth/email-already-in-use') toast('Ese correo ya está registrado','error');
+    else if(e.code === 'auth/invalid-email') toast('Correo inválido','error');
+    else toast('Error: ' + e.message,'error');
+  }
+}
+
+async function deleteUsuario(uid) {
+  if(uid === currentUser.uid){ toast('No puedes eliminar tu propia cuenta','warning'); return; }
+  if(!confirm('¿Eliminar este usuario? No podrá ingresar al sistema.')) return;
+  try {
+    await db.collection('usuarios').doc(uid).delete();
+    toast('Usuario eliminado','info');
+    renderUsuarios();
+  } catch(e) { toast('Error al eliminar','error'); }
+}
+
+async function renderUsuarios() {
+  const tbody = document.getElementById('usuarios-tbody');
+  if(!tbody) return;
+  try {
+    const snap = await db.collection('usuarios').get();
+    const rolLabels = { admin:'⚙ Admin', director:'🏫 Director', profesor:'👨‍🏫 Profesor', portero:'🚪 Portero' };
+    const rolColors = { admin:'var(--accent)', director:'#a78bfa', profesor:'#34d399', portero:'#fb923c' };
+    tbody.innerHTML = snap.docs.map(d => {
+      const u = d.data();
+      const esYo = d.id === currentUser.uid ? ' (tú)' : '';
+      return `<tr>
+        <td style="font-weight:500;">${u.nombre}${esYo}</td>
+        <td style="color:var(--muted);font-size:0.85rem;">${u.email}</td>
+        <td><span style="color:${rolColors[u.rol]||'#fff'};font-weight:600;">${rolLabels[u.rol]||u.rol}</span></td>
+        <td style="display:flex;gap:6px;">
+          <button class="btn btn-ghost" style="padding:5px 10px;font-size:0.78rem;" onclick="openModalUsuario('${d.id}');document.getElementById('u-nombre').value='${u.nombre}';document.getElementById('u-rol').value='${u.rol}';">✏</button>
+          ${d.id !== currentUser.uid ? `<button class="btn btn-danger" style="padding:5px 10px;font-size:0.78rem;" onclick="deleteUsuario('${d.id}')">✕</button>` : ''}
+        </td>
+      </tr>`;
+    }).join('');
+  } catch(e) { tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--muted);">Error al cargar usuarios</td></tr>'; }
+}
+
+// INIT — auth listener maneja el inicio
 </script>
 </body>
 </html>
