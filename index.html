@@ -867,6 +867,7 @@ function showSection(id) {
 let html5Qr = null;
 let cameras = [];
 let camIdx = 0;
+let usandoTrasera = true; // en móvil empezamos con trasera
 let scannerRunning = false;
 let lastScanned = '';
 let lastScanTime = 0;
@@ -874,6 +875,7 @@ let pendingStudent = null;
 
 function startScanner() {
   document.getElementById('cam-placeholder').style.display = 'none';
+  document.getElementById('scan-status').textContent = '⏳ Solicitando permiso de cámara...';
   navigator.mediaDevices.getUserMedia({ video: true })
     .then(stream => {
       stream.getTracks().forEach(t => t.stop());
@@ -882,52 +884,124 @@ function startScanner() {
     .then(devs => {
       cameras = devs;
       if(!devs.length){ toast('No se encontró cámara','error'); return; }
-      camIdx = devs.length > 1 ? 1 : 0; // back camera
+      // Buscar cámara trasera por nombre
+      const traseraIdx = devs.findIndex(d =>
+        d.label.toLowerCase().includes('back') ||
+        d.label.toLowerCase().includes('rear') ||
+        d.label.toLowerCase().includes('trasera') ||
+        d.label.toLowerCase().includes('environment')
+      );
+      camIdx = traseraIdx >= 0 ? traseraIdx : (devs.length > 1 ? 1 : 0);
+      usandoTrasera = true;
       launchCamera();
     })
     .catch(err => {
-      toast('No se pudo acceder a la cámara: '+err.message,'error');
-      document.getElementById('scan-status').textContent = '⚠ Sin acceso a cámara';
-      document.getElementById('cam-placeholder').style.display = 'flex';
+      // Si falla getCameras, intentar directo con facingMode
+      launchCameraFacingMode('environment');
     });
 }
 
 function launchCamera() {
-  if(html5Qr) html5Qr.clear().catch(()=>{});
+  if(html5Qr) {
+    html5Qr.stop().catch(()=>{}).finally(() => {
+      html5Qr.clear();
+      _iniciarConDispositivo();
+    });
+  } else {
+    _iniciarConDispositivo();
+  }
+}
+
+function _iniciarConDispositivo() {
   html5Qr = new Html5Qrcode('qr-reader');
   const cam = cameras[camIdx];
   html5Qr.start(
     { deviceId: { exact: cam.id } },
-    { fps: 12, qrbox: { width: 220, height: 220 }, aspectRatio: 1.0 },
+    { fps: 12, qrbox: { width: 200, height: 200 }, aspectRatio: 1.0 },
     onQRSuccess,
     () => {}
   ).then(() => {
     scannerRunning = true;
     document.getElementById('btn-start-scan').disabled = true;
     document.getElementById('btn-stop-scan').disabled = false;
-    document.getElementById('scan-status').textContent = '🟢 Cámara activa — apunta al QR del alumno';
+    const label = cam.label || (usandoTrasera ? 'Cámara trasera' : 'Cámara frontal');
+    document.getElementById('scan-status').textContent = `🟢 ${label} activa`;
+    document.getElementById('btn-switch').textContent = usandoTrasera ? '🤳 Cambiar a frontal' : '📷 Cambiar a trasera';
+  }).catch(() => {
+    // Fallback: usar facingMode
+    launchCameraFacingMode(usandoTrasera ? 'environment' : 'user');
+  });
+}
+
+function launchCameraFacingMode(facing) {
+  if(html5Qr) { html5Qr.clear(); html5Qr = null; }
+  html5Qr = new Html5Qrcode('qr-reader');
+  html5Qr.start(
+    { facingMode: facing },
+    { fps: 12, qrbox: { width: 200, height: 200 }, aspectRatio: 1.0 },
+    onQRSuccess,
+    () => {}
+  ).then(() => {
+    scannerRunning = true;
+    document.getElementById('btn-start-scan').disabled = true;
+    document.getElementById('btn-stop-scan').disabled = false;
+    const label = facing === 'environment' ? 'Cámara trasera' : 'Cámara frontal';
+    document.getElementById('scan-status').textContent = `🟢 ${label} activa`;
+    document.getElementById('btn-switch').textContent = facing === 'environment' ? '🤳 Cambiar a frontal' : '📷 Cambiar a trasera';
   }).catch(err => {
-    toast('Error al iniciar: '+err,'error');
+    toast('No se pudo acceder a la cámara','error');
+    document.getElementById('scan-status').textContent = '⚠ Sin acceso a cámara';
     document.getElementById('cam-placeholder').style.display = 'flex';
   });
 }
 
 function stopScanner() {
-  if(html5Qr) html5Qr.stop().then(() => {
+  if(!html5Qr) return;
+  html5Qr.stop().then(() => {
     html5Qr.clear();
+    html5Qr = null;
     scannerRunning = false;
     document.getElementById('btn-start-scan').disabled = false;
     document.getElementById('btn-stop-scan').disabled = true;
     document.getElementById('scan-status').textContent = 'Cámara detenida';
     document.getElementById('cam-placeholder').style.display = 'flex';
+    document.getElementById('btn-switch').textContent = '🔄 Cambiar Cámara';
+  }).catch(() => {
+    html5Qr = null;
+    scannerRunning = false;
   });
 }
 
 function switchCamera() {
-  if(!cameras.length){ toast('Inicia la cámara primero','warning'); return; }
-  camIdx = (camIdx+1) % cameras.length;
-  if(scannerRunning) launchCamera();
-  else toast('Cambia iniciando la cámara','warning');
+  if(!scannerRunning){ toast('Inicia la cámara primero','warning'); return; }
+  usandoTrasera = !usandoTrasera;
+
+  if(cameras.length > 1) {
+    // Tenemos lista de cámaras, buscar la correcta
+    if(usandoTrasera) {
+      const idx = cameras.findIndex(d =>
+        d.label.toLowerCase().includes('back') ||
+        d.label.toLowerCase().includes('rear') ||
+        d.label.toLowerCase().includes('trasera') ||
+        d.label.toLowerCase().includes('environment')
+      );
+      camIdx = idx >= 0 ? idx : 0;
+    } else {
+      const idx = cameras.findIndex(d =>
+        d.label.toLowerCase().includes('front') ||
+        d.label.toLowerCase().includes('frontal') ||
+        d.label.toLowerCase().includes('user') ||
+        d.label.toLowerCase().includes('face')
+      );
+      camIdx = idx >= 0 ? idx : (cameras.length > 1 ? 0 : 0);
+      if(idx < 0) camIdx = camIdx === 0 ? 1 : 0; // alternar
+    }
+    launchCamera();
+  } else {
+    // Solo hay una cámara listada, usar facingMode
+    launchCameraFacingMode(usandoTrasera ? 'environment' : 'user');
+  }
+  toast(usandoTrasera ? '📷 Cambiando a cámara trasera' : '🤳 Cambiando a cámara frontal', 'info');
 }
 
 function onQRSuccess(text) {
