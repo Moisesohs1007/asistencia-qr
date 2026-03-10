@@ -2665,6 +2665,16 @@ async function poblarFiltroGrado(selectId, nivel) {
   let grados = nivel && nivel !== 'TODOS'
     ? (cfg.grados||{})[nivel] || []
     : [...new Set(Object.values(cfg.grados||{}).flat())];
+
+  // Solo grados que tienen alumnos
+  const alumnos = await DB.getAlumnos();
+  const gradosConAlumnos = new Set(
+    alumnos
+      .filter(a => !nivel || nivel === 'TODOS' || a.turno === nivel)
+      .map(a => a.grado)
+  );
+  grados = grados.filter(g => gradosConAlumnos.has(g));
+
   // Si es profesor con restricciones, solo sus grados
   if(currentRol === 'profesor' && currentPrivilegios.restringir) {
     const gradosAsig = Object.keys(currentPrivilegios.asignaciones || {});
@@ -2680,14 +2690,21 @@ async function poblarFiltroSeccion(selectId, grado) {
   if(!el) return;
   let secciones = cfg.secciones || ['A','B','C','D'];
 
+  // Obtener secciones que realmente tienen alumnos
+  const alumnos = await DB.getAlumnos();
+  const seccionesConAlumnos = new Set(
+    alumnos
+      .filter(a => !grado || grado === 'TODOS' || a.grado === grado)
+      .map(a => a.seccion)
+  );
+  secciones = secciones.filter(s => seccionesConAlumnos.has(s));
+
   if(currentRol === 'profesor' && currentPrivilegios.restringir) {
     const asig = currentPrivilegios.asignaciones || {};
     if(grado && grado !== 'TODOS') {
-      // Secciones del grado específico
       const seccsAsig = asig[grado] || [];
       if(seccsAsig.length) secciones = secciones.filter(s => seccsAsig.includes(s));
     } else {
-      // Sin grado seleccionado: unión de todas las secciones permitidas del profesor
       const todasPermitidas = new Set();
       Object.values(asig).forEach(seccs => seccs.forEach(s => todasPermitidas.add(s)));
       if(todasPermitidas.size) secciones = secciones.filter(s => todasPermitidas.has(s));
