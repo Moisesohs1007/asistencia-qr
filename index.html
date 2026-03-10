@@ -7,6 +7,7 @@
 <title>AsistenciaQR — Sistema Escolar</title>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jsQR/1.4.0/jsQR.min.js"></script>
 <style>
   :root {
     --bg: #0a0e1a;
@@ -206,25 +207,42 @@
     border-radius: 14px;
     overflow: hidden;
     background: #000;
-    min-height: 360px;
     position: relative;
+    width: 100%;
+    aspect-ratio: 4/3;
+    max-height: 420px;
   }
-  /* En móvil limitar altura del video para que no ocupe toda la pantalla */
+  #qr-video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    border-radius: 14px;
+  }
+  #qr-canvas { display: none; }
+  .qr-frame-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+  }
+  .qr-frame {
+    width: 55%;
+    aspect-ratio: 1;
+    border: 2.5px solid var(--accent);
+    border-radius: 14px;
+    box-shadow: 0 0 0 9999px rgba(0,0,0,0.38);
+    position: relative;
+    animation: pulse-border 2s ease-in-out infinite;
+  }
   @media(max-width:700px){
     #qr-reader {
-      min-height: 260px;
       max-height: 300px;
-      width: 100% !important;
     }
-    #qr-reader video,
-    #qr-reader canvas {
-      object-fit: cover !important;
-      max-height: 300px !important;
-      width: 100% !important;
-    }
+    .qr-frame { width: 65%; }
   }
-  #qr-reader video { border-radius: 14px; width:100%; }
-  #qr-reader img { border-radius: 14px; }
 
   .scan-overlay {
     position: absolute;
@@ -619,10 +637,20 @@
 
     <div class="scanner-layout">
       <div>
-        <div id="qr-reader" style="width:100%; min-height:280px;">
-          <div class="result-empty" id="cam-placeholder">
+        <div id="qr-reader">
+          <div class="result-empty" id="cam-placeholder" style="height:100%;min-height:220px;">
             <svg width="48" height="48" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 9V5a2 2 0 012-2h4M3 15v4a2 2 0 002 2h4m6-18h4a2 2 0 012 2v4m0 6v4a2 2 0 01-2 2h-4"/></svg>
             Presiona "Iniciar Cámara" para escanear
+          </div>
+          <video id="qr-video" autoplay playsinline muted style="display:none;"></video>
+          <canvas id="qr-canvas"></canvas>
+          <div class="qr-frame-overlay" id="qr-frame-overlay" style="display:none;">
+            <div class="qr-frame">
+              <div class="corner tl"></div>
+              <div class="corner tr"></div>
+              <div class="corner bl"></div>
+              <div class="corner br"></div>
+            </div>
           </div>
         </div>
         <div class="scan-status" id="scan-status">Cámara inactiva</div>
@@ -954,160 +982,113 @@ function showSection(id) {
 // ============================================================
 // QR SCANNER
 // ============================================================
-let html5Qr = null;
-let cameras = [];
-let camIdx = 0;
-let usandoTrasera = true; // en móvil empezamos con trasera
+// ============================================================
+// SCANNER — Implementación nativa con jsQR (más estable)
+// ============================================================
+let videoStream = null;
 let scannerRunning = false;
+let scanInterval = null;
+let usandoTrasera = true;
 let lastScanned = '';
 let lastScanTime = 0;
 let pendingStudent = null;
 
-// Placeholder HTML original del qr-reader para poder restaurarlo
-const QR_READER_PLACEHOLDER = `<div class="result-empty" id="cam-placeholder">
-  <svg width="48" height="48" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 9V5a2 2 0 012-2h4M3 15v4a2 2 0 002 2h4m6-18h4a2 2 0 012 2v4m0 6v4a2 2 0 01-2 2h-4"/></svg>
-  Presiona "Iniciar Cámara" para escanear
-</div>`;
+function setUIScanning(active) {
+  document.getElementById('btn-start-scan').disabled = active;
+  document.getElementById('btn-stop-scan').disabled = !active;
+  document.getElementById('qr-frame-overlay').style.display = active ? 'flex' : 'none';
+}
 
-function resetReaderDiv() {
-  // Destruir completamente el div y recrearlo limpio
-  const old = document.getElementById('qr-reader');
-  const parent = old.parentNode;
-  const newDiv = document.createElement('div');
-  newDiv.id = 'qr-reader';
-  newDiv.style.width = '100%';
-  newDiv.innerHTML = QR_READER_PLACEHOLDER;
-  parent.replaceChild(newDiv, old);
-  html5Qr = null;
+function showPlaceholder(show) {
+  document.getElementById('cam-placeholder').style.display = show ? 'flex' : 'none';
+  document.getElementById('qr-video').style.display = show ? 'none' : 'block';
 }
 
 function startScanner() {
   document.getElementById('scan-status').textContent = '⏳ Solicitando permiso de cámara...';
-  // Ocultar placeholder
-  const ph = document.getElementById('cam-placeholder');
-  if(ph) ph.style.display = 'none';
+  document.getElementById('btn-start-scan').disabled = true;
+  showPlaceholder(false);
 
-  navigator.mediaDevices.getUserMedia({ video: true })
+  const facing = usandoTrasera ? 'environment' : 'user';
+  const constraints = {
+    video: {
+      facingMode: { ideal: facing },
+      width: { ideal: 1280 },
+      height: { ideal: 720 }
+    }
+  };
+
+  navigator.mediaDevices.getUserMedia(constraints)
     .then(stream => {
-      stream.getTracks().forEach(t => t.stop());
-      return Html5Qrcode.getCameras();
+      videoStream = stream;
+      const video = document.getElementById('qr-video');
+      video.srcObject = stream;
+      video.play();
+      video.onloadedmetadata = () => {
+        scannerRunning = true;
+        setUIScanning(true);
+        showPlaceholder(false);
+        const label = usandoTrasera ? 'Cámara trasera' : 'Cámara frontal';
+        document.getElementById('scan-status').textContent = `🟢 ${label} activa — apunta al QR`;
+        document.getElementById('btn-switch').textContent = usandoTrasera ? '🤳 Cambiar a frontal' : '📷 Cambiar a trasera';
+        startScanLoop();
+      };
     })
-    .then(devs => {
-      cameras = devs;
-      if(!devs.length){ toast('No se encontró cámara','error'); return; }
-      const traseraIdx = devs.findIndex(d =>
-        d.label.toLowerCase().includes('back') ||
-        d.label.toLowerCase().includes('rear') ||
-        d.label.toLowerCase().includes('trasera') ||
-        d.label.toLowerCase().includes('environment')
-      );
-      camIdx = traseraIdx >= 0 ? traseraIdx : (devs.length > 1 ? 1 : 0);
-      usandoTrasera = true;
-      launchCamera();
-    })
-    .catch(() => {
-      launchCameraFacingMode('environment');
+    .catch(err => {
+      document.getElementById('btn-start-scan').disabled = false;
+      showPlaceholder(true);
+      document.getElementById('scan-status').textContent = '⚠ Sin acceso a cámara';
+      toast('No se pudo acceder a la cámara: ' + err.message, 'error');
     });
 }
 
-function launchCamera() {
-  const ph = document.getElementById('cam-placeholder');
-  if(ph) ph.style.display = 'none';
-  html5Qr = new Html5Qrcode('qr-reader');
-  const cam = cameras[camIdx];
-  html5Qr.start(
-    { deviceId: { exact: cam.id } },
-    { fps: 12, qrbox: (w) => { const isMobile=window.innerWidth<=700; const s=isMobile ? Math.min(Math.floor(w*0.7),200) : Math.min(Math.floor(w*0.65),300); return {width:s,height:s}; }, aspectRatio: 1.0 },
-    onQRSuccess,
-    () => {}
-  ).then(() => {
-    scannerRunning = true;
-    document.getElementById('btn-start-scan').disabled = true;
-    document.getElementById('btn-stop-scan').disabled = false;
-    const label = cam.label || (usandoTrasera ? 'Cámara trasera' : 'Cámara frontal');
-    document.getElementById('scan-status').textContent = `🟢 ${label} activa`;
-    document.getElementById('btn-switch').textContent = usandoTrasera ? '🤳 Cambiar a frontal' : '📷 Cambiar a trasera';
-  }).catch(() => {
-    launchCameraFacingMode(usandoTrasera ? 'environment' : 'user');
-  });
-}
+function startScanLoop() {
+  const video = document.getElementById('qr-video');
+  const canvas = document.getElementById('qr-canvas');
+  const ctx = canvas.getContext('2d');
 
-function launchCameraFacingMode(facing) {
-  html5Qr = new Html5Qrcode('qr-reader');
-  html5Qr.start(
-    { facingMode: facing },
-    { fps: 12, qrbox: (w) => { const isMobile=window.innerWidth<=700; const s=isMobile ? Math.min(Math.floor(w*0.7),200) : Math.min(Math.floor(w*0.65),300); return {width:s,height:s}; }, aspectRatio: 1.0 },
-    onQRSuccess,
-    () => {}
-  ).then(() => {
-    scannerRunning = true;
-    document.getElementById('btn-start-scan').disabled = true;
-    document.getElementById('btn-stop-scan').disabled = false;
-    const label = facing === 'environment' ? 'Cámara trasera' : 'Cámara frontal';
-    document.getElementById('scan-status').textContent = `🟢 ${label} activa`;
-    document.getElementById('btn-switch').textContent = facing === 'environment' ? '🤳 Cambiar a frontal' : '📷 Cambiar a trasera';
-  }).catch(() => {
-    toast('No se pudo acceder a la cámara','error');
-    document.getElementById('scan-status').textContent = '⚠ Sin acceso a cámara';
-    resetReaderDiv();
-  });
+  if(scanInterval) clearInterval(scanInterval);
+  scanInterval = setInterval(() => {
+    if(!scannerRunning || video.readyState < 2) return;
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    ctx.drawImage(video, 0, 0);
+    try {
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const code = jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: 'dontInvert' });
+      if(code && code.data) {
+        const now = Date.now();
+        if(code.data !== lastScanned || now - lastScanTime > 3000) {
+          lastScanned = code.data;
+          lastScanTime = now;
+          onQRSuccess(code.data);
+        }
+      }
+    } catch(e) {}
+  }, 200);
 }
 
 function stopScanner() {
-  if(!html5Qr) return;
-  document.getElementById('btn-start-scan').disabled = true;
-  document.getElementById('scan-status').textContent = '⏳ Deteniendo cámara...';
-  const instancia = html5Qr;
-  html5Qr = null;
   scannerRunning = false;
-  instancia.stop()
-    .catch(() => {})
-    .finally(() => {
-      // Recrear el div limpio — esto garantiza que el próximo inicio funcione
-      resetReaderDiv();
-      document.getElementById('btn-start-scan').disabled = false;
-      document.getElementById('btn-stop-scan').disabled = true;
-      document.getElementById('scan-status').textContent = 'Cámara detenida — presiona Iniciar para volver a escanear';
-      document.getElementById('btn-switch').textContent = '🔄 Cambiar Cámara';
-    });
+  if(scanInterval) { clearInterval(scanInterval); scanInterval = null; }
+  if(videoStream) {
+    videoStream.getTracks().forEach(t => t.stop());
+    videoStream = null;
+  }
+  const video = document.getElementById('qr-video');
+  video.srcObject = null;
+  setUIScanning(false);
+  showPlaceholder(true);
+  document.getElementById('scan-status').textContent = 'Cámara detenida — presiona Iniciar para escanear';
+  document.getElementById('btn-switch').textContent = '🔄 Cambiar Cámara';
 }
 
 function switchCamera() {
   if(!scannerRunning){ toast('Inicia la cámara primero','warning'); return; }
   usandoTrasera = !usandoTrasera;
-
-  const doSwitch = () => {
-    if(cameras.length > 1) {
-      if(usandoTrasera) {
-        const idx = cameras.findIndex(d =>
-          d.label.toLowerCase().includes('back') ||
-          d.label.toLowerCase().includes('rear') ||
-          d.label.toLowerCase().includes('trasera') ||
-          d.label.toLowerCase().includes('environment')
-        );
-        camIdx = idx >= 0 ? idx : 0;
-      } else {
-        const idx = cameras.findIndex(d =>
-          d.label.toLowerCase().includes('front') ||
-          d.label.toLowerCase().includes('frontal') ||
-          d.label.toLowerCase().includes('user') ||
-          d.label.toLowerCase().includes('face')
-        );
-        camIdx = idx >= 0 ? idx : (camIdx === 0 ? 1 : 0);
-      }
-      launchCamera();
-    } else {
-      launchCameraFacingMode(usandoTrasera ? 'environment' : 'user');
-    }
-  };
-  // Detener la cámara actual, resetear div, luego relanzar
-  if(html5Qr) {
-    const inst = html5Qr; html5Qr = null; scannerRunning = false;
-    inst.stop().catch(()=>{}).finally(() => { resetReaderDiv(); doSwitch(); });
-  } else {
-    resetReaderDiv(); doSwitch();
-  }
-  toast(usandoTrasera ? '📷 Cambiando a cámara trasera' : '🤳 Cambiando a cámara frontal', 'info');
+  stopScanner();
+  setTimeout(() => startScanner(), 300);
+  toast(usandoTrasera ? '📷 Cámara trasera' : '🤳 Cámara frontal', 'info');
 }
 
 function onQRSuccess(text) {
