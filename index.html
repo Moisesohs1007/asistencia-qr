@@ -711,11 +711,11 @@
           </select>
         </div>
         <div class="form-group" style="min-width:110px;">
-          <label>Turno</label>
-          <select id="fa-turno" onchange="renderAlumnos()">
-            <option value="" disabled selected>-- Turno --</option>
-            <option value="TODOS">Todos los turnos</option>
-            <option>Mañana</option><option>Tarde</option>
+          <label>Nivel</label>
+          <select id="fa-nivel" onchange="renderAlumnos()">
+            <option value="" disabled selected>-- Nivel --</option>
+            <option value="TODOS">Todos los niveles</option>
+            <option>Inicial</option><option>Primaria</option><option>Secundaria</option>
           </select>
         </div>
         <div class="search-wrap" style="flex:1;min-width:180px;margin:0;">
@@ -743,7 +743,7 @@
               <th>Nombre completo</th>
               <th>Grado</th>
               <th>Sección</th>
-              <th>Turno</th>
+              <th>Nivel</th>
               <th>Estado hoy</th>
               <th>Acciones</th>
             </tr>
@@ -788,11 +788,11 @@
           </select>
         </div>
         <div class="form-group" style="min-width:110px;">
-          <label>Turno</label>
-          <select id="filter-turno" onchange="renderRegistro()">
-            <option value="" disabled selected>-- Turno --</option>
-            <option value="TODOS">Todos</option>
-            <option>Mañana</option><option>Tarde</option>
+          <label>Nivel</label>
+          <select id="filter-nivel" onchange="renderRegistro()">
+            <option value="" disabled selected>-- Nivel --</option>
+            <option value="TODOS">Todos los niveles</option>
+            <option>Inicial</option><option>Primaria</option><option>Secundaria</option>
           </select>
         </div>
         <div class="form-group" style="min-width:110px;">
@@ -830,7 +830,7 @@
               <th>DNI</th>
               <th>Nombre</th>
               <th>Grado</th>
-              <th>Turno</th>
+              <th>Nivel</th>
               <th>Tipo</th>
               <th>Estado</th>
               <th>Fecha</th>
@@ -839,7 +839,7 @@
           <tbody id="registro-tbody"></tbody>
         </table>
       </div>
-      <div class="empty-state" id="registro-empty">
+      <div class="empty-state" id="registro-empty" style="display:block;">
         <svg width="40" height="40" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2a1 1 0 01-.293.707L13 13.414V19a1 1 0 01-.553.894l-4 2A1 1 0 017 21v-7.586L3.293 6.707A1 1 0 013 6V4z"/></svg>
         <p>Selecciona una fecha u otro filtro para ver los registros</p>
       </div>
@@ -924,10 +924,11 @@
         </select>
       </div>
       <div class="form-group">
-        <label>Turno</label>
+        <label>Nivel</label>
         <select id="f-turno">
-          <option value="Mañana">Mañana</option>
-          <option value="Tarde">Tarde</option>
+          <option value="Inicial">Inicial</option>
+          <option value="Primaria">Primaria</option>
+          <option value="Secundaria">Secundaria</option>
         </select>
       </div>
       <div class="form-group">
@@ -992,7 +993,7 @@
           <div id="carnet-dni" style="font-size:0.82rem;font-weight:600;color:#e2e8f0;"></div>
         </div>
         <div style="text-align:center;">
-          <div style="font-size:0.65rem;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;">Turno</div>
+          <div style="font-size:0.65rem;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;">Nivel</div>
           <div id="carnet-turno" style="font-size:0.82rem;font-weight:600;color:#e2e8f0;"></div>
         </div>
         <div style="text-align:center;">
@@ -1039,7 +1040,7 @@ function showSection(id) {
   document.getElementById('sec-'+id).classList.add('active');
   event.target.classList.add('active');
   if(id==='alumnos') { limpiarFiltrosAlumnos(); }
-  if(id==='registro') { limpiarFiltrosRegistro(); }
+  if(id==='registro') { setTimeout(limpiarFiltrosRegistro, 50); }
   if(id==='reportes') renderReportes();
   if(id==='scan') updateStats();
 }
@@ -1304,7 +1305,7 @@ function openModalAlumno(id) {
     document.getElementById('foto-preview-placeholder').style.display='block';
     document.getElementById('f-grado').value = '';
     document.getElementById('f-seccion').value = 'A';
-    document.getElementById('f-turno').value = 'Mañana';
+    document.getElementById('f-turno').value = 'Primaria';
     document.getElementById('f-limite').value = '08:00';
   }
   document.getElementById('modal-alumno').classList.add('open');
@@ -1361,7 +1362,7 @@ function deleteAlumno(id) {
 function limpiarFiltrosAlumnos() {
   document.getElementById('fa-grado').value = '';
   document.getElementById('fa-seccion').value = '';
-  document.getElementById('fa-turno').value = '';
+  document.getElementById('fa-nivel').value = '';
   document.getElementById('search-alumnos').value = '';
   mostrarEstadoInicial();
 }
@@ -1379,17 +1380,17 @@ function mostrarEstadoInicial() {
 function renderAlumnos() {
   const grado   = document.getElementById('fa-grado').value;
   const seccion = document.getElementById('fa-seccion').value;
-  const turno   = document.getElementById('fa-turno').value;
+  const nivel   = document.getElementById('fa-nivel').value;
   const q       = (document.getElementById('search-alumnos').value||'').toLowerCase();
 
   // "" = sin tocar (no muestra nada), "TODOS" = sin filtro en ese campo, valor específico = filtra
-  const filtroActivo = grado || seccion || turno || q;
+  const filtroActivo = grado || seccion || nivel || q;
   if(!filtroActivo) { mostrarEstadoInicial(); return; }
 
   let alumnos = DB.alumnos;
   if(grado   && grado   !== 'TODOS') alumnos = alumnos.filter(a => a.grado === grado);
   if(seccion && seccion !== 'TODOS') alumnos = alumnos.filter(a => a.seccion === seccion);
-  if(turno   && turno   !== 'TODOS') alumnos = alumnos.filter(a => a.turno === turno);
+  if(nivel && nivel !== 'TODOS') alumnos = alumnos.filter(a => a.turno === nivel);
   if(q) alumnos = alumnos.filter(a =>
     a.nombres.toLowerCase().includes(q) ||
     a.apellidos.toLowerCase().includes(q) ||
@@ -1539,7 +1540,7 @@ function limpiarFiltrosRegistro() {
   document.getElementById('filter-date').value = '';
   document.getElementById('filter-grado').value = '';
   document.getElementById('filter-seccion').value = '';
-  document.getElementById('filter-turno').value = '';
+  document.getElementById('filter-nivel').value = '';
   document.getElementById('filter-tipo').value = '';
   document.getElementById('filter-search').value = '';
   document.getElementById('registro-tbody').innerHTML = '';
@@ -1552,11 +1553,11 @@ function renderRegistro() {
   const fecha   = document.getElementById('filter-date').value;
   const grado   = document.getElementById('filter-grado').value;
   const seccion = document.getElementById('filter-seccion').value;
-  const turno   = document.getElementById('filter-turno').value;
+  const nivel   = document.getElementById('filter-nivel').value;
   const tipo    = document.getElementById('filter-tipo').value;
   const q       = (document.getElementById('filter-search').value||'').toLowerCase();
 
-  const filtroActivo = fecha || grado || seccion || turno || tipo || q;
+  const filtroActivo = fecha || grado || seccion || nivel || tipo || q;
   const tbody = document.getElementById('registro-tbody');
   const empty = document.getElementById('registro-empty');
   const count = document.getElementById('registro-count');
@@ -1573,7 +1574,7 @@ function renderRegistro() {
   if(fecha)                    regs = regs.filter(r => r.fecha === fecha);
   if(grado   && grado   !== 'TODOS') regs = regs.filter(r => r.grado === grado);
   if(seccion && seccion !== 'TODOS') regs = regs.filter(r => r.seccion === seccion);
-  if(turno   && turno   !== 'TODOS') regs = regs.filter(r => r.turno === turno);
+  if(nivel && nivel !== 'TODOS') regs = regs.filter(r => r.turno === nivel);
   if(tipo    && tipo    !== 'TODOS') regs = regs.filter(r => r.tipo === tipo);
   if(q) regs = regs.filter(r =>
     r.nombre.toLowerCase().includes(q) || r.alumnoId.includes(q)
@@ -1598,7 +1599,7 @@ function renderRegistro() {
       <td class="td-id">${r.alumnoId}</td>
       <td class="td-name">${r.nombre}</td>
       <td>${r.grado} ${r.seccion}</td>
-      <td>${r.turno||'-'}</td>
+      <td>${r.turno||r.nivel||'-'}</td>
       <td>${r.tipo}</td>
       <td><span class="badge ${badgeColor}">${r.estado}</span></td>
       <td class="ts">${r.fecha}</td>
@@ -1649,7 +1650,7 @@ function handleCSV(e) {
       const [id, nombres, apellidos, grado, seccion, turno, limite, telefono, foto] = cols;
       if(!id || !/^\d{8}$/.test(id)) return;
       if(alumnos.find(a => a.id === id)) return;
-      alumnos.push({ id, nombres, apellidos, grado, seccion: seccion||'A', turno: turno||'Mañana', limite: limite||'08:00', telefono: telefono||'', foto: foto||'' });
+      alumnos.push({ id, nombres, apellidos, grado, seccion: seccion||'A', turno: turno||'Primaria', limite: limite||'08:00', telefono: telefono||'', foto: foto||'' });
       added++;
     });
     DB.alumnos = alumnos;
@@ -1794,11 +1795,11 @@ updateStats();
 // Pre-cargar demo si está vacío
 if(!DB.alumnos.length) {
   const demo = [
-    {id:'12345601',nombres:'Ana Lucía',apellidos:'Ramírez Torres',grado:'3°',seccion:'A',turno:'Mañana',limite:'08:00',telefono:''},
-    {id:'12345602',nombres:'Carlos',apellidos:'Mendoza Vega',grado:'3°',seccion:'A',turno:'Mañana',limite:'08:00',telefono:''},
-    {id:'12345603',nombres:'Sofía',apellidos:'Gutierrez Paz',grado:'4°',seccion:'B',turno:'Mañana',limite:'08:00',telefono:''},
-    {id:'12345604',nombres:'Diego Alonso',apellidos:'Torres Huanca',grado:'5°',seccion:'A',turno:'Mañana',limite:'08:00',telefono:''},
-    {id:'12345605',nombres:'Valentina',apellidos:'Cruz Ríos',grado:'2°',seccion:'C',turno:'Tarde',limite:'13:00',telefono:''},
+    {id:'12345601',nombres:'Ana Lucía',apellidos:'Ramírez Torres',grado:'3°',seccion:'A',turno:'Primaria',limite:'08:00',telefono:''},
+    {id:'12345602',nombres:'Carlos',apellidos:'Mendoza Vega',grado:'3°',seccion:'A',turno:'Primaria',limite:'08:00',telefono:''},
+    {id:'12345603',nombres:'Sofía',apellidos:'Gutierrez Paz',grado:'4°',seccion:'B',turno:'Primaria',limite:'08:00',telefono:''},
+    {id:'12345604',nombres:'Diego Alonso',apellidos:'Torres Huanca',grado:'5°',seccion:'A',turno:'Primaria',limite:'08:00',telefono:''},
+    {id:'12345605',nombres:'Valentina',apellidos:'Cruz Ríos',grado:'2°',seccion:'C',turno:'Secundaria',limite:'13:00',telefono:''},
   ];
   DB.alumnos = demo;
   updateStats();
