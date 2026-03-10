@@ -1685,7 +1685,7 @@ async function mostrarEstadoInicial() {
   } catch(e) { document.getElementById('alumnos-count').textContent = ''; }
 }
 
-function renderAlumnos() {
+async function renderAlumnos() {
   const grado   = document.getElementById('fa-grado').value;
   const seccion = document.getElementById('fa-seccion').value;
   const nivel   = document.getElementById('fa-nivel').value;
@@ -1859,7 +1859,7 @@ function limpiarFiltrosRegistro() {
   DB.getRegistros({}).then(r => document.getElementById('registro-count').textContent = r.length + ' registros en total').catch(()=>{});
 }
 
-function renderRegistro() {
+async function renderRegistro() {
   const fecha   = document.getElementById('filter-date').value;
   const grado   = document.getElementById('filter-grado').value;
   const seccion = document.getElementById('filter-seccion').value;
@@ -1949,25 +1949,27 @@ function handleCSV(e) {
   const file = e.target.files[0];
   if(!file) return;
   const reader = new FileReader();
-  reader.onload = function(ev) {
+  reader.onload = async function(ev) {
     const lines = ev.target.result.split('\n').filter(l => l.trim());
-    const alumnos = await DB.getAlumnos();
+    const alumnosExistentes = await DB.getAlumnos();
+    const existingIds = new Set(alumnosExistentes.map(a => a.id));
     let added = 0;
-    lines.forEach((line, idx) => {
-      if(idx === 0 && (line.toLowerCase().includes('dni') || line.toLowerCase().includes('nombres'))) return;
+    for(let idx = 0; idx < lines.length; idx++) {
+      const line = lines[idx];
+      if(idx === 0 && (line.toLowerCase().includes('dni') || line.toLowerCase().includes('nombres'))) continue;
       const cols = line.split(',').map(c => c.replace(/"/g,'').trim());
-      if(cols.length < 4) return;
+      if(cols.length < 4) continue;
       const [id, nombres, apellidos, grado, seccion, turno, limite, telefono, foto] = cols;
-      if(!id || !/^\d{8}$/.test(id)) return;
-      if(alumnos.find(a => a.id === id)) return;
+      if(!id || !/^\d{8}$/.test(id)) continue;
+      if(existingIds.has(id)) continue;
       await DB.saveAlumno({ id, nombres, apellidos, grado, seccion: seccion||'A', turno: turno||'Primaria', limite: limite||'08:00', telefono: telefono||'', foto: foto||'' });
       added++;
-    });
+    }
     renderAlumnos();
     updateStats();
     toast(added + ' alumnos importados', 'success');
   };
-  reader.readAsText(file);
+  reader.readAsText(file, 'UTF-8');
   e.target.value = '';
 }
 
