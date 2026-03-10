@@ -1246,9 +1246,9 @@ function openModalAlumno(id) {
   if(id) {
     const a = DB.alumnos.find(x => x.id === id);
     document.getElementById('f-id').value = a.id;
-    document.getElementById('f-id').readOnly = true;
-    document.getElementById('f-id').style.opacity = '0.6';
-    document.getElementById('f-id').title = 'El DNI no se puede modificar una vez registrado';
+    document.getElementById('f-id').readOnly = false;
+    document.getElementById('f-id').style.opacity = '1';
+    document.getElementById('f-id').title = '';
     document.getElementById('f-nombres').value = a.nombres;
     document.getElementById('f-apellidos').value = a.apellidos;
     document.getElementById('f-grado').value = a.grado;
@@ -1284,10 +1284,10 @@ function saveAlumno() {
   const apellidos = document.getElementById('f-apellidos').value.trim();
   const grado = document.getElementById('f-grado').value;
   if(!id||!nombres||!apellidos||!grado){ toast('Completa los campos obligatorios','warning'); return; }
-  if(!editingId && !/^\d{8}$/.test(id)){ toast('El DNI debe tener exactamente 8 dígitos','warning'); return; }
+  if(!/^\d{8}$/.test(id)){ toast('El DNI debe tener exactamente 8 dígitos','warning'); return; }
 
   let alumnos = DB.alumnos;
-  if(!editingId && alumnos.find(a => a.id === id)){ toast('El DNI ya está registrado','error'); return; }
+  if(alumnos.find(a => a.id === id && a.id !== editingId)){ toast('Ese DNI ya está registrado en otro alumno','error'); return; }
 
   const alumno = {
     id,
@@ -1301,6 +1301,12 @@ function saveAlumno() {
 
   if(editingId) {
     alumnos = alumnos.map(a => a.id === editingId ? alumno : a);
+    // Si cambió el DNI, actualizar también los registros de asistencia
+    if(editingId !== id) {
+      let regs = DB.registros;
+      regs = regs.map(r => r.alumnoId === editingId ? {...r, alumnoId: id} : r);
+      DB.registros = regs;
+    }
     toast('Alumno actualizado','success');
   } else {
     alumnos.push(alumno);
