@@ -1003,7 +1003,7 @@ function showSection(id) {
   document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
   document.getElementById('sec-'+id).classList.add('active');
   event.target.classList.add('active');
-  if(id==='alumnos') renderAlumnos();
+  if(id==='alumnos') { limpiarFiltrosAlumnos(); }
   if(id==='registro') { setTodayFilter(); renderRegistro(); }
   if(id==='reportes') renderReportes();
   if(id==='scan') updateStats();
@@ -1318,7 +1318,17 @@ function limpiarFiltrosAlumnos() {
   document.getElementById('fa-seccion').value = '';
   document.getElementById('fa-turno').value = '';
   document.getElementById('search-alumnos').value = '';
-  renderAlumnos();
+  mostrarEstadoInicial();
+}
+
+function mostrarEstadoInicial() {
+  document.getElementById('alumnos-tbody').innerHTML = '';
+  document.getElementById('alumnos-empty').style.display = 'block';
+  document.getElementById('alumnos-empty').querySelector('p').textContent =
+    'Usa los filtros de arriba para buscar alumnos';
+  const total = DB.alumnos.length;
+  document.getElementById('alumnos-count').textContent =
+    total + ' alumno' + (total!==1?'s':'') + ' registrado' + (total!==1?'s':'') + ' en total';
 }
 
 function renderAlumnos() {
@@ -1326,6 +1336,10 @@ function renderAlumnos() {
   const seccion = document.getElementById('fa-seccion').value;
   const turno   = document.getElementById('fa-turno').value;
   const q       = (document.getElementById('search-alumnos').value||'').toLowerCase();
+
+  // Si no hay ningún filtro activo — no mostrar nada
+  const filtroActivo = grado || seccion || turno || q;
+  if(!filtroActivo) { mostrarEstadoInicial(); return; }
 
   let alumnos = DB.alumnos;
   if(grado)   alumnos = alumnos.filter(a => a.grado === grado);
@@ -1340,19 +1354,14 @@ function renderAlumnos() {
   const tbody = document.getElementById('alumnos-tbody');
   const empty = document.getElementById('alumnos-empty');
   const count = document.getElementById('alumnos-count');
-
   const totalDB = DB.alumnos.length;
-  const filtroActivo = grado || seccion || turno || q;
-  count.textContent = filtroActivo
-    ? `Mostrando ${alumnos.length} de ${totalDB} alumno${totalDB!==1?'s':''}`
-    : `${totalDB} alumno${totalDB!==1?'s':''} registrado${totalDB!==1?'s':''}`;
+
+  count.textContent = 'Mostrando ' + alumnos.length + ' de ' + totalDB + ' alumno' + (totalDB!==1?'s':'');
 
   if(!alumnos.length) {
     tbody.innerHTML = '';
     empty.style.display = 'block';
-    empty.querySelector('p') && (empty.querySelector('p').textContent = filtroActivo
-      ? 'No se encontraron alumnos con ese filtro'
-      : 'No hay alumnos registrados aún');
+    empty.querySelector('p').textContent = 'No se encontraron alumnos con ese filtro';
     return;
   }
   empty.style.display = 'none';
