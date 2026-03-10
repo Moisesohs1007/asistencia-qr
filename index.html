@@ -1046,12 +1046,12 @@
         <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
           <div>
             <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:0.88rem;font-weight:600;">
-              <input type="checkbox" id="u-restringir" style="accent-color:var(--accent);width:16px;height:16px;">
+              <input type="checkbox" id="u-restringir" onchange="toggleBtnConfigurar()" style="accent-color:var(--accent);width:16px;height:16px;">
               Restringir acceso por grados/secciones
             </label>
             <div id="u-privilegios-resumen" style="font-size:0.75rem;color:var(--muted);margin-top:4px;padding-left:24px;"></div>
           </div>
-          <button class="btn btn-ghost" onclick="abrirModalPrivilegios()" style="padding:6px 12px;font-size:0.8rem;">⚙ Configurar</button>
+          <button class="btn btn-ghost" id="btn-configurar-privilegios" onclick="abrirModalPrivilegios()" style="padding:6px 12px;font-size:0.8rem;" disabled>⚙ Configurar</button>
         </div>
       </div>
       <div style="display:flex;gap:10px;margin-top:20px;">
@@ -1910,7 +1910,7 @@ function printCarnet() {
         <button class="modal-close" onclick="closeModal('modal-privilegios')">✕</button>
       </div>
       <div style="font-size:0.8rem;color:var(--muted);margin-bottom:14px;">
-        Marca los grados que dicta y las secciones correspondientes a cada uno. Si no marcas ninguno, el profesor verá todos.
+        Marca los grados que dicta y las secciones correspondientes a cada uno. Solo verá los alumnos de los grados y secciones que marques.
       </div>
       <div id="u-niveles-checks" style="max-height:60vh;overflow-y:auto;"></div>
       <div style="display:flex;gap:10px;margin-top:20px;">
@@ -2377,6 +2377,7 @@ async function openModalUsuario(uid, nombre, rol, email) {
   // Cargar checkboxes de privilegios
   await cargarCheckboxesPrivilegios(uid);
   togglePrivilegios();
+  toggleBtnConfigurar();
   document.getElementById('modal-usuario').classList.add('open');
 }
 
@@ -2470,6 +2471,12 @@ async function renderUsuarios() {
 // Almacén temporal de asignaciones mientras edita
 let tempAsignaciones = {};
 
+function toggleBtnConfigurar() {
+  const checked = document.getElementById('u-restringir').checked;
+  const btn = document.getElementById('btn-configurar-privilegios');
+  if(btn) btn.disabled = !checked;
+}
+
 function togglePrivilegios() {
   const rol = document.getElementById('u-rol').value;
   document.getElementById('u-privilegios-group').style.display = rol === 'profesor' ? 'block' : 'none';
@@ -2533,25 +2540,26 @@ async function cargarCheckboxesPrivilegios(uid) {
   const nivelesEl = document.getElementById('u-niveles-checks');
   nivelesEl.innerHTML = (cfg.niveles||[]).map(n => {
     const grados = (cfg.grados||{})[n.nombre] || [];
+    const nivelKey = n.nombre.replace(/[^a-z0-9]/gi,'_');
     return `
       <div style="margin-bottom:16px;padding:12px;background:var(--surface2);border-radius:10px;">
         <div style="font-size:0.82rem;font-weight:700;color:var(--accent);margin-bottom:10px;">${n.nombre}</div>
         ${grados.map(g => {
           const seccsAsignadas = asignaciones[g] || [];
-          const key = g.replace(/[^a-z0-9]/gi,'_');
+          const gradoKey = nivelKey + '_' + g.replace(/[^a-z0-9]/gi,'_');
           return `
             <div style="margin-bottom:8px;">
               <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:0.85rem;font-weight:600;margin-bottom:5px;">
-                <input type="checkbox" class="chk-grado" data-grado="${g}"
+                <input type="checkbox" class="chk-grado" data-grado="${g}" data-key="${gradoKey}"
                   onchange="toggleGradoSecciones(this)"
                   ${seccsAsignadas.length?'checked':''}
                   style="accent-color:var(--accent);width:15px;height:15px;">
                 ${g}
               </label>
-              <div id="secc-${key}" style="display:${seccsAsignadas.length?'flex':'none'};flex-wrap:wrap;gap:8px;padding-left:22px;margin-top:4px;">
+              <div id="secc-${gradoKey}" style="display:${seccsAsignadas.length?'flex':'none'};flex-wrap:wrap;gap:8px;padding-left:22px;margin-top:4px;">
                 ${secciones.map(s => `
                   <label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-size:0.82rem;">
-                    <input type="checkbox" class="chk-seccion" data-grado="${g}" value="${s}"
+                    <input type="checkbox" class="chk-seccion" data-grado="${g}" data-key="${gradoKey}" value="${s}"
                       ${seccsAsignadas.includes(s)?'checked':''}
                       style="accent-color:var(--accent);width:14px;height:14px;">
                     ${s}
@@ -2568,22 +2576,21 @@ async function cargarCheckboxesPrivilegios(uid) {
 }
 
 function toggleGradoSecciones(chk) {
-  const grado = chk.dataset.grado;
-  const key = grado.replace(/[^a-z0-9]/gi,'_');
+  const key = chk.dataset.key;
   const secDiv = document.getElementById('secc-' + key);
   if(secDiv) secDiv.style.display = chk.checked ? 'flex' : 'none';
-  if(!chk.checked) {
+  if(!chk.checked && secDiv) {
     secDiv.querySelectorAll('input[type=checkbox]').forEach(c => c.checked = false);
   }
 }
 
 function getAsignaciones() {
-  // Returns { 'grado': ['A','B'], ... } only for checked grades
   const result = {};
   document.querySelectorAll('.chk-grado:checked').forEach(chk => {
     const g = chk.dataset.grado;
+    const key = chk.dataset.key;
     const seccs = Array.from(
-      document.querySelectorAll(`.chk-seccion[data-grado="${g}"]:checked`)
+      document.querySelectorAll(`.chk-seccion[data-key="${key}"]:checked`)
     ).map(c => c.value);
     result[g] = seccs;
   });
@@ -2934,7 +2941,7 @@ async function actualizarFiltrosSeccion() {
         <button class="modal-close" onclick="closeModal('modal-privilegios')">✕</button>
       </div>
       <div style="font-size:0.8rem;color:var(--muted);margin-bottom:14px;">
-        Marca los grados que dicta y las secciones correspondientes a cada uno. Si no marcas ninguno, el profesor verá todos.
+        Marca los grados que dicta y las secciones correspondientes a cada uno. Solo verá los alumnos de los grados y secciones que marques.
       </div>
       <div id="u-niveles-checks" style="max-height:60vh;overflow-y:auto;"></div>
       <div style="display:flex;gap:10px;margin-top:20px;">
