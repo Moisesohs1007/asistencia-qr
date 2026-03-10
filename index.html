@@ -2584,7 +2584,7 @@ async function actualizarTodosLosFiltros() {
   const cfg = await getConfig();
   const niveles = (cfg.niveles||[]).map(n => n.nombre);
   const secciones = cfg.secciones || ['A','B','C','D'];
-  const todosGrados = Object.values(cfg.grados||{}).flat();
+  const todosGrados = [...new Set(Object.values(cfg.grados||{}).flat())];
 
   // Helper to rebuild select
   function rebuildSelect(id, opciones, addTodos=true) {
@@ -2624,7 +2624,7 @@ async function actualizarTodosLosFiltros() {
 
 async function actualizarFiltrosGrado() {
   const cfg = await getConfig();
-  const todosGrados = Object.values(cfg.grados||{}).flat();
+  const todosGrados = [...new Set(Object.values(cfg.grados||{}).flat())];
   ['fa-grado','filter-grado'].forEach(id => {
     const el = document.getElementById(id);
     if(!el) return;
