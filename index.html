@@ -690,11 +690,41 @@
     <div class="page-title">Gestión de Alumnos</div>
     <div class="page-sub">Agrega, edita o genera QR para cada alumno</div>
 
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px;">
-      <div class="search-wrap" style="flex:1;min-width:200px;margin:0;">
-        <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="#64748b"><circle cx="11" cy="11" r="8"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35"/></svg>
-        <input type="text" id="search-alumnos" placeholder="Buscar alumno..." oninput="renderAlumnos()">
+    <!-- Filtros -->
+    <div class="card" style="padding:16px 20px;margin-bottom:16px;">
+      <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;">
+        <div class="form-group" style="min-width:120px;">
+          <label>Grado</label>
+          <select id="fa-grado" onchange="renderAlumnos()">
+            <option value="">Todos</option>
+            <option>1°</option><option>2°</option><option>3°</option>
+            <option>4°</option><option>5°</option><option>6°</option>
+          </select>
+        </div>
+        <div class="form-group" style="min-width:100px;">
+          <label>Sección</label>
+          <select id="fa-seccion" onchange="renderAlumnos()">
+            <option value="">Todas</option>
+            <option>A</option><option>B</option><option>C</option><option>D</option>
+          </select>
+        </div>
+        <div class="form-group" style="min-width:110px;">
+          <label>Turno</label>
+          <select id="fa-turno" onchange="renderAlumnos()">
+            <option value="">Todos</option>
+            <option>Mañana</option><option>Tarde</option>
+          </select>
+        </div>
+        <div class="search-wrap" style="flex:1;min-width:180px;margin:0;">
+          <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="#64748b"><circle cx="11" cy="11" r="8"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35"/></svg>
+          <input type="text" id="search-alumnos" placeholder="Buscar por nombre o DNI..." oninput="renderAlumnos()">
+        </div>
+        <button class="btn btn-ghost" onclick="limpiarFiltrosAlumnos()" style="align-self:flex-end;">✕ Limpiar</button>
       </div>
+    </div>
+    <!-- Contador + acciones -->
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
+      <span id="alumnos-count" style="color:var(--muted);font-size:0.85rem;"></span>
       <div style="display:flex;gap:8px;">
         <button class="btn btn-primary" onclick="openModalAlumno()">+ Nuevo Alumno</button>
         <button class="btn btn-ghost" onclick="importCSV()">📥 Importar CSV</button>
@@ -720,7 +750,7 @@
       </div>
       <div class="empty-state" id="alumnos-empty" style="display:none;">
         <svg width="40" height="40" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0"/></svg>
-        No hay alumnos registrados aún
+        <p>No hay alumnos registrados aún</p>
       </div>
     </div>
   </div>
@@ -1283,16 +1313,54 @@ function deleteAlumno(id) {
   updateStats();
 }
 
+function limpiarFiltrosAlumnos() {
+  document.getElementById('fa-grado').value = '';
+  document.getElementById('fa-seccion').value = '';
+  document.getElementById('fa-turno').value = '';
+  document.getElementById('search-alumnos').value = '';
+  renderAlumnos();
+}
+
 function renderAlumnos() {
-  const q = (document.getElementById('search-alumnos').value||'').toLowerCase();
-  let alumnos = DB.alumnos.filter(a =>
-    !q || a.nombres.toLowerCase().includes(q) || a.apellidos.toLowerCase().includes(q) || a.id.toLowerCase().includes(q)
+  const grado   = document.getElementById('fa-grado').value;
+  const seccion = document.getElementById('fa-seccion').value;
+  const turno   = document.getElementById('fa-turno').value;
+  const q       = (document.getElementById('search-alumnos').value||'').toLowerCase();
+
+  let alumnos = DB.alumnos;
+  if(grado)   alumnos = alumnos.filter(a => a.grado === grado);
+  if(seccion) alumnos = alumnos.filter(a => a.seccion === seccion);
+  if(turno)   alumnos = alumnos.filter(a => a.turno === turno);
+  if(q)       alumnos = alumnos.filter(a =>
+    a.nombres.toLowerCase().includes(q) ||
+    a.apellidos.toLowerCase().includes(q) ||
+    a.id.includes(q)
   );
+
   const tbody = document.getElementById('alumnos-tbody');
   const empty = document.getElementById('alumnos-empty');
-  if(!alumnos.length){ tbody.innerHTML=''; empty.style.display='block'; return; }
-  empty.style.display='none';
+  const count = document.getElementById('alumnos-count');
+
+  const totalDB = DB.alumnos.length;
+  const filtroActivo = grado || seccion || turno || q;
+  count.textContent = filtroActivo
+    ? `Mostrando ${alumnos.length} de ${totalDB} alumno${totalDB!==1?'s':''}`
+    : `${totalDB} alumno${totalDB!==1?'s':''} registrado${totalDB!==1?'s':''}`;
+
+  if(!alumnos.length) {
+    tbody.innerHTML = '';
+    empty.style.display = 'block';
+    empty.querySelector('p') && (empty.querySelector('p').textContent = filtroActivo
+      ? 'No se encontraron alumnos con ese filtro'
+      : 'No hay alumnos registrados aún');
+    return;
+  }
+  empty.style.display = 'none';
+
   const today = hoy();
+  // Ordenar por apellido
+  alumnos = [...alumnos].sort((a,b) => a.apellidos.localeCompare(b.apellidos));
+
   tbody.innerHTML = alumnos.map(a => {
     const regs = DB.registros.filter(r => r.alumnoId === a.id && r.fecha === today);
     const tieneIngreso = regs.some(r=>r.tipo==='INGRESO');
