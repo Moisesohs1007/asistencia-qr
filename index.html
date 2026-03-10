@@ -553,6 +553,9 @@
   .row-ingreso td:first-child { border-left: 3px solid var(--success); }
   .row-salida  td:first-child { border-left: 3px solid var(--accent2); }
   .row-tarde   td:first-child { border-left: 3px solid var(--warning); }
+  .row-ausente  td:first-child { border-left: 3px solid var(--danger); }
+  .row-ausente td:first-child { border-left: 3px solid var(--danger); }
+  .row-ausente { opacity: 0.7; }
 
   /* Scrollbar */
   ::-webkit-scrollbar { width: 6px; }
@@ -918,14 +921,14 @@
         <table>
           <thead>
             <tr>
-              <th>Hora</th>
+              <th>Fecha</th>
               <th>DNI</th>
               <th>Nombre</th>
               <th>Grado</th>
               <th>Nivel</th>
-              <th>Tipo</th>
-              <th>Estado</th>
-              <th>Fecha</th>
+              <th>Ingreso</th>
+              <th>Estado Ingreso</th>
+              <th>Salida</th>
             </tr>
           </thead>
           <tbody id="registro-tbody"></tbody>
@@ -1975,19 +1978,21 @@ async function renderRegistro() {
     tbody.innerHTML = '';
     empty.style.display = 'block';
     empty.querySelector('p').textContent = 'Selecciona una fecha u otro filtro para ver los registros';
-    DB.getRegistros({}).then(r => count.textContent = r.length + ' registros en total').catch(()=>{});
+    DB.getRegistros({}).then(r => count.textContent = r.length + ' registro' + (r.length!==1?'s':'') + ' en total').catch(()=>{});
     return;
   }
 
   try {
+    // 1. Obtener registros filtrados
     let regs = await DB.getRegistros({});
-    // Filtrar por rango de fechas (excluyendo sábado=6 y domingo=0)
+
+    // Filtrar por rango de fechas (excluir sábado y domingo)
     if(desde || hasta) {
       regs = regs.filter(r => {
         if(!r.fecha) return false;
         const d = new Date(r.fecha + 'T00:00:00');
-        const diaSemana = d.getDay();
-        if(diaSemana === 0 || diaSemana === 6) return false; // excluir fines de semana
+        const dia = d.getDay();
+        if(dia === 0 || dia === 6) return false;
         if(desde && r.fecha < desde) return false;
         if(hasta && r.fecha > hasta) return false;
         return true;
@@ -1996,13 +2001,74 @@ async function renderRegistro() {
     if(grado   && grado   !== 'TODOS') regs = regs.filter(r => r.grado === grado);
     if(seccion && seccion !== 'TODOS') regs = regs.filter(r => r.seccion === seccion);
     if(nivel   && nivel   !== 'TODOS') regs = regs.filter(r => r.turno === nivel);
-    if(tipo    && tipo    !== 'TODOS') regs = regs.filter(r => r.tipo === tipo);
     if(q) regs = regs.filter(r => r.nombre.toLowerCase().includes(q) || r.alumnoId.includes(q));
 
-    const rangoTexto = (desde && hasta && desde !== hasta) ? ` (${desde} al ${hasta})` : (desde ? ` (${desde})` : '');
-    count.textContent = 'Mostrando ' + regs.length + ' registro' + (regs.length!==1?'s':'') + rangoTexto;
+    // 2. Agrupar por alumnoId + fecha → una fila por alumno por día
+    const grupos = {};
+    regs.forEach(r => {
+      const key = r.alumnoId + '_' + r.fecha;
+      if(!grupos[key]) {
+        grupos[key] = {
+          alumnoId: r.alumnoId,
+          nombre:   r.nombre,
+          grado:    r.grado,
+          seccion:  r.seccion,
+          turno:    r.turno || '-',
+          fecha:    r.fecha,
+          ingreso:  null,
+          salida:   null,
+          estadoIngreso: '-',
+        };
+      }
+      if(r.tipo === 'INGRESO') {
+        grupos[key].ingreso = r.hora;
+        grupos[key].estadoIngreso = r.estado;
+      }
+      if(r.tipo === 'SALIDA') {
+        grupos[key].salida = r.hora;
+      }
+    });
 
-    if(!regs.length) {
+    // 3. Si hay rango de fechas y filtro de alumno, agregar filas "Sin registro" para días sin datos
+    let filas = Object.values(grupos);
+
+    // Generar fechas hábiles del rango para mostrar "Sin registro"
+    if(desde && hasta && q) {
+      const alumnosEnRango = [...new Set(regs.map(r => r.alumnoId + '|' + r.nombre + '|' + r.grado + '|' + r.seccion + '|' + (r.turno||'-')))];
+      const fechasHabiles = [];
+      let cur = new Date(desde + 'T00:00:00');
+      const fin = new Date(hasta + 'T00:00:00');
+      while(cur <= fin) {
+        const dia = cur.getDay();
+        if(dia !== 0 && dia !== 6) {
+          fechasHabiles.push(cur.toISOString().split('T')[0]);
+        }
+        cur.setDate(cur.getDate() + 1);
+      }
+      alumnosEnRango.forEach(info => {
+        const [aId, aNombre, aGrado, aSeccion, aTurno] = info.split('|');
+        fechasHabiles.forEach(fecha => {
+          const key = aId + '_' + fecha;
+          if(!grupos[key]) {
+            filas.push({ alumnoId: aId, nombre: aNombre, grado: aGrado, seccion: aSeccion, turno: aTurno, fecha, ingreso: null, salida: null, estadoIngreso: 'Sin registro' });
+          }
+        });
+      });
+    }
+
+    // Ordenar por fecha desc, luego por apellido
+    filas.sort((a,b) => b.fecha.localeCompare(a.fecha) || a.nombre.localeCompare(b.nombre));
+
+    // Filtrar por tipo si está seleccionado
+    if(tipo && tipo !== 'TODOS') {
+      if(tipo === 'INGRESO') filas = filas.filter(f => f.ingreso);
+      if(tipo === 'SALIDA')  filas = filas.filter(f => f.salida);
+    }
+
+    const rangoTexto = (desde && hasta && desde !== hasta) ? ` (${desde} al ${hasta})` : (desde ? ` (${desde})` : '');
+    count.textContent = 'Mostrando ' + filas.length + ' registro' + (filas.length!==1?'s':'') + rangoTexto;
+
+    if(!filas.length) {
       tbody.innerHTML = '';
       empty.style.display = 'block';
       empty.querySelector('p').textContent = 'No hay registros con ese filtro';
@@ -2010,18 +2076,19 @@ async function renderRegistro() {
     }
     empty.style.display = 'none';
 
-    tbody.innerHTML = regs.map(r => {
-      const cls = r.tipo==='SALIDA' ? 'row-salida' : (r.estado==='Tardanza' ? 'row-tarde' : 'row-ingreso');
-      const badgeColor = r.tipo==='SALIDA' ? 'blue' : (r.estado==='Tardanza' ? 'yellow' : 'green');
+    tbody.innerHTML = filas.map(f => {
+      const sinIngreso = !f.ingreso;
+      const badgeColor = f.estadoIngreso === 'Sin registro' ? 'red' : (f.estadoIngreso === 'Tardanza' ? 'yellow' : (f.estadoIngreso === 'A tiempo' ? 'green' : 'blue'));
+      const cls = f.estadoIngreso === 'Sin registro' ? 'row-salida' : (f.estadoIngreso === 'Tardanza' ? 'row-tarde' : 'row-ingreso');
       return `<tr class="${cls}">
-        <td class="ts">${r.hora}</td>
-        <td class="td-id">${r.alumnoId}</td>
-        <td class="td-name">${r.nombre}</td>
-        <td>${r.grado} ${r.seccion}</td>
-        <td>${r.turno||'-'}</td>
-        <td>${r.tipo}</td>
-        <td><span class="badge ${badgeColor}">${r.estado}</span></td>
-        <td class="ts">${r.fecha}</td>
+        <td class="ts">${f.fecha}</td>
+        <td class="td-id">${f.alumnoId}</td>
+        <td class="td-name">${f.nombre}</td>
+        <td>${f.grado} ${f.seccion}</td>
+        <td>${f.turno}</td>
+        <td class="ts">${f.ingreso || '<span style="color:var(--muted);">—</span>'}</td>
+        <td><span class="badge ${badgeColor}">${f.estadoIngreso}</span></td>
+        <td class="ts">${f.salida || '<span style="color:var(--muted);">—</span>'}</td>
       </tr>`;
     }).join('');
   } catch(e) { console.error('renderRegistro:', e); toast('Error al cargar registros','error'); }
