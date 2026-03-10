@@ -855,8 +855,12 @@
     <div class="card" style="margin-bottom:16px;padding:16px 20px;">
       <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;">
         <div class="form-group" style="min-width:140px;">
-          <label>Fecha</label>
-          <input type="date" id="filter-date" onchange="renderRegistro()" style="width:auto;">
+          <label>Desde</label>
+          <input type="date" id="filter-desde" onchange="validarRangoFecha();renderRegistro()">
+        </div>
+        <div class="form-group" style="min-width:140px;">
+          <label>Hasta</label>
+          <input type="date" id="filter-hasta" onchange="validarRangoFecha();renderRegistro()">
         </div>
         <div class="form-group" style="min-width:120px;">
           <label>Grado</label>
@@ -1904,11 +1908,14 @@ function previewFotoFile(input) {
 // REGISTRO
 // ============================================================
 function setTodayFilter() {
-  document.getElementById('filter-date').value = hoy();
+  const hoyStr = hoy();
+  document.getElementById('filter-desde').value = hoyStr;
+  document.getElementById('filter-hasta').value = hoyStr;
 }
 
 function limpiarFiltrosRegistro() {
-  document.getElementById('filter-date').value = '';
+  document.getElementById('filter-desde').value = '';
+  document.getElementById('filter-hasta').value = '';
   document.getElementById('filter-grado').value = '';
   document.getElementById('filter-seccion').value = '';
   document.getElementById('filter-nivel').value = '';
@@ -1920,15 +1927,46 @@ function limpiarFiltrosRegistro() {
   DB.getRegistros({}).then(r => document.getElementById('registro-count').textContent = r.length + ' registros en total').catch(()=>{});
 }
 
+function validarRangoFecha() {
+  const desde = document.getElementById('filter-desde').value;
+  const hasta = document.getElementById('filter-hasta').value;
+  // Si desde > hasta, corregir automáticamente
+  if(desde && hasta && desde > hasta) {
+    document.getElementById('filter-hasta').value = desde;
+  }
+  // Saltar fines de semana en el campo desde
+  if(desde) {
+    const d = new Date(desde + 'T00:00:00');
+    if(d.getDay() === 6) { // sábado → lunes
+      d.setDate(d.getDate() + 2);
+      document.getElementById('filter-desde').value = d.toISOString().split('T')[0];
+    } else if(d.getDay() === 0) { // domingo → lunes
+      d.setDate(d.getDate() + 1);
+      document.getElementById('filter-desde').value = d.toISOString().split('T')[0];
+    }
+  }
+  if(hasta) {
+    const h = new Date(hasta + 'T00:00:00');
+    if(h.getDay() === 6) { // sábado → viernes
+      h.setDate(h.getDate() - 1);
+      document.getElementById('filter-hasta').value = h.toISOString().split('T')[0];
+    } else if(h.getDay() === 0) { // domingo → viernes
+      h.setDate(h.getDate() - 2);
+      document.getElementById('filter-hasta').value = h.toISOString().split('T')[0];
+    }
+  }
+}
+
 async function renderRegistro() {
-  const fecha   = document.getElementById('filter-date').value;
+  const desde   = document.getElementById('filter-desde').value;
+  const hasta   = document.getElementById('filter-hasta').value;
   const grado   = document.getElementById('filter-grado').value;
   const seccion = document.getElementById('filter-seccion').value;
   const nivel   = document.getElementById('filter-nivel').value;
   const tipo    = document.getElementById('filter-tipo').value;
   const q       = (document.getElementById('filter-search').value||'').toLowerCase();
 
-  const filtroActivo = fecha || grado || seccion || nivel || tipo || q;
+  const filtroActivo = desde || hasta || grado || seccion || nivel || tipo || q;
   const tbody = document.getElementById('registro-tbody');
   const empty = document.getElementById('registro-empty');
   const count = document.getElementById('registro-count');
@@ -1942,14 +1980,27 @@ async function renderRegistro() {
   }
 
   try {
-    let regs = await DB.getRegistros(fecha ? {fecha} : {});
+    let regs = await DB.getRegistros({});
+    // Filtrar por rango de fechas (excluyendo sábado=6 y domingo=0)
+    if(desde || hasta) {
+      regs = regs.filter(r => {
+        if(!r.fecha) return false;
+        const d = new Date(r.fecha + 'T00:00:00');
+        const diaSemana = d.getDay();
+        if(diaSemana === 0 || diaSemana === 6) return false; // excluir fines de semana
+        if(desde && r.fecha < desde) return false;
+        if(hasta && r.fecha > hasta) return false;
+        return true;
+      });
+    }
     if(grado   && grado   !== 'TODOS') regs = regs.filter(r => r.grado === grado);
     if(seccion && seccion !== 'TODOS') regs = regs.filter(r => r.seccion === seccion);
     if(nivel   && nivel   !== 'TODOS') regs = regs.filter(r => r.turno === nivel);
     if(tipo    && tipo    !== 'TODOS') regs = regs.filter(r => r.tipo === tipo);
     if(q) regs = regs.filter(r => r.nombre.toLowerCase().includes(q) || r.alumnoId.includes(q));
 
-    count.textContent = 'Mostrando ' + regs.length + ' registros';
+    const rangoTexto = (desde && hasta && desde !== hasta) ? ` (${desde} al ${hasta})` : (desde ? ` (${desde})` : '');
+    count.textContent = 'Mostrando ' + regs.length + ' registro' + (regs.length!==1?'s':'') + rangoTexto;
 
     if(!regs.length) {
       tbody.innerHTML = '';
