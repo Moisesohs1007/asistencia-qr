@@ -1374,7 +1374,7 @@ function aplicarPermisos(rol) {
   const permisos = {
     admin:    ['scan','alumnos','registro','reportes','usuarios','config'],
     director: ['registro','reportes'],
-    profesor: ['scan','alumnos','registro'],
+    profesor: ['alumnos','registro'],
     portero:  ['scan'],
   };
   const tabs = permisos[rol] || ['scan'];
@@ -1846,7 +1846,7 @@ async function renderAlumnos() {
         <td style="display:flex;gap:6px;flex-wrap:wrap;">
           <button class="btn btn-ghost" style="padding:5px 10px;font-size:0.78rem;" onclick="showQR('${a.id}')">QR</button>
           <button class="btn btn-ghost" style="padding:5px 10px;font-size:0.78rem;" onclick="openModalAlumno('${a.id}')">✏</button>
-          <button class="btn btn-danger" style="padding:5px 10px;font-size:0.78rem;" onclick="deleteAlumno('${a.id}')">✕</button>
+          ${currentRol !== 'profesor' ? `<button class="btn btn-danger" style="padding:5px 10px;font-size:0.78rem;" onclick="deleteAlumno('${a.id}')">✕</button>` : ''}
         </td>
       </tr>`;
     }).join('');
