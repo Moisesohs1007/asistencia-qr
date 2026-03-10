@@ -1047,12 +1047,28 @@
       </div>
       <div class="form-group">
         <label>Rol / Permisos</label>
-        <select id="u-rol">
+        <select id="u-rol" onchange="togglePrivilegios()">
           <option value="portero">🚪 Portero — Solo escanear QR</option>
           <option value="profesor">👨‍🏫 Profesor — Escanear, Alumnos y Registro</option>
           <option value="director">🏫 Director — Solo Reportes y Registro</option>
           <option value="admin">⚙ Administrador — Acceso total</option>
         </select>
+      </div>
+      <!-- Solo visible si rol = profesor -->
+      <div id="u-privilegios-group" style="display:none;">
+        <hr class="divider">
+        <div style="font-size:0.82rem;font-weight:600;color:var(--accent);margin-bottom:10px;">📚 Grados y Secciones asignados</div>
+        <div style="display:flex;gap:20px;flex-wrap:wrap;">
+          <div>
+            <div style="font-size:0.78rem;color:var(--muted);margin-bottom:6px;">Grados</div>
+            <div id="u-grados-checks" style="display:flex;flex-direction:column;gap:5px;"></div>
+          </div>
+          <div>
+            <div style="font-size:0.78rem;color:var(--muted);margin-bottom:6px;">Secciones</div>
+            <div id="u-secciones-checks" style="display:flex;flex-direction:column;gap:5px;"></div>
+          </div>
+        </div>
+        <div style="font-size:0.72rem;color:var(--muted);margin-top:8px;">Si no se marca ninguno, el profesor verá todos.</div>
       </div>
       <div style="display:flex;gap:10px;margin-top:20px;">
         <button class="btn btn-primary" onclick="saveUsuario()" style="flex:1;justify-content:center;">Guardar</button>
@@ -1345,6 +1361,7 @@ auth.onAuthStateChanged(async user => {
 
     // Cargar datos y configuración
     await actualizarTodosLosFiltros();
+    await cargarPrivilegiosActuales();
     updateStats();
   } else {
     currentUser = null;
@@ -1833,6 +1850,7 @@ async function renderAlumnos() {
     empty.style.display = 'none';
 
     alumnos = [...alumnos].sort((a,b) => a.apellidos.localeCompare(b.apellidos));
+    alumnos = aplicarFiltroProfesor(alumnos);
     tbody.innerHTML = alumnos.map(a => {
       return `<tr>
         <td class="td-id">${a.id}</td>
@@ -2324,7 +2342,7 @@ function toast(msg, type='success') {
 // ============================================================
 let editingUsuarioId = null;
 
-function openModalUsuario(uid, nombre, rol, email) {
+async function openModalUsuario(uid, nombre, rol, email) {
   editingUsuarioId = uid || null;
   document.getElementById('modal-usuario-title').textContent = uid ? 'Editar Usuario' : 'Nuevo Usuario';
   document.getElementById('u-pass').value = '';
@@ -2332,7 +2350,6 @@ function openModalUsuario(uid, nombre, rol, email) {
   document.getElementById('u-pass').type = 'password';
 
   if(uid) {
-    // Editing: show password field as optional change
     document.getElementById('u-pass-group').style.display = 'block';
     document.getElementById('u-pass-label').textContent = 'Nueva contraseña (opcional)';
     document.getElementById('u-pass-note').style.display = 'block';
@@ -2342,7 +2359,6 @@ function openModalUsuario(uid, nombre, rol, email) {
     if(email)  document.getElementById('u-email').value  = email;
     if(rol)    document.getElementById('u-rol').value    = rol;
   } else {
-    // New user
     document.getElementById('u-pass-group').style.display = 'block';
     document.getElementById('u-pass-label').textContent = 'Contraseña';
     document.getElementById('u-pass-note').style.display = 'none';
@@ -2351,6 +2367,10 @@ function openModalUsuario(uid, nombre, rol, email) {
     ['u-nombre','u-email'].forEach(x => document.getElementById(x).value = '');
     document.getElementById('u-rol').value = 'profesor';
   }
+
+  // Cargar checkboxes de privilegios
+  await cargarCheckboxesPrivilegios(uid);
+  togglePrivilegios();
   document.getElementById('modal-usuario').classList.add('open');
 }
 
@@ -2364,6 +2384,10 @@ async function saveUsuario() {
   if(!editingUsuarioId && !email){ toast('Completa el correo','warning'); return; }
 
   try {
+    // Obtener grados/secciones si es profesor
+    const gradosAsignados = rol === 'profesor' ? getCheckedValues('u-grados-checks') : [];
+    const seccionesAsignadas = rol === 'profesor' ? getCheckedValues('u-secciones-checks') : [];
+
     if(!editingUsuarioId) {
       // NUEVO usuario
       if(!pass || pass.length < 6){ toast('La contraseña debe tener al menos 6 caracteres','warning'); return; }
@@ -2373,11 +2397,11 @@ async function saveUsuario() {
       const uid = cred.user.uid;
       await secondaryAuth.signOut();
       await secondaryApp.delete();
-      await db.collection('usuarios').doc(uid).set({ nombre, email, rol, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+      await db.collection('usuarios').doc(uid).set({ nombre, email, rol, gradosAsignados, seccionesAsignadas, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
       toast('Usuario creado correctamente','success');
     } else {
       // EDITAR usuario
-      await db.collection('usuarios').doc(editingUsuarioId).update({ nombre, rol });
+      await db.collection('usuarios').doc(editingUsuarioId).update({ nombre, rol, gradosAsignados, seccionesAsignadas });
       // Si se ingresó nueva contraseña, cambiarla
       if(pass && pass.length >= 6) {
         // Re-autenticar como admin no es posible en client SDK para otros usuarios
@@ -2421,7 +2445,7 @@ async function renderUsuarios() {
       return `<tr>
         <td style="font-weight:500;">${u.nombre}${esYo}</td>
         <td style="color:var(--muted);font-size:0.85rem;">${u.email}</td>
-        <td><span style="color:${rolColors[u.rol]||'#fff'};font-weight:600;">${rolLabels[u.rol]||u.rol}</span></td>
+        <td><span style="color:${rolColors[u.rol]||'#fff'};font-weight:600;">${rolLabels[u.rol]||u.rol}</span>${u.rol==='profesor'&&(u.gradosAsignados||[]).length?`<br><span style="font-size:0.72rem;color:var(--muted);">Grados: ${(u.gradosAsignados||[]).join(', ')} | Secc: ${(u.seccionesAsignadas||[]).join(', ')||'Todas'}</span>`:''}</td>
         <td style="display:flex;gap:6px;">
           <button class="btn btn-ghost" style="padding:5px 10px;font-size:0.78rem;" onclick="openModalUsuario('${d.id}','${u.nombre}','${u.rol}','${u.email}')">✏</button>
           ${d.id !== currentUser.uid ? `<button class="btn btn-danger" style="padding:5px 10px;font-size:0.78rem;" onclick="deleteUsuario('${d.id}')">✕</button>` : ''}
@@ -2431,6 +2455,89 @@ async function renderUsuarios() {
   } catch(e) { tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--muted);">Error al cargar usuarios</td></tr>'; }
 }
 
+
+
+// ============================================================
+// PRIVILEGIOS DE PROFESOR
+// ============================================================
+
+function togglePrivilegios() {
+  const rol = document.getElementById('u-rol').value;
+  document.getElementById('u-privilegios-group').style.display = rol === 'profesor' ? 'block' : 'none';
+}
+
+function getCheckedValues(containerId) {
+  const checks = document.querySelectorAll('#' + containerId + ' input[type=checkbox]:checked');
+  return Array.from(checks).map(c => c.value);
+}
+
+async function cargarCheckboxesPrivilegios(uid) {
+  const cfg = await getConfig();
+  const todosGrados = [...new Set(Object.values(cfg.grados||{}).flat())];
+  const todasSecciones = cfg.secciones || ['A','B','C','D'];
+
+  // Obtener privilegios actuales si es edición
+  let gradosAsignados = [], seccionesAsignadas = [];
+  if(uid) {
+    try {
+      const doc = await db.collection('usuarios').doc(uid).get();
+      if(doc.exists) {
+        gradosAsignados = doc.data().gradosAsignados || [];
+        seccionesAsignadas = doc.data().seccionesAsignadas || [];
+      }
+    } catch(e) {}
+  }
+
+  // Render grados
+  document.getElementById('u-grados-checks').innerHTML = todosGrados.map(g => `
+    <label style="display:flex;align-items:center;gap:6px;font-size:0.85rem;cursor:pointer;">
+      <input type="checkbox" value="${g}" ${gradosAsignados.includes(g)?'checked':''} style="accent-color:var(--accent);width:15px;height:15px;">
+      ${g}
+    </label>
+  `).join('');
+
+  // Render secciones
+  document.getElementById('u-secciones-checks').innerHTML = todasSecciones.map(s => `
+    <label style="display:flex;align-items:center;gap:6px;font-size:0.85rem;cursor:pointer;">
+      <input type="checkbox" value="${s}" ${seccionesAsignadas.includes(s)?'checked':''} style="accent-color:var(--accent);width:15px;height:15px;">
+      ${s}
+    </label>
+  `).join('');
+}
+
+// Obtener privilegios del usuario actual (para filtrar alumnos/registros)
+let currentPrivilegios = { gradosAsignados: [], seccionesAsignadas: [] };
+
+async function cargarPrivilegiosActuales() {
+  if(!currentUser || currentRol !== 'profesor') {
+    currentPrivilegios = { gradosAsignados: [], seccionesAsignadas: [] };
+    return;
+  }
+  try {
+    const doc = await db.collection('usuarios').doc(currentUser.uid).get();
+    if(doc.exists) {
+      currentPrivilegios = {
+        gradosAsignados:   doc.data().gradosAsignados   || [],
+        seccionesAsignadas: doc.data().seccionesAsignadas || [],
+      };
+    }
+  } catch(e) {
+    currentPrivilegios = { gradosAsignados: [], seccionesAsignadas: [] };
+  }
+}
+
+// Aplicar restricción de privilegios a lista de alumnos
+function aplicarFiltroProfesor(alumnos) {
+  if(currentRol !== 'profesor') return alumnos;
+  const { gradosAsignados, seccionesAsignadas } = currentPrivilegios;
+  // Si no tiene ninguno asignado, ve todo
+  if(!gradosAsignados.length && !seccionesAsignadas.length) return alumnos;
+  return alumnos.filter(a => {
+    const okGrado   = !gradosAsignados.length   || gradosAsignados.includes(a.grado);
+    const okSeccion = !seccionesAsignadas.length || seccionesAsignadas.includes(a.seccion);
+    return okGrado && okSeccion;
+  });
+}
 
 // ============================================================
 // CONFIGURACIÓN — Firestore collection: 'config'
