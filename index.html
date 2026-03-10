@@ -677,6 +677,7 @@
     <button class="nav-tab" id="tab-alumnos" onclick="showSection('alumnos')">👥 Alumnos</button>
     <button class="nav-tab" id="tab-registro" onclick="showSection('registro')">📋 Registro</button>
     <button class="nav-tab" id="tab-reportes" onclick="showSection('reportes')">📊 Reportes</button>
+    <button class="nav-tab" id="tab-incidentes" onclick="showSection('incidentes')">🚨 Incidentes</button>
     <button class="nav-tab" id="tab-usuarios" onclick="showSection('usuarios')" style="display:none;">👤 Usuarios</button>
     <button class="nav-tab" id="tab-config" onclick="showSection('config')" style="display:none;">⚙ Configuración</button>
   </nav>
@@ -1061,6 +1062,129 @@
     </div>
   </div>
 
+
+  <!-- ===== INCIDENTES ===== -->
+  <div class="section" id="sec-incidentes">
+    <div class="page-title">🚨 Reporte de Incidentes</div>
+    <div class="page-sub">Documenta incidentes y genera reportes en PDF</div>
+
+    <!-- Botón nuevo + filtros historial -->
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px;">
+      <button class="btn btn-primary" onclick="abrirModalIncidente()" style="background:linear-gradient(135deg,#ef4444,#f97316);">
+        + Nuevo Reporte
+      </button>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+        <input type="date" id="inc-filter-fecha" onchange="renderIncidentes()" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:7px 12px;font-family:var(--font-body);font-size:0.85rem;">
+        <input type="text" id="inc-filter-search" placeholder="Buscar alumno..." oninput="renderIncidentes()" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:7px 12px;font-family:var(--font-body);font-size:0.85rem;min-width:160px;">
+      </div>
+    </div>
+
+    <!-- Tabla historial -->
+    <div class="card" style="padding:0;">
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Fecha</th>
+              <th>Alumno</th>
+              <th>Grado</th>
+              <th>Tipo</th>
+              <th>Severidad</th>
+              <th>Responsable</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="incidentes-tbody"></tbody>
+        </table>
+      </div>
+      <div class="empty-state" id="incidentes-empty" style="display:block;">
+        <svg width="40" height="40" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
+        <p>No hay reportes de incidentes</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== MODAL INCIDENTE ===== -->
+  <div class="modal-bg" id="modal-incidente" onclick="if(event.target===this)closeModal('modal-incidente')">
+    <div class="modal" onclick="event.stopPropagation()" style="max-width:560px;">
+      <div class="modal-header">
+        <div class="modal-title">🚨 Nuevo Reporte de Incidente</div>
+        <button class="modal-close" onclick="closeModal('modal-incidente')">✕</button>
+      </div>
+
+      <!-- Buscar alumno -->
+      <div class="form-group" style="margin-bottom:10px;">
+        <label>Buscar alumno por DNI o nombre</label>
+        <input type="text" id="inc-buscar" placeholder="Ej: 12345678 o Juan..." oninput="buscarAlumnoIncidente(this.value)">
+      </div>
+      <div id="inc-alumno-resultado" style="margin-bottom:14px;"></div>
+      <input type="hidden" id="inc-alumno-id">
+
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Fecha</label>
+          <input type="date" id="inc-fecha">
+        </div>
+        <div class="form-group">
+          <label>Hora</label>
+          <input type="time" id="inc-hora">
+        </div>
+      </div>
+
+      <div class="form-group" style="margin-top:12px;">
+        <label>Tipo de incidente</label>
+        <select id="inc-tipo">
+          <option value="">Seleccionar...</option>
+          <option>Conducta</option>
+          <option>Tardanza reiterada</option>
+          <option>Accidente</option>
+          <option>Conflicto entre alumnos</option>
+          <option>Daño material</option>
+          <option>Otro</option>
+        </select>
+      </div>
+
+      <div class="form-group" style="margin-top:12px;">
+        <label>Severidad</label>
+        <div style="display:flex;gap:10px;margin-top:4px;">
+          <label style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:9px;border-radius:10px;border:1px solid var(--border);background:var(--surface2);cursor:pointer;font-size:0.82rem;font-weight:600;">
+            <input type="radio" name="inc-sev" value="Leve" style="accent-color:#10b981;"> 🟢 Leve
+          </label>
+          <label style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:9px;border-radius:10px;border:1px solid var(--border);background:var(--surface2);cursor:pointer;font-size:0.82rem;font-weight:600;">
+            <input type="radio" name="inc-sev" value="Moderado" checked style="accent-color:#f59e0b;"> 🟡 Moderado
+          </label>
+          <label style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:9px;border-radius:10px;border:1px solid var(--border);background:var(--surface2);cursor:pointer;font-size:0.82rem;font-weight:600;">
+            <input type="radio" name="inc-sev" value="Grave" style="accent-color:#ef4444;"> 🔴 Grave
+          </label>
+        </div>
+      </div>
+
+      <div class="form-group" style="margin-top:12px;">
+        <label>Descripción del incidente *</label>
+        <textarea id="inc-descripcion" placeholder="Describe detalladamente lo ocurrido..." style="min-height:90px;"></textarea>
+      </div>
+
+      <div class="form-group" style="margin-top:12px;">
+        <label>Medidas tomadas</label>
+        <textarea id="inc-medidas" placeholder="¿Qué acciones se tomaron?" style="min-height:60px;"></textarea>
+      </div>
+
+      <div class="form-group" style="margin-top:12px;">
+        <label>Evidencia fotográfica (opcional)</label>
+        <input type="file" id="inc-foto" accept="image/*" onchange="previewIncFoto(this)" style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:8px;color:var(--text);font-size:0.85rem;">
+        <div id="inc-foto-preview" style="display:none;margin-top:8px;">
+          <img id="inc-foto-img" style="width:100%;max-height:160px;object-fit:cover;border-radius:8px;border:1px solid var(--border);">
+        </div>
+        <input type="hidden" id="inc-foto-data">
+      </div>
+
+      <div style="display:flex;gap:10px;margin-top:20px;">
+        <button class="btn btn-primary" onclick="guardarIncidente()" style="flex:1;justify-content:center;background:linear-gradient(135deg,#ef4444,#f97316);">🖨️ Guardar y Generar PDF</button>
+        <button class="btn btn-ghost" onclick="closeModal('modal-incidente')" style="justify-content:center;">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
   <!-- ===== REPORTES ===== -->
   <div class="section" id="sec-reportes">
     <div class="page-title">Reportes y Estadísticas</div>
@@ -1352,7 +1476,7 @@ auth.onAuthStateChanged(async user => {
     currentUser = null;
     currentRol = null;
     // Ocultar todas las pestañas al cerrar sesión
-    ['scan','alumnos','registro','reportes','usuarios','config'].forEach(t => {
+    ['scan','alumnos','registro','reportes','incidentes','usuarios','config'].forEach(t => {
       const el = document.getElementById('tab-'+t);
       if(el) el.style.display = 'none';
     });
@@ -1372,15 +1496,15 @@ auth.onAuthStateChanged(async user => {
 function aplicarPermisos(rol) {
   // Pestañas visibles según rol
   const permisos = {
-    admin:    ['scan','alumnos','registro','reportes','usuarios','config'],
-    director: ['registro','reportes'],
-    profesor: ['alumnos','registro'],
+    admin:    ['scan','alumnos','registro','reportes','incidentes','usuarios','config'],
+    director: ['registro','reportes','incidentes'],
+    profesor: ['alumnos','registro','incidentes'],
     portero:  ['scan'],
   };
   const tabs = permisos[rol] || ['scan'];
 
   // Mostrar/ocultar tabs
-  ['scan','alumnos','registro','reportes','usuarios','config'].forEach(t => {
+  ['scan','alumnos','registro','reportes','incidentes','usuarios','config'].forEach(t => {
     const el = document.getElementById('tab-'+t);
     if(el) el.style.display = tabs.includes(t) ? '' : 'none';
   });
@@ -1402,6 +1526,7 @@ function showSectionDirect(id) {
   if(id==='scan') updateStats();
   if(id==='usuarios') renderUsuarios();
   if(id==='config') renderConfig();
+  if(id==='incidentes') renderIncidentes();
 }
 
 // ============================================================
@@ -2986,6 +3111,320 @@ async function actualizarFiltrosSeccion() {
       : `<option value="">Seleccionar</option>`;
     secciones.forEach(s => { el.innerHTML += `<option value="${s}">${s}</option>`; });
   });
+}
+
+
+// ============================================================
+// INCIDENTES
+// ============================================================
+
+// jsPDF via CDN — loaded dynamically
+function cargarJsPDF() {
+  return new Promise((resolve) => {
+    if(window.jspdf) { resolve(); return; }
+    const s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+    s.onload = resolve;
+    document.head.appendChild(s);
+  });
+}
+
+let incAlumnoSeleccionado = null;
+
+function abrirModalIncidente() {
+  incAlumnoSeleccionado = null;
+  document.getElementById('inc-buscar').value = '';
+  document.getElementById('inc-alumno-resultado').innerHTML = '';
+  document.getElementById('inc-alumno-id').value = '';
+  document.getElementById('inc-fecha').value = hoy();
+  document.getElementById('inc-hora').value = new Date().toTimeString().slice(0,5);
+  document.getElementById('inc-tipo').value = '';
+  document.getElementById('inc-descripcion').value = '';
+  document.getElementById('inc-medidas').value = '';
+  document.getElementById('inc-foto-data').value = '';
+  document.getElementById('inc-foto-preview').style.display = 'none';
+  document.querySelector('input[name="inc-sev"][value="Moderado"]').checked = true;
+  document.getElementById('modal-incidente').classList.add('open');
+}
+
+async function buscarAlumnoIncidente(q) {
+  const res = document.getElementById('inc-alumno-resultado');
+  if(!q || q.length < 2) { res.innerHTML = ''; return; }
+  const alumnos = await DB.getAlumnos();
+  const filtrados = alumnos.filter(a =>
+    a.id.includes(q) ||
+    (a.nombres + ' ' + a.apellidos).toLowerCase().includes(q.toLowerCase())
+  ).slice(0, 5);
+
+  if(!filtrados.length) {
+    res.innerHTML = '<div style="color:var(--muted);font-size:0.82rem;padding:8px;">No se encontraron alumnos</div>';
+    return;
+  }
+  res.innerHTML = filtrados.map(a => `
+    <div onclick="seleccionarAlumnoIncidente('${a.id}')"
+      style="padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;cursor:pointer;margin-bottom:6px;display:flex;align-items:center;gap:10px;"
+      onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">
+      <span style="font-size:1.2rem;">👤</span>
+      <div>
+        <div style="font-weight:600;font-size:0.88rem;">${a.nombres} ${a.apellidos}</div>
+        <div style="font-size:0.75rem;color:var(--muted);">DNI: ${a.id} · ${a.grado} ${a.seccion} · ${a.turno}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function seleccionarAlumnoIncidente(id) {
+  const alumnos = await DB.getAlumnos();
+  const a = alumnos.find(x => x.id === id);
+  if(!a) return;
+  incAlumnoSeleccionado = a;
+  document.getElementById('inc-alumno-id').value = id;
+  document.getElementById('inc-buscar').value = a.nombres + ' ' + a.apellidos;
+  document.getElementById('inc-alumno-resultado').innerHTML = `
+    <div style="background:var(--surface2);border:1px solid var(--accent);border-radius:10px;padding:10px 14px;display:flex;align-items:center;gap:10px;margin-top:4px;">
+      <span style="font-size:1.3rem;">✅</span>
+      <div>
+        <div style="font-weight:600;font-size:0.88rem;">${a.nombres} ${a.apellidos}</div>
+        <div style="font-size:0.75rem;color:var(--muted);">DNI: ${a.id} · ${a.grado} ${a.seccion} · ${a.turno}</div>
+      </div>
+    </div>
+  `;
+}
+
+function previewIncFoto(input) {
+  const file = input.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    document.getElementById('inc-foto-data').value = e.target.result;
+    document.getElementById('inc-foto-img').src = e.target.result;
+    document.getElementById('inc-foto-preview').style.display = 'block';
+  };
+  reader.readAsDataURL(file);
+}
+
+async function guardarIncidente() {
+  const alumnoId = document.getElementById('inc-alumno-id').value;
+  if(!alumnoId || !incAlumnoSeleccionado) { toast('Selecciona un alumno','warning'); return; }
+  const tipo = document.getElementById('inc-tipo').value;
+  if(!tipo) { toast('Selecciona el tipo de incidente','warning'); return; }
+  const descripcion = document.getElementById('inc-descripcion').value.trim();
+  if(!descripcion) { toast('Escribe la descripción del incidente','warning'); return; }
+
+  const severidad = document.querySelector('input[name="inc-sev"]:checked').value;
+  const fecha = document.getElementById('inc-fecha').value;
+  const hora = document.getElementById('inc-hora').value;
+  const medidas = document.getElementById('inc-medidas').value.trim();
+  const fotoData = document.getElementById('inc-foto-data').value;
+  const a = incAlumnoSeleccionado;
+
+  const incidente = {
+    alumnoId: a.id,
+    alumnoNombre: a.nombres + ' ' + a.apellidos,
+    grado: a.grado, seccion: a.seccion, turno: a.turno,
+    tipo, severidad, fecha, hora, descripcion, medidas,
+    fotoData: fotoData ? 'si' : 'no', // no guardamos imagen en Firestore por tamaño
+    responsableId: currentUser.uid,
+    responsableNombre: document.getElementById('user-name-display').textContent,
+    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+  };
+
+  try {
+    await db.collection('incidentes').add(incidente);
+    toast('Reporte guardado','success');
+    closeModal('modal-incidente');
+    renderIncidentes();
+    // Generar PDF
+    await generarPDFIncidente({ ...incidente, fotoData });
+  } catch(e) { toast('Error al guardar: ' + e.message, 'error'); }
+}
+
+async function renderIncidentes() {
+  const tbody = document.getElementById('incidentes-tbody');
+  const empty = document.getElementById('incidentes-empty');
+  if(!tbody) return;
+  try {
+    let snap = await db.collection('incidentes').limit(200).get();
+    let docs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+    // Filtro profesor
+    if(currentRol === 'profesor' && currentPrivilegios.restringir) {
+      docs = docs.filter(d => aplicarFiltroProfesor([{ grado: d.grado, seccion: d.seccion }]).length > 0);
+    }
+    // Si es profesor, solo sus reportes
+    if(currentRol === 'profesor') {
+      docs = docs.filter(d => d.responsableId === currentUser.uid);
+    }
+
+    // Filtros UI
+    const fecha = document.getElementById('inc-filter-fecha')?.value;
+    const q = (document.getElementById('inc-filter-search')?.value||'').toLowerCase();
+    if(fecha) docs = docs.filter(d => d.fecha === fecha);
+    if(q) docs = docs.filter(d => d.alumnoNombre.toLowerCase().includes(q) || d.alumnoId.includes(q));
+
+    // Sort by fecha desc
+    docs.sort((a,b) => (b.fecha||'').localeCompare(a.fecha||''));
+
+    if(!docs.length) {
+      tbody.innerHTML = '';
+      empty.style.display = 'block';
+      return;
+    }
+    empty.style.display = 'none';
+
+    const sevColors = { Leve: 'green', Moderado: 'yellow', Grave: 'red' };
+    tbody.innerHTML = docs.map(d => `
+      <tr>
+        <td class="ts">${d.fecha}</td>
+        <td class="td-name">${d.alumnoNombre}</td>
+        <td>${d.grado} ${d.seccion}</td>
+        <td>${d.tipo}</td>
+        <td><span class="badge ${sevColors[d.severidad]||'blue'}">${d.severidad}</span></td>
+        <td style="font-size:0.82rem;">${d.responsableNombre||'-'}</td>
+        <td style="display:flex;gap:6px;">
+          <button class="btn btn-ghost" style="padding:4px 10px;font-size:0.78rem;" onclick="reimprimirIncidente('${d.id}')">🖨️ PDF</button>
+          ${currentRol==='admin'||currentRol==='director' ? `<button class="btn btn-danger" style="padding:4px 10px;font-size:0.78rem;" onclick="eliminarIncidente('${d.id}')">✕</button>` : ''}
+        </td>
+      </tr>
+    `).join('');
+  } catch(e) { console.error(e); }
+}
+
+async function eliminarIncidente(id) {
+  if(!confirm('¿Eliminar este reporte?')) return;
+  await db.collection('incidentes').doc(id).delete();
+  toast('Reporte eliminado','info');
+  renderIncidentes();
+}
+
+async function reimprimirIncidente(id) {
+  const doc = await db.collection('incidentes').doc(id).get();
+  if(!doc.exists) { toast('Reporte no encontrado','error'); return; }
+  await generarPDFIncidente({ ...doc.data(), fotoData: null });
+}
+
+async function generarPDFIncidente(inc) {
+  await cargarJsPDF();
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+  const cfg = await getConfig();
+  const nombreColegio = cfg.nombreColegio || 'Institución Educativa';
+  const anio = cfg.anio || '2026';
+  const W = 210, margin = 20;
+
+  // Header
+  doc.setFillColor(239, 68, 68);
+  doc.rect(0, 0, W, 28, 'F');
+  doc.setTextColor(255,255,255);
+  doc.setFont('helvetica','bold');
+  doc.setFontSize(13);
+  doc.text(nombreColegio.toUpperCase(), W/2, 12, { align: 'center' });
+  doc.setFontSize(9);
+  doc.setFont('helvetica','normal');
+  doc.text('Año Escolar ' + anio, W/2, 19, { align: 'center' });
+  doc.text('REPORTE DE INCIDENTE', W/2, 25, { align: 'center' });
+
+  let y = 38;
+
+  // Datos alumno
+  doc.setFillColor(248, 250, 252);
+  doc.roundedRect(margin, y, W - margin*2, 28, 3, 3, 'F');
+  doc.setDrawColor(226, 232, 240);
+  doc.roundedRect(margin, y, W - margin*2, 28, 3, 3, 'S');
+  doc.setTextColor(100, 116, 139);
+  doc.setFont('helvetica','bold');
+  doc.setFontSize(7);
+  doc.text('ALUMNO', margin+4, y+6);
+  doc.text('DNI', margin+80, y+6);
+  doc.text('GRADO / SECCIÓN', margin+110, y+6);
+  doc.text('NIVEL', margin+155, y+6);
+  doc.setTextColor(30, 41, 59);
+  doc.setFont('helvetica','normal');
+  doc.setFontSize(9);
+  doc.text(inc.alumnoNombre||'-', margin+4, y+13);
+  doc.text(inc.alumnoId||'-', margin+80, y+13);
+  doc.text((inc.grado||'-') + ' — Sección ' + (inc.seccion||'-'), margin+110, y+13);
+  doc.text(inc.turno||'-', margin+155, y+13);
+  doc.setTextColor(100, 116, 139);
+  doc.setFont('helvetica','bold');
+  doc.setFontSize(7);
+  doc.text('FECHA', margin+4, y+21);
+  doc.text('HORA', margin+60, y+21);
+  doc.text('TIPO', margin+100, y+21);
+  doc.text('SEVERIDAD', margin+150, y+21);
+  doc.setTextColor(30, 41, 59);
+  doc.setFont('helvetica','normal');
+  doc.setFontSize(9);
+  doc.text(inc.fecha||'-', margin+4, y+27);
+  doc.text(inc.hora||'-', margin+60, y+27);
+  doc.text(inc.tipo||'-', margin+100, y+27);
+  const sevColor = inc.severidad==='Grave'?[239,68,68]:inc.severidad==='Moderado'?[245,158,11]:[16,185,129];
+  doc.setTextColor(...sevColor);
+  doc.setFont('helvetica','bold');
+  doc.text(inc.severidad||'-', margin+150, y+27);
+
+  y += 36;
+
+  // Descripción
+  doc.setTextColor(100,116,139); doc.setFont('helvetica','bold'); doc.setFontSize(7);
+  doc.text('DESCRIPCIÓN DEL INCIDENTE', margin, y);
+  y += 4;
+  doc.setFillColor(248,250,252);
+  doc.setDrawColor(226,232,240);
+  const descLines = doc.splitTextToSize(inc.descripcion||'-', W - margin*2 - 8);
+  const descH = Math.max(20, descLines.length * 5 + 8);
+  doc.roundedRect(margin, y, W-margin*2, descH, 2, 2, 'FD');
+  doc.setTextColor(51,65,85); doc.setFont('helvetica','normal'); doc.setFontSize(9);
+  doc.text(descLines, margin+4, y+6);
+  y += descH + 6;
+
+  // Medidas
+  if(inc.medidas) {
+    doc.setTextColor(100,116,139); doc.setFont('helvetica','bold'); doc.setFontSize(7);
+    doc.text('MEDIDAS TOMADAS', margin, y);
+    y += 4;
+    const medLines = doc.splitTextToSize(inc.medidas, W-margin*2-8);
+    const medH = Math.max(14, medLines.length * 5 + 8);
+    doc.setFillColor(248,250,252); doc.setDrawColor(226,232,240);
+    doc.roundedRect(margin, y, W-margin*2, medH, 2, 2, 'FD');
+    doc.setTextColor(51,65,85); doc.setFont('helvetica','normal'); doc.setFontSize(9);
+    doc.text(medLines, margin+4, y+6);
+    y += medH + 6;
+  }
+
+  // Foto
+  if(inc.fotoData && inc.fotoData.startsWith('data:image')) {
+    try {
+      doc.setTextColor(100,116,139); doc.setFont('helvetica','bold'); doc.setFontSize(7);
+      doc.text('EVIDENCIA FOTOGRÁFICA', margin, y);
+      y += 4;
+      const imgW = W - margin*2;
+      const imgH = 60;
+      doc.addImage(inc.fotoData, 'JPEG', margin, y, imgW, imgH);
+      y += imgH + 8;
+    } catch(e) { console.warn('No se pudo agregar imagen al PDF'); }
+  }
+
+  // Firmas
+  y = Math.max(y, 230);
+  doc.setDrawColor(148,163,184);
+  doc.line(margin, y, margin+70, y);
+  doc.line(W-margin-70, y, W-margin, y);
+  doc.setTextColor(100,116,139); doc.setFont('helvetica','normal'); doc.setFontSize(8);
+  doc.text(inc.responsableNombre||'Responsable', margin+35, y+5, { align:'center' });
+  doc.text('Director(a) / V°B°', W-margin-35, y+5, { align:'center' });
+  doc.setFontSize(7);
+  doc.text('Firma del responsable', margin+35, y+9, { align:'center' });
+  doc.text('Firma y sello', W-margin-35, y+9, { align:'center' });
+
+  // Footer
+  doc.setFillColor(239,68,68);
+  doc.rect(0, 287, W, 10, 'F');
+  doc.setTextColor(255,255,255); doc.setFontSize(7);
+  doc.text('Documento generado por AsistenciaQR · ' + new Date().toLocaleString('es-PE'), W/2, 293, { align:'center' });
+
+  const filename = 'incidente_' + (inc.alumnoNombre||'').replace(/\s+/g,'_') + '_' + (inc.fecha||'') + '.pdf';
+  doc.save(filename);
 }
 
 // INIT — auth listener maneja el inicio
