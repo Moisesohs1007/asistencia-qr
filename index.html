@@ -1647,7 +1647,7 @@ async function openModalAlumno(id) {
     document.getElementById('f-turno').value = 'Primaria';
     document.getElementById('f-limite').value = '08:00';
   }
-  document.getElementById('modal-alumno').classList.add('open');
+  document.getElementById('modal-alumno').classList.add('active');
 }
 
 async function saveAlumno() {
@@ -1818,7 +1818,7 @@ async function showQR(id) {
   const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(a.id)}&bgcolor=ffffff&color=0a0e1a&margin=8&ecc=M`;
   document.getElementById('carnet-qr').src = qrUrl;
 
-  document.getElementById('modal-qr').classList.add('open');
+  document.getElementById('modal-qr').classList.add('active');
 }
 
 function printCarnet() {
@@ -2121,6 +2121,7 @@ function hoy() {
 }
 
 function closeModal(id) {
+  document.getElementById(id).classList.remove('active');
   document.getElementById(id).classList.remove('open');
 }
 
