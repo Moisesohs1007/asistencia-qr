@@ -2196,7 +2196,7 @@ function handleCSV(e) {
     const lines = ev.target.result.split('\n').filter(l => l.trim());
     const alumnosExistentes = await DB.getAlumnos();
     const existingIds = new Set(alumnosExistentes.map(a => a.id));
-    let added = 0;
+    let added = 0, updated = 0;
     for(let idx = 0; idx < lines.length; idx++) {
       const line = lines[idx];
       if(idx === 0 && (line.toLowerCase().includes('dni') || line.toLowerCase().includes('nombres'))) continue;
@@ -2204,14 +2204,22 @@ function handleCSV(e) {
       if(cols.length < 4) continue;
       const [id, nombres, apellidos, turno, grado, seccion, telefono, foto] = cols;
       if(!id || !/^\d{8}$/.test(id)) continue;
-      if(existingIds.has(id)) continue;
       const limite = await getLimiteByNivel(turno||'Primaria');
-      await DB.saveAlumno({ id, nombres, apellidos, grado: grado||'', seccion: seccion||'A', turno: turno||'Primaria', limite, telefono: telefono||'', foto: foto||'' });
-      added++;
+      const alumno = { id, nombres, apellidos, grado: grado||'', seccion: seccion||'A', turno: turno||'Primaria', limite, telefono: telefono||'', foto: foto||'' };
+      if(existingIds.has(id)) {
+        // Actualizar alumno existente preservando foto si CSV no trae una
+        const existente = alumnosExistentes.find(a => a.id === id);
+        if(!alumno.foto && existente && existente.foto) alumno.foto = existente.foto;
+        await DB.saveAlumno(alumno);
+        updated++;
+      } else {
+        await DB.saveAlumno(alumno);
+        added++;
+      }
     }
     renderAlumnos();
     updateStats();
-    toast(added + ' alumnos importados', 'success');
+    toast(`${added} alumnos nuevos, ${updated} actualizados`, 'success');
   };
   reader.readAsText(file, 'UTF-8');
   e.target.value = '';
