@@ -786,28 +786,21 @@
     <div class="card" style="padding:16px 20px;margin-bottom:16px;">
       <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;">
         <div class="form-group" style="min-width:120px;">
+          <label>Nivel</label>
+          <select id="fa-nivel" onchange="onNivelChangeAlumnos()">
+            <option value="" disabled selected>-- Nivel --</option>
+          </select>
+        </div>
+        <div class="form-group" style="min-width:120px;">
           <label>Grado</label>
           <select id="fa-grado" onchange="renderAlumnos()">
             <option value="" disabled selected>-- Grado --</option>
-            <option value="TODOS">Todos los grados</option>
-            <option>1°</option><option>2°</option><option>3°</option>
-            <option>4°</option><option>5°</option><option>6°</option>
           </select>
         </div>
         <div class="form-group" style="min-width:100px;">
           <label>Sección</label>
           <select id="fa-seccion" onchange="renderAlumnos()">
             <option value="" disabled selected>-- Sección --</option>
-            <option value="TODOS">Todas las secciones</option>
-            <option>A</option><option>B</option><option>C</option><option>D</option>
-          </select>
-        </div>
-        <div class="form-group" style="min-width:110px;">
-          <label>Nivel</label>
-          <select id="fa-nivel" onchange="renderAlumnos()">
-            <option value="" disabled selected>-- Nivel --</option>
-            <option value="TODOS">Todos los niveles</option>
-            <option>Inicial</option><option>Primaria</option><option>Secundaria</option>
           </select>
         </div>
         <div class="search-wrap" style="flex:1;min-width:180px;margin:0;">
@@ -866,28 +859,21 @@
           <input type="date" id="filter-hasta" onchange="validarRangoFecha();renderRegistro()">
         </div>
         <div class="form-group" style="min-width:120px;">
+          <label>Nivel</label>
+          <select id="filter-nivel" onchange="onNivelChangeRegistro()">
+            <option value="" disabled selected>-- Nivel --</option>
+          </select>
+        </div>
+        <div class="form-group" style="min-width:120px;">
           <label>Grado</label>
           <select id="filter-grado" onchange="renderRegistro()">
             <option value="" disabled selected>-- Grado --</option>
-            <option value="TODOS">Todos los grados</option>
-            <option>1°</option><option>2°</option><option>3°</option>
-            <option>4°</option><option>5°</option><option>6°</option>
           </select>
         </div>
         <div class="form-group" style="min-width:100px;">
           <label>Sección</label>
           <select id="filter-seccion" onchange="renderRegistro()">
             <option value="" disabled selected>-- Sección --</option>
-            <option value="TODOS">Todas</option>
-            <option>A</option><option>B</option><option>C</option><option>D</option>
-          </select>
-        </div>
-        <div class="form-group" style="min-width:110px;">
-          <label>Nivel</label>
-          <select id="filter-nivel" onchange="renderRegistro()">
-            <option value="" disabled selected>-- Nivel --</option>
-            <option value="TODOS">Todos los niveles</option>
-            <option>Inicial</option><option>Primaria</option><option>Secundaria</option>
           </select>
         </div>
         <div class="form-group" style="min-width:110px;">
@@ -1057,13 +1043,15 @@
       <!-- Solo visible si rol = profesor -->
       <div id="u-privilegios-group" style="display:none;">
         <hr class="divider">
-        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:0.88rem;font-weight:600;">
-          <input type="checkbox" id="u-restringir" onchange="toggleRestriccion()" style="accent-color:var(--accent);width:16px;height:16px;">
-          Restringir acceso por grados y secciones
-        </label>
-        <div id="u-restriccion-detalle" style="display:none;margin-top:14px;">
-          <div style="font-size:0.78rem;color:var(--muted);margin-bottom:10px;">Marca los grados que dicta y las secciones correspondientes a cada uno:</div>
-          <div id="u-niveles-checks"></div>
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+          <div>
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:0.88rem;font-weight:600;">
+              <input type="checkbox" id="u-restringir" style="accent-color:var(--accent);width:16px;height:16px;">
+              Restringir acceso por grados/secciones
+            </label>
+            <div id="u-privilegios-resumen" style="font-size:0.75rem;color:var(--muted);margin-top:4px;padding-left:24px;"></div>
+          </div>
+          <button class="btn btn-ghost" onclick="abrirModalPrivilegios()" style="padding:6px 12px;font-size:0.8rem;">⚙ Configurar</button>
         </div>
       </div>
       <div style="display:flex;gap:10px;margin-top:20px;">
@@ -1356,8 +1344,9 @@ auth.onAuthStateChanged(async user => {
     aplicarPermisos(currentRol);
 
     // Cargar datos y configuración
-    await actualizarTodosLosFiltros();
     await cargarPrivilegiosActuales();
+    await inicializarFiltros();
+    await actualizarTodosLosFiltros();
     updateStats();
   } else {
     currentUser = null;
@@ -1912,7 +1901,26 @@ function printCarnet() {
       #carnet-print{width:320px;font-family:Arial,sans-serif;}
       @media print{body{background:white;} @page{margin:0;}}
     </style>
-  </head><body>${carnet}<script>window.onload=()=>window.print();<\/script></body></html>`);
+  </head><body>${carnet}<script>window.onload=()=>window.print();<\/script>
+  <!-- ===== MODAL PRIVILEGIOS PROFESOR ===== -->
+  <div class="modal-bg" id="modal-privilegios" onclick="if(event.target===this)closeModal('modal-privilegios')">
+    <div class="modal" onclick="event.stopPropagation()" style="max-width:520px;">
+      <div class="modal-header">
+        <div class="modal-title">📚 Grados y Secciones asignados</div>
+        <button class="modal-close" onclick="closeModal('modal-privilegios')">✕</button>
+      </div>
+      <div style="font-size:0.8rem;color:var(--muted);margin-bottom:14px;">
+        Marca los grados que dicta y las secciones correspondientes a cada uno. Si no marcas ninguno, el profesor verá todos.
+      </div>
+      <div id="u-niveles-checks" style="max-height:60vh;overflow-y:auto;"></div>
+      <div style="display:flex;gap:10px;margin-top:20px;">
+        <button class="btn btn-primary" onclick="savePrivilegios()" style="flex:1;justify-content:center;">💾 Guardar privilegios</button>
+        <button class="btn btn-ghost" onclick="closeModal('modal-privilegios')" style="flex:1;justify-content:center;">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+</body></html>`);
   win.document.close();
 }
 
@@ -2362,6 +2370,8 @@ async function openModalUsuario(uid, nombre, rol, email) {
     document.getElementById('u-email').style.opacity = '1';
     ['u-nombre','u-email'].forEach(x => document.getElementById(x).value = '');
     document.getElementById('u-rol').value = 'profesor';
+    tempAsignaciones = {};
+    document.getElementById('u-restringir').checked = false;
   }
 
   // Cargar checkboxes de privilegios
@@ -2382,7 +2392,7 @@ async function saveUsuario() {
   try {
     // Obtener asignaciones si es profesor
     const restringir = rol === 'profesor' ? document.getElementById('u-restringir').checked : false;
-    const asignaciones = (rol === 'profesor' && restringir) ? getAsignaciones() : {};
+    const asignaciones = (rol === 'profesor' && restringir) ? tempAsignaciones : {};
 
     if(!editingUsuarioId) {
       // NUEVO usuario
@@ -2457,37 +2467,69 @@ async function renderUsuarios() {
 // PRIVILEGIOS DE PROFESOR
 // ============================================================
 
+// Almacén temporal de asignaciones mientras edita
+let tempAsignaciones = {};
+
 function togglePrivilegios() {
   const rol = document.getElementById('u-rol').value;
   document.getElementById('u-privilegios-group').style.display = rol === 'profesor' ? 'block' : 'none';
 }
 
-function toggleRestriccion() {
-  const checked = document.getElementById('u-restringir').checked;
-  document.getElementById('u-restriccion-detalle').style.display = checked ? 'block' : 'none';
+function actualizarResumenPrivilegios() {
+  const resumen = document.getElementById('u-privilegios-resumen');
+  if(!resumen) return;
+  const grados = Object.keys(tempAsignaciones);
+  if(!grados.length) {
+    resumen.textContent = 'Sin restricciones configuradas';
+    return;
+  }
+  resumen.textContent = grados.map(g => {
+    const s = (tempAsignaciones[g]||[]);
+    return g + (s.length ? ' ('+s.join(',')+')' : ' (todas)');
+  }).join(' · ');
+}
+
+async function abrirModalPrivilegios() {
+  await cargarCheckboxesPrivilegios(null); // usa tempAsignaciones
+  document.getElementById('modal-privilegios').classList.add('open');
+}
+
+async function savePrivilegios() {
+  // Leer checks del modal privilegios
+  tempAsignaciones = {};
+  document.querySelectorAll('.chk-grado:checked').forEach(chk => {
+    const g = chk.dataset.grado;
+    const seccs = Array.from(
+      document.querySelectorAll(`.chk-seccion[data-grado="${g}"]:checked`)
+    ).map(c => c.value);
+    tempAsignaciones[g] = seccs;
+  });
+  actualizarResumenPrivilegios();
+  closeModal('modal-privilegios');
+  // Auto-check restringir si hay asignaciones
+  if(Object.keys(tempAsignaciones).length) {
+    document.getElementById('u-restringir').checked = true;
+  }
 }
 
 async function cargarCheckboxesPrivilegios(uid) {
   const cfg = await getConfig();
   const secciones = cfg.secciones || ['A','B','C','D'];
 
-  // Obtener privilegios actuales
-  let asignaciones = {}; // { 'grado': ['A','B'] }
-  let restringir = false;
+  // Si uid, cargar desde Firestore; si no, usar tempAsignaciones
   if(uid) {
     try {
       const doc = await db.collection('usuarios').doc(uid).get();
       if(doc.exists) {
-        asignaciones = doc.data().asignaciones || {};
-        restringir = doc.data().restringir || false;
+        tempAsignaciones = doc.data().asignaciones || {};
+        document.getElementById('u-restringir').checked = doc.data().restringir || false;
       }
     } catch(e) {}
   }
 
-  document.getElementById('u-restringir').checked = restringir;
-  document.getElementById('u-restriccion-detalle').style.display = restringir ? 'block' : 'none';
+  const asignaciones = tempAsignaciones;
 
-  // Render por nivel
+  // Render por nivel en modal-privilegios
   const nivelesEl = document.getElementById('u-niveles-checks');
   nivelesEl.innerHTML = (cfg.niveles||[]).map(n => {
     const grados = (cfg.grados||{})[n.nombre] || [];
@@ -2496,6 +2538,7 @@ async function cargarCheckboxesPrivilegios(uid) {
         <div style="font-size:0.82rem;font-weight:700;color:var(--accent);margin-bottom:10px;">${n.nombre}</div>
         ${grados.map(g => {
           const seccsAsignadas = asignaciones[g] || [];
+          const key = g.replace(/[^a-z0-9]/gi,'_');
           return `
             <div style="margin-bottom:8px;">
               <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:0.85rem;font-weight:600;margin-bottom:5px;">
@@ -2505,7 +2548,7 @@ async function cargarCheckboxesPrivilegios(uid) {
                   style="accent-color:var(--accent);width:15px;height:15px;">
                 ${g}
               </label>
-              <div id="secc-${g.replace(/[^a-z0-9]/gi,'_')}" style="display:${seccsAsignadas.length?'flex':'none'};flex-wrap:wrap;gap:8px;padding-left:22px;margin-top:4px;">
+              <div id="secc-${key}" style="display:${seccsAsignadas.length?'flex':'none'};flex-wrap:wrap;gap:8px;padding-left:22px;margin-top:4px;">
                 ${secciones.map(s => `
                   <label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-size:0.82rem;">
                     <input type="checkbox" class="chk-seccion" data-grado="${g}" value="${s}"
@@ -2521,6 +2564,7 @@ async function cargarCheckboxesPrivilegios(uid) {
       </div>
     `;
   }).join('');
+  actualizarResumenPrivilegios();
 }
 
 function toggleGradoSecciones(chk) {
@@ -2580,6 +2624,88 @@ function aplicarFiltroProfesor(alumnos) {
     if(!seccs.length) return true;
     return seccs.includes(a.seccion);
   });
+}
+
+
+// ============================================================
+// FILTROS DINÁMICOS POR NIVEL → GRADO → SECCIÓN
+// ============================================================
+
+async function poblarFiltroNivel(selectId, onchangeFn) {
+  const cfg = await getConfig();
+  const el = document.getElementById(selectId);
+  if(!el) return;
+  const niveles = (cfg.niveles||[]).map(n => n.nombre);
+  // Si es profesor con restricciones, solo sus niveles
+  let nivelesVisibles = niveles;
+  if(currentRol === 'profesor' && currentPrivilegios.restringir) {
+    const gradosAsig = Object.keys(currentPrivilegios.asignaciones || {});
+    const nivelesAsig = new Set();
+    niveles.forEach(nv => {
+      const grados = (cfg.grados||{})[nv] || [];
+      if(grados.some(g => gradosAsig.includes(g))) nivelesAsig.add(nv);
+    });
+    nivelesVisibles = niveles.filter(n => nivelesAsig.has(n));
+  }
+  el.innerHTML = `<option value="" disabled selected>-- Nivel --</option><option value="TODOS">Todos</option>`;
+  nivelesVisibles.forEach(n => { el.innerHTML += `<option value="${n}">${n}</option>`; });
+}
+
+async function poblarFiltroGrado(selectId, nivel) {
+  const cfg = await getConfig();
+  const el = document.getElementById(selectId);
+  if(!el) return;
+  let grados = nivel && nivel !== 'TODOS'
+    ? (cfg.grados||{})[nivel] || []
+    : [...new Set(Object.values(cfg.grados||{}).flat())];
+  // Si es profesor con restricciones, solo sus grados
+  if(currentRol === 'profesor' && currentPrivilegios.restringir) {
+    const gradosAsig = Object.keys(currentPrivilegios.asignaciones || {});
+    grados = grados.filter(g => gradosAsig.includes(g));
+  }
+  el.innerHTML = `<option value="" disabled selected>-- Grado --</option><option value="TODOS">Todos</option>`;
+  grados.forEach(g => { el.innerHTML += `<option value="${g}">${g}</option>`; });
+}
+
+async function poblarFiltroSeccion(selectId, grado) {
+  const cfg = await getConfig();
+  const el = document.getElementById(selectId);
+  if(!el) return;
+  let secciones = cfg.secciones || ['A','B','C','D'];
+  // Si es profesor con restricciones, filtrar secciones del grado
+  if(currentRol === 'profesor' && currentPrivilegios.restringir && grado && grado !== 'TODOS') {
+    const seccsAsig = (currentPrivilegios.asignaciones||{})[grado] || [];
+    if(seccsAsig.length) secciones = secciones.filter(s => seccsAsig.includes(s));
+  }
+  el.innerHTML = `<option value="" disabled selected>-- Sección --</option><option value="TODOS">Todas</option>`;
+  secciones.forEach(s => { el.innerHTML += `<option value="${s}">${s}</option>`; });
+}
+
+async function onNivelChangeAlumnos() {
+  const nivel = document.getElementById('fa-nivel').value;
+  await poblarFiltroGrado('fa-grado', nivel);
+  await poblarFiltroSeccion('fa-seccion', null);
+  document.getElementById('fa-grado').value = '';
+  document.getElementById('fa-seccion').value = '';
+  renderAlumnos();
+}
+
+async function onNivelChangeRegistro() {
+  const nivel = document.getElementById('filter-nivel').value;
+  await poblarFiltroGrado('filter-grado', nivel);
+  await poblarFiltroSeccion('filter-seccion', null);
+  document.getElementById('filter-grado').value = '';
+  document.getElementById('filter-seccion').value = '';
+  renderRegistro();
+}
+
+async function inicializarFiltros() {
+  await poblarFiltroNivel('fa-nivel', 'onNivelChangeAlumnos');
+  await poblarFiltroGrado('fa-grado', null);
+  await poblarFiltroSeccion('fa-seccion', null);
+  await poblarFiltroNivel('filter-nivel', 'onNivelChangeRegistro');
+  await poblarFiltroGrado('filter-grado', null);
+  await poblarFiltroSeccion('filter-seccion', null);
 }
 
 // ============================================================
@@ -2799,5 +2925,24 @@ async function actualizarFiltrosSeccion() {
 
 // INIT — auth listener maneja el inicio
 </script>
+
+  <!-- ===== MODAL PRIVILEGIOS PROFESOR ===== -->
+  <div class="modal-bg" id="modal-privilegios" onclick="if(event.target===this)closeModal('modal-privilegios')">
+    <div class="modal" onclick="event.stopPropagation()" style="max-width:520px;">
+      <div class="modal-header">
+        <div class="modal-title">📚 Grados y Secciones asignados</div>
+        <button class="modal-close" onclick="closeModal('modal-privilegios')">✕</button>
+      </div>
+      <div style="font-size:0.8rem;color:var(--muted);margin-bottom:14px;">
+        Marca los grados que dicta y las secciones correspondientes a cada uno. Si no marcas ninguno, el profesor verá todos.
+      </div>
+      <div id="u-niveles-checks" style="max-height:60vh;overflow-y:auto;"></div>
+      <div style="display:flex;gap:10px;margin-top:20px;">
+        <button class="btn btn-primary" onclick="savePrivilegios()" style="flex:1;justify-content:center;">💾 Guardar privilegios</button>
+        <button class="btn btn-ghost" onclick="closeModal('modal-privilegios')" style="flex:1;justify-content:center;">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
 </body>
 </html>
