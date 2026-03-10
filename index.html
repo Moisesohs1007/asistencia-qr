@@ -835,7 +835,6 @@
               <th>Grado</th>
               <th>Sección</th>
               <th>Nivel</th>
-              <th>Estado hoy</th>
               <th>Acciones</th>
             </tr>
           </thead>
@@ -1790,24 +1789,13 @@ async function renderAlumnos() {
     empty.style.display = 'none';
 
     alumnos = [...alumnos].sort((a,b) => a.apellidos.localeCompare(b.apellidos));
-    const regsHoy = await DB.getRegistros({fecha: hoy()});
-
     tbody.innerHTML = alumnos.map(a => {
-      const regs = regsHoy.filter(r => r.alumnoId === a.id);
-      const tieneIngreso = regs.some(r=>r.tipo==='INGRESO');
-      const tieneSalida  = regs.some(r=>r.tipo==='SALIDA');
-      const tardanza = regs.find(r=>r.tipo==='INGRESO'&&r.estado==='Tardanza');
-      let estadoHtml = tieneIngreso
-        ? (tardanza ? '<span class="badge yellow">Tarde</span>' : '<span class="badge green">Presente</span>')
-        : '<span class="badge red">Ausente</span>';
-      if(tieneSalida) estadoHtml += ' <span class="badge blue">Salió</span>';
       return `<tr>
         <td class="td-id">${a.id}</td>
         <td class="td-name">${a.nombres} ${a.apellidos}</td>
         <td>${a.grado}</td>
         <td>${a.seccion}</td>
         <td>${a.turno}</td>
-        <td>${estadoHtml}</td>
         <td style="display:flex;gap:6px;flex-wrap:wrap;">
           <button class="btn btn-ghost" style="padding:5px 10px;font-size:0.78rem;" onclick="showQR('${a.id}')">QR</button>
           <button class="btn btn-ghost" style="padding:5px 10px;font-size:0.78rem;" onclick="openModalAlumno('${a.id}')">✏</button>
