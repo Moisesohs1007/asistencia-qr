@@ -696,7 +696,8 @@
         <div class="form-group" style="min-width:120px;">
           <label>Grado</label>
           <select id="fa-grado" onchange="renderAlumnos()">
-            <option value="">Todos</option>
+            <option value="" disabled selected>-- Grado --</option>
+            <option value="TODOS">Todos los grados</option>
             <option>1°</option><option>2°</option><option>3°</option>
             <option>4°</option><option>5°</option><option>6°</option>
           </select>
@@ -704,14 +705,16 @@
         <div class="form-group" style="min-width:100px;">
           <label>Sección</label>
           <select id="fa-seccion" onchange="renderAlumnos()">
-            <option value="">Todas</option>
+            <option value="" disabled selected>-- Sección --</option>
+            <option value="TODOS">Todas las secciones</option>
             <option>A</option><option>B</option><option>C</option><option>D</option>
           </select>
         </div>
         <div class="form-group" style="min-width:110px;">
           <label>Turno</label>
           <select id="fa-turno" onchange="renderAlumnos()">
-            <option value="">Todos</option>
+            <option value="" disabled selected>-- Turno --</option>
+            <option value="TODOS">Todos los turnos</option>
             <option>Mañana</option><option>Tarde</option>
           </select>
         </div>
@@ -1243,7 +1246,9 @@ function openModalAlumno(id) {
   if(id) {
     const a = DB.alumnos.find(x => x.id === id);
     document.getElementById('f-id').value = a.id;
-    document.getElementById('f-id').disabled = true;
+    document.getElementById('f-id').readOnly = true;
+    document.getElementById('f-id').style.opacity = '0.6';
+    document.getElementById('f-id').title = 'El DNI no se puede modificar una vez registrado';
     document.getElementById('f-nombres').value = a.nombres;
     document.getElementById('f-apellidos').value = a.apellidos;
     document.getElementById('f-grado').value = a.grado;
@@ -1259,7 +1264,9 @@ function openModalAlumno(id) {
     if(fotoData){ fotoImg.src=fotoData; fotoImg.style.display='block'; fotoPh.style.display='none'; }
     else        { fotoImg.style.display='none'; fotoPh.style.display='block'; }
   } else {
-    document.getElementById('f-id').disabled = false;
+    document.getElementById('f-id').readOnly = false;
+    document.getElementById('f-id').style.opacity = '1';
+    document.getElementById('f-id').title = '';
     ['f-id','f-nombres','f-apellidos','f-telefono','f-foto-url','f-foto-data'].forEach(x => document.getElementById(x).value='');
     document.getElementById('foto-preview-img').style.display='none';
     document.getElementById('foto-preview-placeholder').style.display='block';
@@ -1277,7 +1284,7 @@ function saveAlumno() {
   const apellidos = document.getElementById('f-apellidos').value.trim();
   const grado = document.getElementById('f-grado').value;
   if(!id||!nombres||!apellidos||!grado){ toast('Completa los campos obligatorios','warning'); return; }
-  if(!/^\d{8}$/.test(id)){ toast('El DNI debe tener exactamente 8 dígitos','warning'); return; }
+  if(!editingId && !/^\d{8}$/.test(id)){ toast('El DNI debe tener exactamente 8 dígitos','warning'); return; }
 
   let alumnos = DB.alumnos;
   if(!editingId && alumnos.find(a => a.id === id)){ toast('El DNI ya está registrado','error'); return; }
@@ -1337,15 +1344,15 @@ function renderAlumnos() {
   const turno   = document.getElementById('fa-turno').value;
   const q       = (document.getElementById('search-alumnos').value||'').toLowerCase();
 
-  // Si no hay ningún filtro activo — no mostrar nada
+  // "" = sin tocar (no muestra nada), "TODOS" = sin filtro en ese campo, valor específico = filtra
   const filtroActivo = grado || seccion || turno || q;
   if(!filtroActivo) { mostrarEstadoInicial(); return; }
 
   let alumnos = DB.alumnos;
-  if(grado)   alumnos = alumnos.filter(a => a.grado === grado);
-  if(seccion) alumnos = alumnos.filter(a => a.seccion === seccion);
-  if(turno)   alumnos = alumnos.filter(a => a.turno === turno);
-  if(q)       alumnos = alumnos.filter(a =>
+  if(grado   && grado   !== 'TODOS') alumnos = alumnos.filter(a => a.grado === grado);
+  if(seccion && seccion !== 'TODOS') alumnos = alumnos.filter(a => a.seccion === seccion);
+  if(turno   && turno   !== 'TODOS') alumnos = alumnos.filter(a => a.turno === turno);
+  if(q) alumnos = alumnos.filter(a =>
     a.nombres.toLowerCase().includes(q) ||
     a.apellidos.toLowerCase().includes(q) ||
     a.id.includes(q)
