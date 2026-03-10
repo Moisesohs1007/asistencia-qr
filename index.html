@@ -1327,7 +1327,7 @@ function aplicarPermisos(rol) {
   const tabs = permisos[rol] || ['scan'];
 
   // Mostrar/ocultar tabs
-  ['scan','alumnos','registro','reportes'].forEach(t => {
+  ['scan','alumnos','registro','reportes','usuarios'].forEach(t => {
     const el = document.getElementById('tab-'+t);
     if(el) el.style.display = tabs.includes(t) ? '' : 'none';
   });
