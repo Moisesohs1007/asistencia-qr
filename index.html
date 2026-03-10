@@ -1041,7 +1041,7 @@
 </main>
 
 <!-- MODAL ALUMNO -->
-<div class="modal-bg" id="modal-alumno">
+<div class="modal-bg" id="modal-alumno" onclick="if(event.target===this)closeModal('modal-alumno')">
   <div class="modal">
     <div class="modal-title">
       <span id="modal-title-text">Nuevo Alumno</span>
@@ -1117,7 +1117,7 @@
 </div>
 
 <!-- MODAL QR -->
-<div class="modal-bg" id="modal-qr">
+<div class="modal-bg" id="modal-qr" onclick="if(event.target===this)closeModal('modal-qr')">
   <div class="modal" style="max-width:420px;">
     <div class="modal-title">
       <span>Carnet del Alumno</span>
@@ -2122,7 +2122,12 @@ function hoy() {
 
 function closeModal(id) {
   const el = document.getElementById(id);
-  if(el) { el.classList.remove('open'); el.classList.remove('active'); }
+  if(!el) return;
+  el.classList.remove('open');
+  el.classList.remove('active');
+  el.style.display = 'none';
+  // Reset display after so CSS can reopen it
+  setTimeout(() => { el.style.display = ''; }, 50);
 }
 
 function toast(msg, type='success') {
@@ -2134,10 +2139,7 @@ function toast(msg, type='success') {
   setTimeout(() => el.remove(), 3500);
 }
 
-// Close modals clicking outside
-document.querySelectorAll('.modal-bg').forEach(bg => {
-  bg.addEventListener('click', e => { if(e.target===bg) bg.classList.remove('open'); });
-});
+// Modal close handled via onclick on modal-bg elements directly
 
 // ============================================================
 // GESTIÓN DE USUARIOS
