@@ -223,15 +223,7 @@
     .scanner-layout { grid-template-columns: 1fr; gap: 12px; }
   }
 
-  #qr-reader {
-    border-radius: 14px;
-    overflow: hidden;
-    background: #000;
-    position: relative;
-    width: 100%;
-    aspect-ratio: 4/3;
-    max-height: 420px;
-  }
+  
   #qr-video {
     width: 100%;
     height: 100%;
@@ -258,7 +250,7 @@
     animation: pulse-border 2s ease-in-out infinite;
   }
   @media(max-width:700px){
-    #qr-reader { max-height: 180px; }
+    
   }
 
   .scan-overlay {
@@ -661,54 +653,26 @@
 
 
 
-  /* html5-qrcode UI override */
-  #qr-reader__dashboard,
-  #qr-reader__header_message,
-  #qr-reader__status_span,
-  #qr-reader__camera_selection,
-  #qr-reader__filescan_input,
-  #qr-reader img { display: none !important; }
+  
+  
 
-  #qr-reader {
-    position: relative;
-    width: 100% !important;
-    aspect-ratio: 1/1 !important;
-    max-height: 320px;
-    border-radius: 12px;
-    overflow: hidden;
-    background: #000;
-  }
-  #qr-reader__scan_region {
-    width: 100% !important;
-    height: 100% !important;
-    border-radius: 12px;
-    overflow: hidden;
-  }
-  #qr-reader__scan_region video {
-    width: 100% !important;
-    height: 100% !important;
-    object-fit: cover !important;
-    border-radius: 12px;
-  }
+  
+  
+  
   /* Ocultar imagen fea pero mantener el recuadro verde de detección */
-  #qr-reader__scan_region > img:not([id]) { display: none !important; }
+  
   /* Recuadro de escaneo animado */
-  #qr-shaded-region {
-    border: none !important;
-  }
-  #qr-shaded-region div {
-    border-color: #ffffff !important;
-    border-width: 3px !important;
-    border-radius: 12px !important;
-    animation: scan-pulse 2s ease-in-out infinite !important;
-  }
-  @keyframes scan-pulse {
-    0%,100% { border-color: #ffffff; box-shadow: 0 0 0 9999px rgba(0,0,0,0.4), 0 0 16px rgba(56,189,248,0.5); }
+  
+  
+  
     50%      { border-color: #38bdf8; box-shadow: 0 0 0 9999px rgba(0,0,0,0.4), 0 0 28px rgba(129,140,248,0.6); }
   }
   @media(max-width:700px){
-    #qr-reader { max-height: 260px; }
+    
   }
+  #qr-shaded-region div[style*="border-left"],
+  #qr-shaded-region div[style*="border-right"],
+  #qr-shaded-region div[style*="border-top"],
   /* BOTTOM NAV - Mobile */
   .bottom-nav {
     display: none;
@@ -875,7 +839,7 @@
             <svg width="48" height="48" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 9V5a2 2 0 012-2h4M3 15v4a2 2 0 002 2h4m6-18h4a2 2 0 012 2v4m0 6v4a2 2 0 01-2 2h-4"/></svg>
             Presiona "Iniciar Cámara" para escanear
           </div>
-          <video id="qr-video" autoplay playsinline muted style="display:none;width:100%;height:100%;object-fit:cover;"></video>
+          <video id="qr-video" autoplay playsinline muted style="display:none;width:100%;border-radius:12px;"></video>
           <canvas id="qr-canvas" style="display:none;"></canvas>
           <div class="qr-frame-overlay" id="qr-frame-overlay" style="display:none;">
             <div class="qr-frame">
@@ -886,7 +850,7 @@
             </div>
           </div>
         </div>
-        <div class="scan-status" id="scan-status">Cámara inactiva</div>
+        <div class="scan-status"<div class="scan-status" id="scan-status">Cámara inactiva</div>
         <canvas id="qr-canvas" style="display:none;"></canvas>
         <div class="manual-input" style="margin-top:10px;">
           <div class="form-group">
@@ -1786,57 +1750,8 @@ function showSection(id) {
 }
 
 // ============================================================
-// QR SCANNER
+// QR SCANNER — getUserMedia + BarcodeDetector/jsQR
 // ============================================================
-// ============================================================
-// SCANNER — html5-qrcode (librería robusta)
-// ============================================================
-let scannerRunning = false;
-let lastScanned = '';
-let lastScanTime = 0;
-let pendingStudent = null;
-let currentSection = "scan";
-
-function setUIScanning(active) {
-  document.getElementById('btn-start-scan').disabled = active;
-  document.getElementById('btn-stop-scan').disabled = !active;
-}
-
-function startScanner() {
-  document.getElementById('scan-status').textContent = '⏳ Iniciando cámara...';
-  document.getElementById('btn-start-scan').disabled = true;
-
-  if(!html5QrCode) {
-    html5QrCode = new Html5Qrcode('qr-reader');
-  }
-
-  const config = {
-    fps: 15,
-    qrbox: { width: 250, height: 250 },
-    experimentalFeatures: { useBarCodeDetectorIfSupported: true }
-  };
-
-  html5QrCode.start(
-    { facingMode: 'environment' },
-    config,
-    (decodedText) => {
-      const now = Date.now();
-      if(decodedText === lastScanned && now - lastScanTime < 3000) return;
-      lastScanned = decodedText;
-      lastScanTime = now;
-      processQR(decodedText.trim());
-    },
-    () => {}
-  ).then(() => {
-    scannerRunning = true;
-    setUIScanning(true);
-    document.getElementById('scan-status').textContent = '🟢 Cámara activa — apunta al QR';
-  }).catch(err => {
-    document.getElementById('btn-start-scan').disabled = false;
-    document.getElementById('scan-status').textContent = '⚠ Sin acceso a cámara';
-    toast('No se pudo acceder a la cámara: ' + err, 'error');
-  });
-}
 
 async function escanearFotoQR(input) {
   const file = input.files[0];
@@ -3806,13 +3721,75 @@ let usandoTrasera = true;
 let lastScanned = '';
 let lastScanTime = 0;
 let pendingStudent = null;
+function renderBottomNav() {
+  const inner = document.getElementById('bottom-nav-inner');
+  if(!inner) return;
+  const allTabs = [
+    { id: 'scan',       icon: '📷', label: 'Escanear'  },
+    { id: 'alumnos',    icon: '👥', label: 'Alumnos'   },
+    { id: 'registro',   icon: '📋', label: 'Registro'  },
+    { id: 'reportes',   icon: '📊', label: 'Reportes'  },
+    { id: 'incidentes', icon: '🚨', label: 'Incidentes'},
+    { id: 'usuarios',   icon: '👤', label: 'Usuarios'  },
+    { id: 'config',     icon: '⚙',  label: 'Config'   },
+  ];
+  const permisos = {
+    admin:    ['scan','alumnos','registro','reportes','incidentes','usuarios','config'],
+    director: ['registro','reportes','incidentes'],
+    profesor: ['alumnos','registro','incidentes'],
+    portero:  ['scan'],
+  };
+  const allowed = permisos[currentRol] || ['scan'];
+  inner.innerHTML = allTabs
+    .filter(t => allowed.includes(t.id))
+    .map(t => `
+      <button class="bnav-btn ${currentSection===t.id?'active':''}" id="bnav-${t.id}" onclick="showSection('${t.id}')">
+        <span class="bnav-icon">${t.icon}</span>
+        <span>${t.label}</span>
+      </button>
+    `).join('');
+}
+
+function updateBottomNavActive(id) {
+  document.querySelectorAll('.bnav-btn').forEach(b => b.classList.remove('active'));
+  const btn = document.getElementById('bnav-' + id);
+  if(btn) btn.classList.add('active');
+}
+// INIT — auth listener maneja el inicio
+</script>
+
+  <!-- ===== MODAL PRIVILEGIOS PROFESOR ===== -->
+  <div class="modal-bg" id="modal-privilegios" onclick="if(event.target===this)closeModal('modal-privilegios')">
+    <div class="modal" onclick="event.stopPropagation()" style="max-width:520px;">
+      <div class="modal-header">
+        <div class="modal-title">📚 Grados y Secciones asignados</div>
+        <button class="modal-close" onclick="closeModal('modal-privilegios')">✕</button>
+      </div>
+      <div style="font-size:0.8rem;color:var(--muted);margin-bottom:14px;">
+        Marca los grados que dicta y las secciones correspondientes a cada uno. Solo verá los alumnos de los grados y secciones que marques.
+      </div>
+      <div id="u-niveles-checks" style="max-height:60vh;overflow-y:auto;"></div>
+      <div style="display:flex;gap:10px;margin-top:20px;">
+        <button class="btn btn-primary" onclick="savePrivilegios()" style="flex:1;justify-content:center;">💾 Guardar privilegios</button>
+        <button class="btn btn-ghost" onclick="closeModal('modal-privilegios')" style="flex:1;justify-content:center;">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>let videoStream = null;
+let scannerRunning = false;
+let scanInterval = null;
+let lastScanned = '';
+let lastScanTime = 0;
+let pendingStudent = null;
 let currentSection = 'scan';
 
 function setUIScanning(active) {
   document.getElementById('btn-start-scan').disabled = active;
   document.getElementById('btn-stop-scan').disabled = !active;
-  const overlay = document.getElementById('qr-frame-overlay');
-  if(overlay) overlay.style.display = active ? 'flex' : 'none';
+  const ov = document.getElementById('qr-frame-overlay');
+  if(ov) ov.style.display = active ? 'flex' : 'none';
 }
 
 function showPlaceholder(show) {
@@ -3823,32 +3800,33 @@ function showPlaceholder(show) {
 }
 
 function startScanner() {
-  document.getElementById('scan-status').textContent = '⏳ Solicitando permiso de cámara...';
+  document.getElementById('scan-status').textContent = '⏳ Solicitando permiso...';
   document.getElementById('btn-start-scan').disabled = true;
-  showPlaceholder(false);
 
   navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } } })
     .then(stream => {
       videoStream = stream;
       const video = document.getElementById('qr-video');
       video.srcObject = stream;
-      video.style.display = 'block';
-      video.play().catch(() => {});
+      showPlaceholder(false);
+      video.play().catch(()=>{});
+
       const onReady = () => {
+        if(scannerRunning) return;
         scannerRunning = true;
         setUIScanning(true);
-        showPlaceholder(false);
         document.getElementById('scan-status').textContent = '🟢 Cámara activa — apunta al QR';
         startScanLoop();
       };
       video.onloadedmetadata = onReady;
-      setTimeout(() => { if(!scannerRunning) onReady(); }, 1500);
+      video.oncanplay = onReady;
+      setTimeout(onReady, 1000);
     })
     .catch(err => {
       document.getElementById('btn-start-scan').disabled = false;
       showPlaceholder(true);
       document.getElementById('scan-status').textContent = '⚠ Sin acceso a cámara';
-      toast('No se pudo acceder a la cámara: ' + err.message, 'error');
+      toast('Error: ' + err.message, 'error');
     });
 }
 
@@ -3859,12 +3837,12 @@ function startScanLoop() {
   if(scanInterval) clearInterval(scanInterval);
 
   if('BarcodeDetector' in window) {
-    const detector = new BarcodeDetector({ formats: ['qr_code'] });
+    const det = new BarcodeDetector({ formats: ['qr_code'] });
     scanInterval = setInterval(async () => {
       if(!scannerRunning || video.readyState < 2) return;
       try {
-        const codes = await detector.detect(video);
-        if(codes.length > 0) {
+        const codes = await det.detect(video);
+        if(codes.length) {
           const txt = codes[0].rawValue;
           const now = Date.now();
           if(txt === lastScanned && now - lastScanTime < 3000) return;
@@ -3876,8 +3854,8 @@ function startScanLoop() {
   } else {
     scanInterval = setInterval(() => {
       if(!scannerRunning || video.readyState < 2) return;
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
+      canvas.width = video.videoWidth || 640;
+      canvas.height = video.videoHeight || 480;
       ctx.drawImage(video, 0, 0);
       try {
         const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
@@ -5694,6 +5672,69 @@ async function generarPDFIncidente(inc) {
 // ============================================================
 // BOTTOM NAV MOBILE
 // ============================================================
+function renderBottomNav() {
+  const inner = document.getElementById('bottom-nav-inner');
+  if(!inner) return;
+  const allTabs = [
+    { id: 'scan',       icon: '📷', label: 'Escanear'  },
+    { id: 'alumnos',    icon: '👥', label: 'Alumnos'   },
+    { id: 'registro',   icon: '📋', label: 'Registro'  },
+    { id: 'reportes',   icon: '📊', label: 'Reportes'  },
+    { id: 'incidentes', icon: '🚨', label: 'Incidentes'},
+    { id: 'usuarios',   icon: '👤', label: 'Usuarios'  },
+    { id: 'config',     icon: '⚙',  label: 'Config'   },
+  ];
+  const permisos = {
+    admin:    ['scan','alumnos','registro','reportes','incidentes','usuarios','config'],
+    director: ['registro','reportes','incidentes'],
+    profesor: ['alumnos','registro','incidentes'],
+    portero:  ['scan'],
+  };
+  const allowed = permisos[currentRol] || ['scan'];
+  inner.innerHTML = allTabs
+    .filter(t => allowed.includes(t.id))
+    .map(t => `
+      <button class="bnav-btn ${currentSection===t.id?'active':''}" id="bnav-${t.id}" onclick="showSection('${t.id}')">
+        <span class="bnav-icon">${t.icon}</span>
+        <span>${t.label}</span>
+      </button>
+    `).join('');
+}
+
+function updateBottomNavActive(id) {
+  document.querySelectorAll('.bnav-btn').forEach(b => b.classList.remove('active'));
+  const btn = document.getElementById('bnav-' + id);
+  if(btn) btn.classList.add('active');
+}
+// INIT — auth listener maneja el inicio
+</script>
+
+  <!-- ===== MODAL PRIVILEGIOS PROFESOR ===== -->
+  <div class="modal-bg" id="modal-privilegios" onclick="if(event.target===this)closeModal('modal-privilegios')">
+    <div class="modal" onclick="event.stopPropagation()" style="max-width:520px;">
+      <div class="modal-header">
+        <div class="modal-title">📚 Grados y Secciones asignados</div>
+        <button class="modal-close" onclick="closeModal('modal-privilegios')">✕</button>
+      </div>
+      <div style="font-size:0.8rem;color:var(--muted);margin-bottom:14px;">
+        Marca los grados que dicta y las secciones correspondientes a cada uno. Solo verá los alumnos de los grados y secciones que marques.
+      </div>
+      <div id="u-niveles-checks" style="max-height:60vh;overflow-y:auto;"></div>
+      <div style="display:flex;gap:10px;margin-top:20px;">
+        <button class="btn btn-primary" onclick="savePrivilegios()" style="flex:1;justify-content:center;">💾 Guardar privilegios</button>
+        <button class="btn btn-ghost" onclick="closeModal('modal-privilegios')" style="flex:1;justify-content:center;">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>let videoStream = null;
+let scannerRunning = false;
+let scanInterval = null;
+let usandoTrasera = true;
+let lastScanned = '';
+let lastScanTime = 0;
+let pendingStudent = null;
 function renderBottomNav() {
   const inner = document.getElementById('bottom-nav-inner');
   if(!inner) return;
