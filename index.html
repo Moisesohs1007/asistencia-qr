@@ -7,24 +7,7 @@
 <title>AsistenciaQR — Sistema Escolar</title>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
-<script>
-(function() {
-  const cdns = [
-    'https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js',
-    'https://unpkg.com/jsqr@1.4.0/dist/jsQR.js',
-  ];
-  let idx = 0;
-  function tryLoad() {
-    if(idx >= cdns.length) return;
-    const s = document.createElement('script');
-    s.src = cdns[idx++];
-    s.onload = () => console.log('jsQR cargado');
-    s.onerror = tryLoad;
-    document.head.appendChild(s);
-  }
-  tryLoad();
-})();
-</script>
+
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
@@ -887,19 +870,7 @@
     <div class="scanner-layout">
       <!-- COLUMNA IZQUIERDA: cámara -->
       <div>
-        <div id="qr-reader" style="position:relative;border-radius:12px;overflow:hidden;background:#000;">
-          <div class="result-empty" id="cam-placeholder" style="height:260px;min-height:unset;">
-            <svg width="48" height="48" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 9V5a2 2 0 012-2h4M3 15v4a2 2 0 002 2h4m6-18h4a2 2 0 012 2v4m0 6v4a2 2 0 01-2 2h-4"/></svg>
-            Presiona Iniciar Cámara
-          </div>
-          <video id="qr-video" autoplay playsinline muted style="width:100%;height:260px;object-fit:cover;display:none;border-radius:12px;"></video>
-          <div class="qr-frame-overlay" id="qr-frame-overlay" style="display:none;">
-            <div class="qr-frame">
-              <div class="corner tl"></div><div class="corner tr"></div>
-              <div class="corner bl"></div><div class="corner br"></div>
-            </div>
-          </div>
-        </div>
+        <div id="qr-reader" style="width:100%;border-radius:12px;overflow:hidden;"></div>
         <div class="scan-status" id="scan-status">Cámara inactiva</div>
         <canvas id="qr-canvas" style="display:none;"></canvas>
         <div class="manual-input" style="margin-top:10px;">
@@ -1814,8 +1785,6 @@ let currentSection = "scan";
 function setUIScanning(active) {
   document.getElementById('btn-start-scan').disabled = active;
   document.getElementById('btn-stop-scan').disabled = !active;
-  const overlay = document.getElementById('qr-frame-overlay');
-  if(overlay) overlay.style.display = active ? 'flex' : 'none';
 }
 
 function startScanner() {
@@ -1826,12 +1795,9 @@ function startScanner() {
     html5QrCode = new Html5Qrcode('qr-reader');
   }
 
-  const isMobile = window.innerWidth <= 700;
-  const boxSize = isMobile ? 180 : 250;
   const config = {
     fps: 15,
-    qrbox: { width: boxSize, height: boxSize },
-    aspectRatio: 1.0,
+    qrbox: { width: 250, height: 250 },
     experimentalFeatures: { useBarCodeDetectorIfSupported: true }
   };
 
