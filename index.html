@@ -7,7 +7,26 @@
 <title>AsistenciaQR — Sistema Escolar</title>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jsQR/1.4.0/jsQR.min.js"></script>
+<script>
+// Cargar jsQR con fallback entre CDNs
+(function() {
+  const cdns = [
+    'https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js',
+    'https://unpkg.com/jsqr@1.4.0/dist/jsQR.js',
+    'https://cdnjs.cloudflare.com/ajax/libs/jsQR/1.4.0/jsQR.min.js'
+  ];
+  let idx = 0;
+  function tryLoad() {
+    if(idx >= cdns.length) { console.error('jsQR no pudo cargarse'); return; }
+    const s = document.createElement('script');
+    s.src = cdns[idx++];
+    s.onload = () => console.log('jsQR cargado desde:', s.src);
+    s.onerror = () => { console.warn('Falló CDN, intentando siguiente...'); tryLoad(); };
+    document.head.appendChild(s);
+  }
+  tryLoad();
+})();
+</script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
