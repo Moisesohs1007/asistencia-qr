@@ -669,36 +669,39 @@
   #qr-reader__filescan_input,
   #qr-reader img { display: none !important; }
 
-  #qr-reader { position: relative; }
-  #qr-reader__scan_region {
+  #qr-reader {
+    position: relative;
+    width: 100% !important;
+    aspect-ratio: 1/1 !important;
+    max-height: 320px;
     border-radius: 12px;
     overflow: hidden;
-    position: relative;
+    background: #000;
   }
-  /* Ocultar el recuadro feo de html5-qrcode y reemplazar con uno propio */
-  #qr-reader__scan_region > img { display: none !important; }
+  #qr-reader__scan_region {
+    width: 100% !important;
+    height: 100% !important;
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  #qr-reader__scan_region video {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover !important;
+    border-radius: 12px;
+  }
+  /* Ocultar imagen fea pero mantener el recuadro verde de detección */
+  #qr-reader__scan_region > img:not([id]) { display: none !important; }
+  /* Mantener el recuadro interno de detección */
   #qr-shaded-region {
     border: none !important;
-    box-shadow: none !important;
   }
-  /* Esquinas personalizadas sobre el video */
-  #qr-reader__scan_region::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    pointer-events: none;
-    background:
-      linear-gradient(to right, #38bdf8 3px, transparent 3px) 0 0,
-      linear-gradient(to right, #38bdf8 3px, transparent 3px) 0 100%,
-      linear-gradient(to left,  #38bdf8 3px, transparent 3px) 100% 0,
-      linear-gradient(to left,  #38bdf8 3px, transparent 3px) 100% 100%,
-      linear-gradient(to bottom,#38bdf8 3px, transparent 3px) 0 0,
-      linear-gradient(to bottom,#38bdf8 3px, transparent 3px) 100% 0,
-      linear-gradient(to top,   #38bdf8 3px, transparent 3px) 0 100%,
-      linear-gradient(to top,   #38bdf8 3px, transparent 3px) 100% 100%;
-    background-repeat: no-repeat;
-    background-size: 24px 24px;
-    border-radius: 12px;
+  #qr-shaded-region div {
+    border-color: #4ade80 !important;
+    border-width: 4px !important;
+  }
+  @media(max-width:700px){
+    #qr-reader { max-height: 260px; }
   }
   /* BOTTOM NAV - Mobile */
   .bottom-nav {
@@ -1782,11 +1785,11 @@ function startScanner() {
   }
 
   const isMobile = window.innerWidth <= 700;
-  const boxSize = isMobile ? 150 : 250;
+  const boxSize = isMobile ? 180 : 250;
   const config = {
     fps: 15,
     qrbox: { width: boxSize, height: boxSize },
-    aspectRatio: isMobile ? 1.0 : 1.33,
+    aspectRatio: 1.0,
     experimentalFeatures: { useBarCodeDetectorIfSupported: true }
   };
 
