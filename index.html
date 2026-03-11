@@ -961,10 +961,15 @@
     <!-- Contador + acciones -->
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
       <span id="alumnos-count" style="color:var(--muted);font-size:0.85rem;"></span>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;">
-        <button class="btn btn-primary" onclick="openModalAlumno()">+ Nuevo Alumno</button>
-        <button class="btn btn-ghost" onclick="importCSV()">📥 Importar CSV</button>
-        <button class="btn btn-ghost" onclick="imprimirCarnetsMasivo()" id="btn-imprimir-carnets" style="background:var(--navy,#1a2b5e);color:#fff;border-color:#1a2b5e;">🖨 Imprimir Carnets</button>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+        <button class="btn btn-primary" id="btn-nuevo-alumno" onclick="openModalAlumno()">+ Nuevo Alumno</button>
+        <button class="btn btn-ghost" id="btn-importar-csv" onclick="importCSV()">📥 Importar CSV</button>
+        <!-- Toggle modo carnets -->
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;padding:6px 12px;border-radius:8px;border:1.5px solid var(--border);background:var(--card);font-size:0.82rem;color:var(--text);user-select:none;" title="Activar modo impresión de carnets">
+          <input type="checkbox" id="toggle-modo-carnets" onchange="toggleModoCarnets(this.checked)" style="width:15px;height:15px;cursor:pointer;">
+          🖨 Modo Carnets
+        </label>
+        <button class="btn btn-ghost" onclick="imprimirCarnetsMasivo()" id="btn-imprimir-carnets" style="background:var(--navy,#1a2b5e);color:#fff;border-color:#1a2b5e;display:none;" disabled>🖨 Imprimir Carnets</button>
       </div>
     </div>
 
@@ -973,7 +978,7 @@
         <table>
           <thead>
             <tr>
-              <th><input type="checkbox" id="chk-all" onclick="toggleSelectAll(this)" title="Seleccionar todos"></th>
+              <th id="th-chk-all" style="display:none;"><input type="checkbox" id="chk-all" onclick="toggleSelectAll(this)" title="Seleccionar todos"></th>
               <th>ID</th>
               <th>Nombre completo</th>
               <th>Grado</th>
@@ -2292,9 +2297,9 @@ async function renderAlumnos() {
         <td>${a.seccion}</td>
         <td>${a.turno}</td>
         <td style="display:flex;gap:6px;flex-wrap:wrap;">
-          <button class="btn btn-ghost" style="padding:5px 10px;font-size:0.78rem;" onclick="showQR('${a.id}')">QR</button>
-          <button class="btn btn-ghost" style="padding:5px 10px;font-size:0.78rem;" onclick="openModalAlumno('${a.id}')">✏</button>
-          ${currentRol !== 'profesor' ? `<button class="btn btn-danger" style="padding:5px 10px;font-size:0.78rem;" onclick="deleteAlumno('${a.id}')">✕</button>` : ''}
+          <button class="btn btn-ghost btn-accion-alumno" style="padding:5px 10px;font-size:0.78rem;" onclick="showQR('${a.id}')">QR</button>
+          <button class="btn btn-ghost btn-accion-alumno" style="padding:5px 10px;font-size:0.78rem;" onclick="openModalAlumno('${a.id}')">✏</button>
+          ${currentRol !== 'profesor' ? `<button class="btn btn-danger btn-accion-alumno" style="padding:5px 10px;font-size:0.78rem;" onclick="deleteAlumno('${a.id}')">✕</button>` : ''}
         </td>
       </tr>`;
     }).join('');
@@ -2775,6 +2780,34 @@ async function sendWhatsApp(telefono, mensaje) {
 // ============================================================
 // IMPRESIÓN MASIVA DE CARNETS
 // ============================================================
+function toggleModoCarnets(activo) {
+  // Mostrar/ocultar columna checkbox thead
+  document.getElementById('th-chk-all').style.display = activo ? '' : 'none';
+  // Mostrar/ocultar checkboxes de cada fila
+  document.querySelectorAll('.td-chk-alumno').forEach(td => td.style.display = activo ? '' : 'none');
+  // Mostrar/ocultar botón imprimir
+  const btnImprimir = document.getElementById('btn-imprimir-carnets');
+  btnImprimir.style.display = activo ? '' : 'none';
+  // Deshabilitar/habilitar botones de acción
+  document.querySelectorAll('.btn-accion-alumno').forEach(btn => {
+    btn.disabled = activo;
+    btn.style.opacity = activo ? '0.35' : '';
+    btn.style.pointerEvents = activo ? 'none' : '';
+  });
+  // Deshabilitar/habilitar Nuevo Alumno e Importar CSV
+  const btnNuevo = document.getElementById('btn-nuevo-alumno');
+  const btnImportar = document.getElementById('btn-importar-csv');
+  if(btnNuevo) { btnNuevo.disabled = activo; btnNuevo.style.opacity = activo ? '0.35' : ''; }
+  if(btnImportar) { btnImportar.disabled = activo; btnImportar.style.opacity = activo ? '0.35' : ''; }
+  // Desmarcar todos al desactivar
+  if(!activo) {
+    document.querySelectorAll('.chk-alumno').forEach(c => c.checked = false);
+    document.getElementById('chk-all').checked = false;
+    btnImprimir.textContent = '🖨 Imprimir Carnets';
+    btnImprimir.disabled = false;
+  }
+}
+
 function toggleSelectAll(chk) {
   document.querySelectorAll('.chk-alumno').forEach(c => c.checked = chk.checked);
   updateSeleccionados();
