@@ -2668,6 +2668,7 @@ async function imprimirCarnetsMasivo() {
 
   const [qrResults, logoImg] = await Promise.all([Promise.all(qrPromises), logoPromise]);
 
+  try {
   // Generar PDF con jsPDF
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
@@ -2844,6 +2845,10 @@ async function imprimirCarnetsMasivo() {
 
   doc.save(`carnets_${new Date().toISOString().slice(0,10)}.pdf`);
   toast(`✅ PDF generado con ${alumnos.length} carnet${alumnos.length!==1?'s':''}`, 'success');
+  } catch(err) {
+    console.error('Error generando PDF:', err);
+    toast('Error al generar PDF: ' + err.message, 'error');
+  }
   btn.disabled = false;
   updateSeleccionados();
 }
