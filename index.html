@@ -703,14 +703,12 @@
   }
   .bottom-nav-inner {
     display: flex;
-    justify-content: space-around;
     align-items: center;
-    max-width: 600px;
-    margin: 0 auto;
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
-    padding: 0 2px;
+    padding: 0 4px;
+    gap: 0;
   }
   .bottom-nav-inner::-webkit-scrollbar { display: none; }
   .bnav-btn {
@@ -718,22 +716,21 @@
     flex-direction: column;
     align-items: center;
     gap: 3px;
-    padding: 4px 4px;
+    padding: 4px 0;
     border: none;
     background: transparent;
     color: var(--muted);
     font-family: var(--font-body);
-    font-size: 0.58rem;
+    font-size: 0.60rem;
     font-weight: 500;
     cursor: pointer;
     border-radius: 10px;
     transition: all 0.15s;
-    flex: 1;
-    min-width: 44px;
+    flex: 0 0 calc(100vw / 7);
+    min-width: 46px;
   }
   .bnav-btn .bnav-icon { font-size: 1.25rem; line-height: 1; }
   .bnav-btn.active { color: var(--accent); }
-  .bnav-btn:last-child { margin-right: -8px; }
   .bnav-btn.active .bnav-icon {
     filter: drop-shadow(0 0 6px var(--accent));
   }
@@ -1424,6 +1421,14 @@
         <input type="text" id="f-apellidos" placeholder="Ej: García López">
       </div>
       <div class="form-group">
+        <label>Nombres del apoderado</label>
+        <input type="text" id="f-apoderado-nombres" placeholder="Ej: María Rosa">
+      </div>
+      <div class="form-group">
+        <label>Apellidos del apoderado</label>
+        <input type="text" id="f-apoderado-apellidos" placeholder="Ej: García López">
+      </div>
+      <div class="form-group">
         <label>Nivel</label>
         <select id="f-turno" onchange="cargarGradosPorNivel()">
           <option value="">Seleccionar</option>
@@ -2078,6 +2083,8 @@ async function openModalAlumno(id) {
     await cargarSeccionesPorGrado();
     document.getElementById('f-seccion').value = a.seccion;
     document.getElementById('f-telefono').value = a.telefono||'';
+    document.getElementById('f-apoderado-nombres').value = a.apoderadoNombres||'';
+    document.getElementById('f-apoderado-apellidos').value = a.apoderadoApellidos||'';
     const fotoData = a.foto||'';
     document.getElementById('f-foto-data').value = fotoData;
     document.getElementById('f-foto-url').value = fotoData.startsWith('http') ? fotoData : '';
@@ -2089,7 +2096,7 @@ async function openModalAlumno(id) {
     document.getElementById('f-id').readOnly = false;
     document.getElementById('f-id').style.opacity = '1';
     document.getElementById('f-id').title = '';
-    ['f-id','f-nombres','f-apellidos','f-telefono','f-foto-url','f-foto-data'].forEach(x => document.getElementById(x).value='');
+    ['f-id','f-nombres','f-apellidos','f-telefono','f-apoderado-nombres','f-apoderado-apellidos','f-foto-url','f-foto-data'].forEach(x => document.getElementById(x).value='');
     document.getElementById('foto-preview-img').style.display='none';
     document.getElementById('foto-preview-placeholder').style.display='block';
     document.getElementById('f-grado').value = '';
@@ -2117,6 +2124,8 @@ async function saveAlumno() {
       turno: document.getElementById('f-turno').value,
       limite: await getLimiteByNivel(document.getElementById('f-turno').value),
       telefono: document.getElementById('f-telefono').value.trim(),
+      apoderadoNombres: document.getElementById('f-apoderado-nombres').value.trim(),
+      apoderadoApellidos: document.getElementById('f-apoderado-apellidos').value.trim(),
       foto: document.getElementById('f-foto-data').value.trim(),
     };
 
@@ -2562,10 +2571,10 @@ function handleCSV(e) {
       if(idx === 0 && (line.toLowerCase().includes('dni') || line.toLowerCase().includes('nombres'))) continue;
       const cols = line.split(',').map(c => c.replace(/"/g,'').trim());
       if(cols.length < 4) continue;
-      const [id, nombres, apellidos, turno, grado, seccion, telefono, foto] = cols;
+      const [id, nombres, apellidos, turno, grado, seccion, foto, apoderadoNombres, apoderadoApellidos, telefono] = cols;
       if(!id || !/^\d{8}$/.test(id)) continue;
       const limite = await getLimiteByNivel(turno||'Primaria');
-      const alumno = { id, nombres, apellidos, grado: grado||'', seccion: seccion||'A', turno: turno||'Primaria', limite, telefono: telefono||'', foto: foto||'' };
+      const alumno = { id, nombres, apellidos, grado: grado||'', seccion: seccion||'A', turno: turno||'Primaria', limite, foto: foto||'', apoderadoNombres: apoderadoNombres||'', apoderadoApellidos: apoderadoApellidos||'', telefono: telefono||'' };
       if(existingIds.has(id)) {
         // Actualizar alumno existente preservando foto si CSV no trae una
         const existente = alumnosExistentes.find(a => a.id === id);
