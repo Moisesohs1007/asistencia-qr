@@ -1099,6 +1099,26 @@
       <button class="btn btn-primary" onclick="guardarInfoColegio()" style="margin-top:8px;">💾 Guardar</button>
     </div>
 
+    <!-- WhatsApp Factiliza -->
+    <div class="card" style="margin-bottom:20px;padding:20px 24px;">
+      <div style="font-family:var(--font-display);font-size:1rem;font-weight:700;margin-bottom:4px;color:var(--accent);">📱 WhatsApp — Factiliza</div>
+      <div style="color:var(--muted);font-size:0.82rem;margin-bottom:16px;">Configura tu API para enviar mensajes automáticos a los apoderados</div>
+      <div class="form-grid">
+        <div class="form-group form-full">
+          <label>Token Factiliza</label>
+          <input type="password" id="factiliza-token" placeholder="eyJhbGci..." autocomplete="off">
+        </div>
+        <div class="form-group form-full">
+          <label>Nombre de instancia</label>
+          <input type="text" id="factiliza-instancia" placeholder="NTE5NzI4OTgzODk=">
+        </div>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:8px;flex-wrap:wrap;">
+        <button class="btn btn-primary" onclick="guardarFactiliza()">💾 Guardar</button>
+        <button class="btn btn-ghost" onclick="probarFactiliza()">🧪 Probar conexión</button>
+      </div>
+    </div>
+
     <!-- Niveles y horarios -->
     <div class="card" style="margin-bottom:20px;padding:20px 24px;">
       <div style="font-family:var(--font-display);font-size:1rem;font-weight:700;margin-bottom:4px;color:var(--accent);">🕐 Horarios de Ingreso por Nivel</div>
@@ -2599,6 +2619,67 @@ function handleCSV(e) {
 }
 
 
+
+
+function guardarFactiliza() {
+  const token    = document.getElementById('factiliza-token').value.trim();
+  const instancia = document.getElementById('factiliza-instancia').value.trim();
+  if(!token || !instancia) { toast('Completa token e instancia','warning'); return; }
+  localStorage.setItem('factiliza_token', token);
+  localStorage.setItem('factiliza_instancia', instancia);
+  toast('✅ Configuración WhatsApp guardada','success');
+}
+
+async function probarFactiliza() {
+  const token    = document.getElementById('factiliza-token').value.trim();
+  const instancia = document.getElementById('factiliza-instancia').value.trim();
+  if(!token || !instancia) { toast('Completa token e instancia primero','warning'); return; }
+  localStorage.setItem('factiliza_token', token);
+  localStorage.setItem('factiliza_instancia', instancia);
+  // Enviar mensaje de prueba al número de la instancia configurada
+  toast('Enviando mensaje de prueba...','info');
+  const cfg = await getConfig();
+  const msg = `✅ *Conexión exitosa*\nLa integración WhatsApp de ${cfg?.nombreColegio||'AsistenciaQR'} está funcionando correctamente. 🎉`;
+  const ok = await sendWhatsApp('51972898389', msg);
+  if(ok) toast('✅ Mensaje de prueba enviado correctamente','success');
+  else toast('❌ Error al enviar. Verifica token e instancia','error');
+}
+
+// ============================================================
+// WHATSAPP — FACTILIZA
+// ============================================================
+async function sendWhatsApp(telefono, mensaje) {
+  const token     = localStorage.getItem('factiliza_token');
+  const instancia = localStorage.getItem('factiliza_instancia');
+  if(!token || !instancia) {
+    console.warn('Factiliza no configurado');
+    return false;
+  }
+  // Formatear número: quitar espacios, +, guiones y agregar 51 si no tiene código país
+  let num = telefono.replace(/[^0-9]/g, '');
+  if(num.startsWith('0')) num = num.substring(1);
+  if(num.length === 9) num = '51' + num;
+  if(!num || num.length < 10) {
+    console.warn('Teléfono inválido:', telefono);
+    return false;
+  }
+  try {
+    const res = await fetch(`https://apiwsp.factiliza.com/v1/message/sendtext/${instancia}`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ number: num, text: mensaje })
+    });
+    const data = await res.json();
+    return data.success === true;
+  } catch(e) {
+    console.error('Error WhatsApp:', e);
+    return false;
+  }
+}
+
 // ============================================================
 // IMPRESIÓN MASIVA DE CARNETS
 // ============================================================
@@ -3802,6 +3883,17 @@ async function guardarIncidente() {
     renderIncidentes();
     // Generar PDF
     await generarPDFIncidente({ ...incidente, fotoData });
+    // Enviar WhatsApp al apoderado
+    const alumnoData = incAlumnoSeleccionado;
+    if(alumnoData?.telefono) {
+      const cfg2 = await getConfig();
+      const nomColegio = cfg2?.nombreColegio || 'Institución Educativa';
+      const sevEmoji = incidente.severidad === 'Grave' ? '🔴' : incidente.severidad === 'Moderado' ? '🟡' : '🟢';
+      const msg = `🚨 *REPORTE DE INCIDENCIA*\n${nomColegio}\n\n👤 *Alumno:* ${incidente.alumnoNombre}\n🏫 *Grado:* ${incidente.grado} ${incidente.seccion} — ${incidente.turno}\n📋 *Tipo:* ${incidente.tipo}\n${sevEmoji} *Severidad:* ${incidente.severidad}\n📅 *Fecha:* ${incidente.fecha} ${incidente.hora}\n\n📝 El colegio ha registrado un incidente con su hijo/a. Por favor comuníquese con la institución a la brevedad.\n\n📞 Para más información contacte a la dirección del colegio.`;
+      const enviado = await sendWhatsApp(alumnoData.telefono, msg);
+      if(enviado) toast('✅ WhatsApp enviado al apoderado','success');
+      else toast('⚠️ PDF generado (WhatsApp no configurado o número inválido)','warning');
+    }
   } catch(e) { toast('Error al guardar: ' + e.message, 'error'); }
 }
 
