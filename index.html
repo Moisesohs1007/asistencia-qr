@@ -258,9 +258,7 @@
     animation: pulse-border 2s ease-in-out infinite;
   }
   @media(max-width:700px){
-    #qr-reader {
-      max-height: 300px;
-    }
+    #qr-reader { max-height: 220px; }
     .qr-frame { width: 65%; }
   }
 
@@ -662,6 +660,57 @@
     margin-left: 10px;
   }
 
+
+  /* BOTTOM NAV - Mobile */
+  .bottom-nav {
+    display: none;
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    background: rgba(10,14,26,0.97);
+    border-top: 1px solid var(--border);
+    backdrop-filter: blur(16px);
+    z-index: 200;
+    padding: 6px 4px env(safe-area-inset-bottom);
+  }
+  .bottom-nav-inner {
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    max-width: 600px;
+    margin: 0 auto;
+  }
+  .bnav-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    padding: 6px 10px;
+    border: none;
+    background: transparent;
+    color: var(--muted);
+    font-family: var(--font-body);
+    font-size: 0.62rem;
+    font-weight: 500;
+    cursor: pointer;
+    border-radius: 10px;
+    transition: all 0.15s;
+    min-width: 52px;
+  }
+  .bnav-btn .bnav-icon { font-size: 1.3rem; line-height: 1; }
+  .bnav-btn.active { color: var(--accent); }
+  .bnav-btn.active .bnav-icon {
+    filter: drop-shadow(0 0 6px var(--accent));
+  }
+  @media(max-width:700px){
+    .bottom-nav { display: block; }
+    header nav.nav-tabs { display: none !important; }
+    header {
+      height: 52px;
+      flex-wrap: nowrap;
+      padding: 0 14px;
+    }
+    main { padding-bottom: 90px; }
+  }
   @media(max-width:700px){
     header {
       height: auto;
@@ -739,6 +788,13 @@
     <button class="nav-tab" id="tab-config" onclick="showSection('config')" style="display:none;">⚙ Configuración</button>
   </nav>
 </header>
+
+<!-- BOTTOM NAV MOBILE -->
+<div class="bottom-nav" id="bottom-nav">
+  <div class="bottom-nav-inner" id="bottom-nav-inner">
+    <!-- Se genera dinámicamente según rol -->
+  </div>
+</div>
 
 <main>
 
@@ -1559,6 +1615,7 @@ auth.onAuthStateChanged(async user => {
 });
 
 function aplicarPermisos(rol) {
+  setTimeout(renderBottomNav, 100);
   // Pestañas visibles según rol
   const permisos = {
     admin:    ['scan','alumnos','registro','reportes','incidentes','usuarios','config'],
@@ -1591,6 +1648,7 @@ function showSectionDirect(id) {
   if(id==='scan') updateStats();
   if(id==='usuarios') renderUsuarios();
   if(id==='config') renderConfig();
+  updateBottomNavActive(id);
   if(id==='incidentes') renderIncidentes();
 }
 
@@ -3608,6 +3666,44 @@ async function generarPDFIncidente(inc) {
   doc.save(filename);
 }
 
+
+// ============================================================
+// BOTTOM NAV MOBILE
+// ============================================================
+function renderBottomNav() {
+  const inner = document.getElementById('bottom-nav-inner');
+  if(!inner) return;
+  const tabs = [
+    { id: 'scan',       icon: '📷', label: 'Escanear'  },
+    { id: 'alumnos',    icon: '👥', label: 'Alumnos'   },
+    { id: 'registro',   icon: '📋', label: 'Registro'  },
+    { id: 'reportes',   icon: '📊', label: 'Reportes'  },
+    { id: 'incidentes', icon: '🚨', label: 'Incidentes'},
+    { id: 'usuarios',   icon: '👤', label: 'Usuarios'  },
+    { id: 'config',     icon: '⚙',  label: 'Config'    },
+  ];
+  const permisos = {
+    admin:    ['scan','alumnos','registro','reportes','incidentes','usuarios','config'],
+    director: ['registro','reportes','incidentes'],
+    profesor: ['alumnos','registro','incidentes'],
+    portero:  ['scan'],
+  };
+  const allowed = permisos[currentRol] || ['scan'];
+  inner.innerHTML = tabs
+    .filter(t => allowed.includes(t.id))
+    .map(t => `
+      <button class="bnav-btn ${currentSection===t.id?'active':''}" id="bnav-${t.id}" onclick="showSection('${t.id}')">
+        <span class="bnav-icon">${t.icon}</span>
+        <span>${t.label}</span>
+      </button>
+    `).join('');
+}
+
+function updateBottomNavActive(id) {
+  document.querySelectorAll('.bnav-btn').forEach(b => b.classList.remove('active'));
+  const btn = document.getElementById('bnav-' + id);
+  if(btn) btn.classList.add('active');
+}
 // INIT — auth listener maneja el inicio
 </script>
 
