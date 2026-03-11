@@ -1069,13 +1069,22 @@
     <div class="page-sub">Documenta incidentes y genera reportes en PDF</div>
 
     <!-- Botón nuevo + filtros historial -->
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px;">
-      <button class="btn btn-primary" onclick="abrirModalIncidente()" style="background:linear-gradient(135deg,#ef4444,#f97316);">
-        + Nuevo Reporte
-      </button>
-      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
-        <input type="date" id="inc-filter-fecha" onchange="renderIncidentes()" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:7px 12px;font-family:var(--font-body);font-size:0.85rem;">
-        <input type="text" id="inc-filter-search" placeholder="Buscar alumno..." oninput="renderIncidentes()" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:7px 12px;font-family:var(--font-body);font-size:0.85rem;min-width:160px;">
+    <div class="card" style="padding:14px 18px;margin-bottom:16px;">
+      <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;">
+        <button class="btn btn-primary" onclick="abrirModalIncidente()" style="background:linear-gradient(135deg,#ef4444,#f97316);align-self:flex-end;">
+          + Nuevo Reporte
+        </button>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;">
+          <div class="form-group" style="min-width:150px;margin:0;">
+            <label>Fecha exacta</label>
+            <input type="date" id="inc-filter-fecha" onchange="limpiarFiltroAlumnoInc();renderIncidentes()" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:7px 12px;font-family:var(--font-body);font-size:0.85rem;width:100%;">
+          </div>
+          <div class="form-group" style="min-width:180px;margin:0;">
+            <label>Todos los reportes de un alumno</label>
+            <input type="text" id="inc-filter-search" placeholder="Nombre o DNI..." oninput="limpiarFiltroFechaInc();renderIncidentes()" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:7px 12px;font-family:var(--font-body);font-size:0.85rem;width:100%;">
+          </div>
+          <button class="btn btn-ghost" onclick="limpiarFiltrosIncidentes()" style="align-self:flex-end;padding:7px 14px;">✕ Limpiar</button>
+        </div>
       </div>
     </div>
 
@@ -3131,6 +3140,20 @@ function cargarJsPDF() {
 
 let incAlumnoSeleccionado = null;
 
+
+function limpiarFiltroFechaInc() {
+  const f = document.getElementById('inc-filter-fecha');
+  if(f && document.getElementById('inc-filter-search').value) f.value = '';
+}
+function limpiarFiltroAlumnoInc() {
+  const s = document.getElementById('inc-filter-search');
+  if(s && document.getElementById('inc-filter-fecha').value) s.value = '';
+}
+function limpiarFiltrosIncidentes() {
+  document.getElementById('inc-filter-fecha').value = '';
+  document.getElementById('inc-filter-search').value = '';
+  renderIncidentes();
+}
 function abrirModalIncidente() {
   incAlumnoSeleccionado = null;
   document.getElementById('inc-buscar').value = '';
