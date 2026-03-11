@@ -1500,47 +1500,74 @@
 
 <!-- MODAL QR -->
 <div class="modal-bg" id="modal-qr" onclick="if(event.target===this)closeModal('modal-qr')">
-  <div class="modal" style="max-width:420px;">
+  <div class="modal" style="max-width:320px;">
     <div class="modal-title">
       <span>Carnet del Alumno</span>
       <button class="btn btn-ghost" onclick="closeModal('modal-qr')" style="padding:5px 10px;">✕</button>
     </div>
-    <!-- CARNET VISUAL -->
-    <div id="carnet-print" style="background:linear-gradient(135deg,#0a0e1a 0%,#1a2236 100%);border-radius:16px;padding:24px 20px 20px;text-align:center;position:relative;overflow:hidden;border:1px solid #1f2d45;">
-      <!-- decorative top bar -->
-      <div style="position:absolute;top:0;left:0;right:0;height:6px;background:linear-gradient(90deg,#38bdf8,#818cf8);"></div>
-      <!-- school name -->
-      <div id="carnet-school" style="font-family:'Syne',sans-serif;font-size:0.72rem;font-weight:700;letter-spacing:2px;color:#38bdf8;text-transform:uppercase;margin-bottom:14px;"></div>
-      <!-- photo -->
-      <div style="margin:0 auto 12px;width:90px;height:90px;border-radius:50%;border:3px solid #38bdf8;overflow:hidden;background:linear-gradient(135deg,#1a2236,#0a0e1a);display:flex;align-items:center;justify-content:center;">
-        <img id="carnet-foto" src="" alt="" style="width:100%;height:100%;object-fit:cover;display:none;">
-        <span id="carnet-initials" style="font-family:'Syne',sans-serif;font-size:2rem;font-weight:800;color:#e2e8f0;"></span>
-      </div>
-      <!-- name -->
-      <div id="carnet-name" style="font-family:'Syne',sans-serif;font-size:1rem;font-weight:800;color:#e2e8f0;margin-bottom:3px;"></div>
-      <div id="carnet-grade" style="font-size:0.78rem;color:#64748b;margin-bottom:14px;"></div>
-      <!-- info row -->
-      <div style="display:flex;justify-content:center;gap:16px;margin-bottom:14px;">
-        <div style="text-align:center;">
-          <div style="font-size:0.65rem;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;">DNI</div>
-          <div id="carnet-dni" style="font-size:0.82rem;font-weight:600;color:#e2e8f0;"></div>
-        </div>
-        <div style="text-align:center;">
-          <div style="font-size:0.65rem;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;">Nivel</div>
-          <div id="carnet-turno" style="font-size:0.82rem;font-weight:600;color:#e2e8f0;"></div>
-        </div>
-        <div style="text-align:center;">
-          <div style="font-size:0.65rem;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;">Año</div>
-          <div id="carnet-year" style="font-size:0.82rem;font-weight:600;color:#e2e8f0;"></div>
+    <!-- CARNET VISUAL — 56x86mm proporcional en pantalla -->
+    <div style="display:flex;justify-content:center;padding:8px 0 4px;">
+    <div id="carnet-print" style="
+      width:224px; height:344px;
+      border-radius:10px; overflow:hidden;
+      display:flex; flex-direction:column;
+      border:4px solid #c9a84c;
+      box-shadow:0 6px 24px #0006;
+      font-family:helvetica,arial,sans-serif;
+    ">
+      <!-- HEADER -->
+      <div style="background:#0d1a3a;padding:4px 8px 4px 6px;display:flex;flex-direction:row;align-items:center;gap:6px;border-bottom:3px solid #c9a84c;height:48px;flex-shrink:0;">
+        <img id="carnet-logo" src="" style="width:38px;height:38px;object-fit:contain;flex-shrink:0;">
+        <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;">
+          <div style="color:#b0c4e8;font-size:7px;text-align:center;">INSTITUCIÓN EDUCATIVA PRIVADA</div>
+          <div id="carnet-school" style="color:#fff;font-weight:bold;font-size:11px;text-align:center;white-space:nowrap;line-height:1.1;"></div>
+          <div style="color:#b0c4e8;font-size:6.5px;text-align:center;">Cong. Padres Oblatos de San José de Asti</div>
         </div>
       </div>
-      <!-- QR -->
-      <div style="background:white;border-radius:12px;padding:8px;display:inline-block;margin-bottom:10px;">
-        <img id="carnet-qr" src="" alt="QR" style="width:110px;height:110px;display:block;">
+      <!-- BODY -->
+      <div style="flex:1;background:#fff;display:flex;flex-direction:column;align-items:center;padding:8px 6px 4px;gap:4px;position:relative;overflow:hidden;">
+        <!-- marca de agua -->
+        <div style="position:absolute;inset:0;background-image:var(--wm);background-size:52%;background-repeat:no-repeat;background-position:center;opacity:0.06;pointer-events:none;"></div>
+        <!-- foto anillo dorado -->
+        <div style="width:64px;height:64px;border-radius:50%;background:#c9a84c;display:flex;align-items:center;justify-content:center;flex-shrink:0;z-index:1;">
+          <div style="width:55px;height:55px;border-radius:50%;background:#1e3264;display:flex;align-items:center;justify-content:center;overflow:hidden;">
+            <img id="carnet-foto" src="" alt="" style="width:100%;height:100%;object-fit:cover;display:none;">
+            <span id="carnet-initials" style="color:#fff;font-weight:bold;font-size:18px;"></span>
+          </div>
+        </div>
+        <!-- nombre -->
+        <div id="carnet-name" style="color:#0d1a3a;font-weight:bold;font-size:10px;text-align:center;line-height:1.4;z-index:1;"></div>
+        <!-- separador dorado -->
+        <div style="width:78%;height:2px;background:#c9a84c;flex-shrink:0;z-index:1;"></div>
+        <!-- datos -->
+        <div style="display:flex;justify-content:space-around;width:100%;z-index:1;flex-shrink:0;">
+          <div style="text-align:center;">
+            <div style="color:#c9a84c;font-size:6px;font-weight:bold;">DNI</div>
+            <div id="carnet-dni" style="color:#0d1a3a;font-size:8px;font-weight:bold;margin-top:1px;"></div>
+          </div>
+          <div style="text-align:center;">
+            <div style="color:#c9a84c;font-size:6px;font-weight:bold;">NIVEL</div>
+            <div id="carnet-turno" style="color:#0d1a3a;font-size:8px;font-weight:bold;margin-top:1px;"></div>
+          </div>
+          <div style="text-align:center;">
+            <div style="color:#c9a84c;font-size:6px;font-weight:bold;">AÑO</div>
+            <div id="carnet-year" style="color:#0d1a3a;font-size:8px;font-weight:bold;margin-top:1px;"></div>
+          </div>
+        </div>
+        <!-- QR -->
+        <div style="background:#fff;border:1.5px solid #ccc;border-radius:5px;padding:3px;z-index:1;flex-shrink:0;">
+          <img id="carnet-qr" src="" alt="QR" style="width:90px;height:90px;display:block;">
+        </div>
+        <div style="color:#999;font-size:5px;text-align:center;z-index:1;letter-spacing:0.3px;">ESCANEA PARA REGISTRAR ASISTENCIA</div>
       </div>
-      <div style="font-size:0.65rem;color:#64748b;letter-spacing:1px;">ESCANEA PARA REGISTRAR ASISTENCIA</div>
+      <!-- FOOTER -->
+      <div style="background:#0d1a3a;border-top:3px solid #c9a84c;height:28px;display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0;">
+        <div id="carnet-grade" style="color:#c9a84c;font-size:9px;font-weight:bold;"></div>
+        <div id="carnet-nivel-footer" style="color:#b0c4e8;font-size:8px;margin-top:1px;"></div>
+      </div>
     </div>
-    <div style="display:flex;gap:8px;margin-top:16px;justify-content:center;flex-wrap:wrap;">
+    </div>
+    <div style="display:flex;gap:8px;margin-top:12px;justify-content:center;flex-wrap:wrap;">
       <button class="btn btn-primary" onclick="printCarnet()">🖨 Imprimir Carnet</button>
       <button class="btn btn-ghost" onclick="downloadCarnet()">💾 Guardar imagen</button>
     </div>
@@ -2282,10 +2309,22 @@ async function showQR(id) {
   const a = alumnos.find(x => x.id === id);
   if(!a) return;
 
-  // School name (could be customized)
-  document.getElementById('carnet-school').textContent = 'Institución Educativa';
+  const cfg = await getConfig();
+  const nombreColegio = cfg?.nombreColegio || 'I.E.P. San José Marello';
+  const anio = cfg?.anio || new Date().getFullYear();
 
-  // Photo or initials
+  // Logo y marca de agua
+  document.getElementById('carnet-logo').src = LOGO_B64;
+  document.getElementById('carnet-school').textContent = nombreColegio;
+
+  // Marca de agua en body
+  const body = document.querySelector('#carnet-print .carnet-body-wm');
+  if(body) body.style.setProperty('--wm', `url('${LOGO_B64}')`);
+  // Aplicar via style directo al div con position absolute
+  const wmDiv = document.querySelector('#carnet-print [style*="--wm"]');
+  if(wmDiv) wmDiv.style.backgroundImage = `url('${LOGO_B64}')`;
+
+  // Foto o iniciales
   const fotoEl = document.getElementById('carnet-foto');
   const initEl = document.getElementById('carnet-initials');
   if(a.foto) {
@@ -2294,18 +2333,26 @@ async function showQR(id) {
     initEl.style.display = 'none';
   } else {
     fotoEl.style.display = 'none';
-    initEl.style.display = 'block';
+    initEl.style.display = 'inline';
     initEl.textContent = (a.nombres[0]||'?') + (a.apellidos[0]||'?');
   }
 
-  document.getElementById('carnet-name').textContent = a.nombres + ' ' + a.apellidos;
-  document.getElementById('carnet-grade').textContent = a.grado + ' ' + a.seccion + ' — ' + a.turno;
+  // Nombre en dos líneas si es largo
+  const fullName = a.nombres + ' ' + a.apellidos;
+  const words = fullName.split(' ');
+  const mid = Math.ceil(words.length/2);
+  const l1 = words.slice(0,mid).join(' ');
+  const l2 = words.slice(mid).join(' ');
+  document.getElementById('carnet-name').innerHTML = l2 ? `${l1}<br>${l2}` : l1;
+
+  document.getElementById('carnet-grade').textContent = `${a.grado}  ·  Sección ${a.seccion}`;
+  document.getElementById('carnet-nivel-footer').textContent = a.turno;
   document.getElementById('carnet-dni').textContent = a.id;
   document.getElementById('carnet-turno').textContent = a.turno;
-  document.getElementById('carnet-year').textContent = new Date().getFullYear();
+  document.getElementById('carnet-year').textContent = anio;
 
-  // QR automático con el DNI
-  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(a.id)}&bgcolor=ffffff&color=000000&margin=10&ecc=H`;
+  // QR
+  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(a.id)}&bgcolor=ffffff&color=000000&margin=6&ecc=H`;
   document.getElementById('carnet-qr').src = qrUrl;
 
   document.getElementById('modal-qr').classList.add('open');
