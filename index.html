@@ -1688,64 +1688,102 @@ function startScanner() {
     });
 }
 
-function escanearFotoQR(input) {
+async function escanearFotoQR(input) {
   const file = input.files[0];
   if(!file) return;
-  const reader = new FileReader();
-  reader.onload = e => {
-    const img = new Image();
-    img.onload = () => {
-      const canvas = document.createElement('canvas');
-      canvas.width = img.width;
-      canvas.height = img.height;
-      const ctx = canvas.getContext('2d');
-      ctx.drawImage(img, 0, 0);
+
+  const img = new Image();
+  const url = URL.createObjectURL(file);
+  img.onload = async () => {
+    const canvas = document.createElement('canvas');
+    canvas.width = img.naturalWidth;
+    canvas.height = img.naturalHeight;
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    ctx.drawImage(img, 0, 0);
+    URL.revokeObjectURL(url);
+
+    let detected = false;
+
+    // Intentar con BarcodeDetector nativo primero
+    if('BarcodeDetector' in window) {
+      try {
+        const detector = new BarcodeDetector({ formats: ['qr_code'] });
+        const barcodes = await detector.detect(img);
+        if(barcodes.length > 0) {
+          detected = true;
+          toast('QR detectado ✅', 'success');
+          onQRSuccess(barcodes[0].rawValue);
+        }
+      } catch(e) {}
+    }
+
+    // Fallback jsQR
+    if(!detected) {
       const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
       const code = jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: 'attemptBoth' });
       if(code && code.data) {
+        detected = true;
         toast('QR detectado ✅', 'success');
         onQRSuccess(code.data);
-      } else {
-        toast('No se detectó QR en la imagen. Intenta con mejor luz o más cerca.', 'error');
       }
-    };
-    img.src = e.target.result;
+    }
+
+    if(!detected) {
+      toast('No se detectó QR. Intenta con mejor luz y enfoque.', 'error');
+    }
   };
-  reader.readAsDataURL(file);
+  img.src = url;
   input.value = '';
 }
 
 function startScanLoop() {
   const video = document.getElementById('qr-video');
   const canvas = document.getElementById('qr-canvas');
-  const ctx = canvas.getContext('2d');
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
 
   if(scanInterval) clearInterval(scanInterval);
-  let frameCount = 0;
-  scanInterval = setInterval(() => {
-    if(!scannerRunning || video.readyState < 2) return;
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    ctx.drawImage(video, 0, 0);
-    frameCount++;
-    // Mostrar resolución cada 30 frames para debug
-    if(frameCount % 30 === 0) {
-      document.getElementById('scan-status').textContent = `🟢 Cámara activa — ${canvas.width}x${canvas.height} — apunta al QR`;
-    }
-    try {
-      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      // Intentar normal
-      let code = jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: 'attemptBoth' });
-      if(code && code.data) {
-        const now = Date.now();
-        if(code.data !== lastScanned || now - lastScanTime > 3000) {
-          lastScanned = code.data;
-          lastScanTime = now;
-          onQRSuccess(code.data);
+
+  // Usar BarcodeDetector nativo si está disponible (Android Chrome, Samsung Browser)
+  if('BarcodeDetector' in window) {
+    document.getElementById('scan-status').textContent = '🟢 Cámara activa (detector nativo) — apunta al QR';
+    const detector = new BarcodeDetector({ formats: ['qr_code'] });
+    scanInterval = setInterval(async () => {
+      if(!scannerRunning || video.readyState < 2) return;
+      try {
+        const barcodes = await detector.detect(video);
+        if(barcodes.length > 0) {
+          const text = barcodes[0].rawValue;
+          const now = Date.now();
+          if(text !== lastScanned || now - lastScanTime > 3000) {
+            lastScanned = text;
+            lastScanTime = now;
+            onQRSuccess(text);
+          }
         }
-      }
-    } catch(e) { console.error('scan error', e); }
-  }, 100);
+      } catch(e) {}
+    }, 100);
+  } else {
+    // Fallback jsQR
+    document.getElementById('scan-status').textContent = '🟢 Cámara activa — apunta al QR';
+    scanInterval = setInterval(() => {
+      if(!scannerRunning || video.readyState < 2) return;
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      ctx.drawImage(video, 0, 0);
+      try {
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const code = jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: 'attemptBoth' });
+        if(code && code.data) {
+          const now = Date.now();
+          if(code.data !== lastScanned || now - lastScanTime > 3000) {
+            lastScanned = code.data;
+            lastScanTime = now;
+            onQRSuccess(code.data);
+          }
+        }
+      } catch(e) {}
+    }, 100);
+  }
 }
 
 function stopScanner() {
