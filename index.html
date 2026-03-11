@@ -2669,19 +2669,25 @@ async function probarFactiliza() {
 async function sendWhatsApp(telefono, mensaje) {
   const token     = localStorage.getItem('factiliza_token');
   const instancia = localStorage.getItem('factiliza_instancia');
+  console.log('📱 sendWhatsApp - token:', token ? '✅ presente' : '❌ vacío');
+  console.log('📱 sendWhatsApp - instancia:', instancia || '❌ vacía');
+  console.log('📱 sendWhatsApp - teléfono raw:', telefono);
   if(!token || !instancia) {
-    console.warn('Factiliza no configurado');
+    console.warn('❌ Factiliza no configurado');
+    toast('WhatsApp: token o instancia no configurado','warning');
     return false;
   }
-  // Formatear número: quitar espacios, +, guiones y agregar 51 si no tiene código país
   let num = telefono.replace(/[^0-9]/g, '');
   if(num.startsWith('0')) num = num.substring(1);
   if(num.length === 9) num = '51' + num;
+  console.log('📱 sendWhatsApp - número formateado:', num);
   if(!num || num.length < 10) {
-    console.warn('Teléfono inválido:', telefono);
+    console.warn('❌ Teléfono inválido:', telefono);
+    toast('WhatsApp: número de teléfono inválido','warning');
     return false;
   }
   try {
+    console.log('📱 Enviando a:', `https://apiwsp.factiliza.com/v1/message/sendtext/${instancia}`);
     const res = await fetch(`https://apiwsp.factiliza.com/v1/message/sendtext/${instancia}`, {
       method: 'POST',
       headers: {
@@ -2691,9 +2697,13 @@ async function sendWhatsApp(telefono, mensaje) {
       body: JSON.stringify({ number: num, text: mensaje })
     });
     const data = await res.json();
+    console.log('📱 Respuesta Factiliza:', JSON.stringify(data));
+    if(data.success) toast('✅ WhatsApp enviado','success');
+    else toast('❌ WhatsApp error: ' + (data.message||'sin detalle'), 'error');
     return data.success === true;
   } catch(e) {
-    console.error('Error WhatsApp:', e);
+    console.error('❌ Error WhatsApp fetch:', e);
+    toast('❌ Error conexión WhatsApp: ' + e.message, 'error');
     return false;
   }
 }
