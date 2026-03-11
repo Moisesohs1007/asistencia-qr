@@ -726,23 +726,29 @@
     align-items: center;
     max-width: 600px;
     margin: 0 auto;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding: 0 2px;
   }
+  .bottom-nav-inner::-webkit-scrollbar { display: none; }
   .bnav-btn {
     display: flex;
     flex-direction: column;
     align-items: center;
     gap: 3px;
-    padding: 6px 6px;
+    padding: 4px 4px;
     border: none;
     background: transparent;
     color: var(--muted);
     font-family: var(--font-body);
-    font-size: 0.60rem;
+    font-size: 0.58rem;
     font-weight: 500;
     cursor: pointer;
     border-radius: 10px;
     transition: all 0.15s;
     flex: 1;
+    min-width: 44px;
   }
   .bnav-btn .bnav-icon { font-size: 1.25rem; line-height: 1; }
   .bnav-btn.active { color: var(--accent); }
