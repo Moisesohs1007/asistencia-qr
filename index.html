@@ -1646,33 +1646,41 @@ function startScanner() {
   const facing = usandoTrasera ? 'environment' : 'user';
   const constraints = {
     video: {
-      facingMode: { ideal: facing },
+      facingMode: usandoTrasera ? { exact: 'environment' } : 'user',
       width: { ideal: 1280 },
       height: { ideal: 720 }
     }
   };
 
+  const iniciarConStream = (stream) => {
+    videoStream = stream;
+    const video = document.getElementById('qr-video');
+    video.srcObject = stream;
+    video.play();
+    video.onloadedmetadata = () => {
+      scannerRunning = true;
+      setUIScanning(true);
+      showPlaceholder(false);
+      const label = usandoTrasera ? 'Cámara trasera' : 'Cámara frontal';
+      document.getElementById('scan-status').textContent = `🟢 ${label} activa — apunta al QR`;
+      document.getElementById('btn-switch').textContent = usandoTrasera ? '🤳 Cambiar a frontal' : '📷 Cambiar a trasera';
+      startScanLoop();
+    };
+  };
+
   navigator.mediaDevices.getUserMedia(constraints)
-    .then(stream => {
-      videoStream = stream;
-      const video = document.getElementById('qr-video');
-      video.srcObject = stream;
-      video.play();
-      video.onloadedmetadata = () => {
-        scannerRunning = true;
-        setUIScanning(true);
-        showPlaceholder(false);
-        const label = usandoTrasera ? 'Cámara trasera' : 'Cámara frontal';
-        document.getElementById('scan-status').textContent = `🟢 ${label} activa — apunta al QR`;
-        document.getElementById('btn-switch').textContent = usandoTrasera ? '🤳 Cambiar a frontal' : '📷 Cambiar a trasera';
-        startScanLoop();
-      };
-    })
-    .catch(err => {
-      document.getElementById('btn-start-scan').disabled = false;
-      showPlaceholder(true);
-      document.getElementById('scan-status').textContent = '⚠ Sin acceso a cámara';
-      toast('No se pudo acceder a la cámara: ' + err.message, 'error');
+    .then(iniciarConStream)
+    .catch(() => {
+      // Fallback: sin exact, usar ideal
+      const fallback = { video: { facingMode: { ideal: facing }, width: { ideal: 1280 }, height: { ideal: 720 } } };
+      navigator.mediaDevices.getUserMedia(fallback)
+        .then(iniciarConStream)
+        .catch(err => {
+          document.getElementById('btn-start-scan').disabled = false;
+          showPlaceholder(true);
+          document.getElementById('scan-status').textContent = '⚠ Sin acceso a cámara';
+          toast('No se pudo acceder a la cámara: ' + err.message, 'error');
+        });
     });
 }
 
@@ -1689,7 +1697,7 @@ function startScanLoop() {
     ctx.drawImage(video, 0, 0);
     try {
       const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      const code = jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: 'dontInvert' });
+      const code = jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: 'attemptBoth' });
       if(code && code.data) {
         const now = Date.now();
         if(code.data !== lastScanned || now - lastScanTime > 3000) {
@@ -1699,7 +1707,7 @@ function startScanLoop() {
         }
       }
     } catch(e) {}
-  }, 200);
+  }, 150);
 }
 
 function stopScanner() {
