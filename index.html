@@ -7,7 +7,7 @@
 <title>AsistenciaQR — Sistema Escolar</title>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jsQR/1.4.0/jsQR.min.js"></script>
+<script src="https://unpkg.com/@zxing/library@0.19.1/umd/index.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
@@ -1684,30 +1684,74 @@ function startScanner() {
     });
 }
 
+let zxingReader = null;
+
 function startScanLoop() {
+  const video = document.getElementById('qr-video');
+  try {
+    if(!zxingReader) {
+      const hints = new Map();
+      const formats = [ZXing.BarcodeFormat.QR_CODE];
+      hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, formats);
+      hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
+      zxingReader = new ZXing.BrowserQRCodeReader(hints);
+    }
+    // Use ZXing continuous decode from stream
+    const canvas = document.getElementById('qr-canvas');
+    const ctx = canvas.getContext('2d');
+    if(scanInterval) clearInterval(scanInterval);
+    scanInterval = setInterval(() => {
+      if(!scannerRunning || video.readyState < 2) return;
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      ctx.drawImage(video, 0, 0);
+      try {
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const luminanceSource = new ZXing.HTMLCanvasElementLuminanceSource(canvas);
+        const binaryBitmap = new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(luminanceSource));
+        const result = new ZXing.QRCodeReader().decode(binaryBitmap);
+        if(result && result.getText()) {
+          const text = result.getText();
+          const now = Date.now();
+          if(text !== lastScanned || now - lastScanTime > 3000) {
+            lastScanned = text;
+            lastScanTime = now;
+            onQRSuccess(text);
+          }
+        }
+      } catch(e) {}
+    }, 150);
+  } catch(e) {
+    // Fallback to manual canvas approach if ZXing fails
+    startScanLoopFallback();
+  }
+}
+
+function startScanLoopFallback() {
+  // Simple canvas-based fallback using ZXing decode from image
   const video = document.getElementById('qr-video');
   const canvas = document.getElementById('qr-canvas');
   const ctx = canvas.getContext('2d');
-
   if(scanInterval) clearInterval(scanInterval);
-  scanInterval = setInterval(() => {
+  scanInterval = setInterval(async () => {
     if(!scannerRunning || video.readyState < 2) return;
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
     ctx.drawImage(video, 0, 0);
     try {
-      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      const code = jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: 'attemptBoth' });
-      if(code && code.data) {
+      const reader = new ZXing.BrowserQRCodeReader();
+      const result = await reader.decodeFromCanvas(canvas);
+      if(result) {
+        const text = result.getText();
         const now = Date.now();
-        if(code.data !== lastScanned || now - lastScanTime > 3000) {
-          lastScanned = code.data;
+        if(text !== lastScanned || now - lastScanTime > 3000) {
+          lastScanned = text;
           lastScanTime = now;
-          onQRSuccess(code.data);
+          onQRSuccess(text);
         }
       }
     } catch(e) {}
-  }, 150);
+  }, 200);
 }
 
 function stopScanner() {
