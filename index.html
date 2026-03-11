@@ -2618,11 +2618,25 @@ function updateSeleccionados() {
 }
 
 async function imprimirCarnetsMasivo() {
-  // Obtener IDs seleccionados
   const selIds = [...document.querySelectorAll('.chk-alumno:checked')].map(c => c.value);
   if(!selIds.length) { toast('Selecciona al menos un alumno', 'warning'); return; }
 
-  toast('Generando PDF... espera', 'info');
+  const btn = document.getElementById('btn-imprimir-carnets');
+  btn.disabled = true;
+  btn.textContent = '⏳ Generando PDF...';
+
+  try {
+    await cargarJsPDF();
+  } catch(e) {
+    toast('Error cargando jsPDF, verifica tu conexión', 'error');
+    btn.disabled = false; btn.textContent = '🖨 Imprimir Carnets';
+    return;
+  }
+  if(!window.jspdf) {
+    toast('jsPDF no disponible', 'error');
+    btn.disabled = false; btn.textContent = '🖨 Imprimir Carnets';
+    return;
+  }
 
   // Cargar config del colegio
   const cfg = await DB.getConfig();
@@ -2829,7 +2843,9 @@ async function imprimirCarnetsMasivo() {
   }
 
   doc.save(`carnets_${new Date().toISOString().slice(0,10)}.pdf`);
-  toast(`PDF generado con ${alumnos.length} carnet${alumnos.length!==1?'s':''}`, 'success');
+  toast(`✅ PDF generado con ${alumnos.length} carnet${alumnos.length!==1?'s':''}`, 'success');
+  btn.disabled = false;
+  updateSeleccionados();
 }
 
 // ============================================================
