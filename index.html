@@ -7,26 +7,7 @@
 <title>AsistenciaQR — Sistema Escolar</title>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
-<script>
-// Cargar jsQR con fallback entre CDNs
-(function() {
-  const cdns = [
-    'https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js',
-    'https://unpkg.com/jsqr@1.4.0/dist/jsQR.js',
-    'https://cdnjs.cloudflare.com/ajax/libs/jsQR/1.4.0/jsQR.min.js'
-  ];
-  let idx = 0;
-  function tryLoad() {
-    if(idx >= cdns.length) { console.error('jsQR no pudo cargarse'); return; }
-    const s = document.createElement('script');
-    s.src = cdns[idx++];
-    s.onload = () => console.log('jsQR cargado desde:', s.src);
-    s.onerror = () => { console.warn('Falló CDN, intentando siguiente...'); tryLoad(); };
-    document.head.appendChild(s);
-  }
-  tryLoad();
-})();
-</script>
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
@@ -734,13 +715,6 @@
         <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 10h6v4H9z"/></svg>
         Detener
       </button>
-      <button class="btn btn-ghost" onclick="switchCamera()" id="btn-switch">
-        🔄 Cambiar Cámara
-      </button>
-      <label class="btn btn-ghost" style="cursor:pointer;" title="Toma foto del QR o selecciona imagen">
-        📷 Foto QR
-        <input type="file" accept="image/*" capture="environment" onchange="escanearFotoQR(this)" style="display:none;">
-      </label>
     </div>
 
     <div class="manual-input">
@@ -753,23 +727,9 @@
 
     <div class="scanner-layout">
       <div>
-        <div id="qr-reader">
-          <div class="result-empty" id="cam-placeholder" style="height:100%;min-height:220px;">
-            <svg width="48" height="48" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 9V5a2 2 0 012-2h4M3 15v4a2 2 0 002 2h4m6-18h4a2 2 0 012 2v4m0 6v4a2 2 0 01-2 2h-4"/></svg>
-            Presiona "Iniciar Cámara" para escanear
-          </div>
-          <video id="qr-video" autoplay playsinline muted style="display:none;"></video>
-          <canvas id="qr-canvas"></canvas>
-          <div class="qr-frame-overlay" id="qr-frame-overlay" style="display:none;">
-            <div class="qr-frame">
-              <div class="corner tl"></div>
-              <div class="corner tr"></div>
-              <div class="corner bl"></div>
-              <div class="corner br"></div>
-            </div>
-          </div>
-        </div>
+        <div id="qr-reader" style="width:100%;border-radius:12px;overflow:hidden;"></div>
         <div class="scan-status" id="scan-status">Cámara inactiva</div>
+        <canvas id="qr-canvas" style="display:none;"></canvas>
       </div>
 
       <div class="result-box" id="result-box">
@@ -1640,12 +1600,10 @@ function showSection(id) {
 // QR SCANNER
 // ============================================================
 // ============================================================
-// SCANNER — Implementación nativa con jsQR (más estable)
+// SCANNER — html5-qrcode (librería robusta)
 // ============================================================
-let videoStream = null;
+let html5QrCode = null;
 let scannerRunning = false;
-let scanInterval = null;
-let usandoTrasera = true;
 let lastScanned = '';
 let lastScanTime = 0;
 let pendingStudent = null;
@@ -1653,58 +1611,44 @@ let pendingStudent = null;
 function setUIScanning(active) {
   document.getElementById('btn-start-scan').disabled = active;
   document.getElementById('btn-stop-scan').disabled = !active;
-  document.getElementById('qr-frame-overlay').style.display = active ? 'flex' : 'none';
-}
-
-function showPlaceholder(show) {
-  document.getElementById('cam-placeholder').style.display = show ? 'flex' : 'none';
-  document.getElementById('qr-video').style.display = show ? 'none' : 'block';
 }
 
 function startScanner() {
-  document.getElementById('scan-status').textContent = '⏳ Solicitando permiso de cámara...';
+  document.getElementById('scan-status').textContent = '⏳ Iniciando cámara...';
   document.getElementById('btn-start-scan').disabled = true;
-  showPlaceholder(false);
 
-  const facing = usandoTrasera ? 'environment' : 'user';
-  const constraints = {
-    video: {
-      facingMode: usandoTrasera ? { exact: 'environment' } : 'user',
-      width: { ideal: 1280 },
-      height: { ideal: 720 }
-    }
+  if(!html5QrCode) {
+    html5QrCode = new Html5Qrcode('qr-reader');
+  }
+
+  const config = {
+    fps: 15,
+    qrbox: { width: 250, height: 250 },
+    aspectRatio: 1.0,
+    experimentalFeatures: { useBarCodeDetectorIfSupported: true }
   };
 
-  const iniciarConStream = (stream) => {
-    videoStream = stream;
-    const video = document.getElementById('qr-video');
-    video.srcObject = stream;
-    video.play();
-    video.onloadedmetadata = () => {
-      scannerRunning = true;
-      setUIScanning(true);
-      showPlaceholder(false);
-      const label = usandoTrasera ? 'Cámara trasera' : 'Cámara frontal';
-      document.getElementById('scan-status').textContent = `🟢 ${label} activa — apunta al QR`;
-      document.getElementById('btn-switch').textContent = usandoTrasera ? '🤳 Cambiar a frontal' : '📷 Cambiar a trasera';
-      startScanLoop();
-    };
-  };
-
-  navigator.mediaDevices.getUserMedia(constraints)
-    .then(iniciarConStream)
-    .catch(() => {
-      // Fallback: sin exact, usar ideal
-      const fallback = { video: { facingMode: { ideal: facing }, width: { ideal: 1280 }, height: { ideal: 720 } } };
-      navigator.mediaDevices.getUserMedia(fallback)
-        .then(iniciarConStream)
-        .catch(err => {
-          document.getElementById('btn-start-scan').disabled = false;
-          showPlaceholder(true);
-          document.getElementById('scan-status').textContent = '⚠ Sin acceso a cámara';
-          toast('No se pudo acceder a la cámara: ' + err.message, 'error');
-        });
-    });
+  html5QrCode.start(
+    { facingMode: 'environment' },
+    config,
+    (decodedText) => {
+      const now = Date.now();
+      if(decodedText !== lastScanned || now - lastScanTime > 3000) {
+        lastScanned = decodedText;
+        lastScanTime = now;
+        onQRSuccess(decodedText);
+      }
+    },
+    () => {} // error silencioso por frame
+  ).then(() => {
+    scannerRunning = true;
+    setUIScanning(true);
+    document.getElementById('scan-status').textContent = '🟢 Cámara activa — apunta al QR';
+  }).catch(err => {
+    document.getElementById('btn-start-scan').disabled = false;
+    document.getElementById('scan-status').textContent = '⚠ Sin acceso a cámara';
+    toast('No se pudo acceder a la cámara: ' + err, 'error');
+  });
 }
 
 async function escanearFotoQR(input) {
@@ -1806,26 +1750,16 @@ function startScanLoop() {
 }
 
 function stopScanner() {
-  scannerRunning = false;
-  if(scanInterval) { clearInterval(scanInterval); scanInterval = null; }
-  if(videoStream) {
-    videoStream.getTracks().forEach(t => t.stop());
-    videoStream = null;
+  if(html5QrCode && scannerRunning) {
+    html5QrCode.stop().then(() => {
+      scannerRunning = false;
+      setUIScanning(false);
+      document.getElementById('scan-status').textContent = 'Cámara detenida — presiona Iniciar para escanear';
+    }).catch(() => {
+      scannerRunning = false;
+      setUIScanning(false);
+    });
   }
-  const video = document.getElementById('qr-video');
-  video.srcObject = null;
-  setUIScanning(false);
-  showPlaceholder(true);
-  document.getElementById('scan-status').textContent = 'Cámara detenida — presiona Iniciar para escanear';
-  document.getElementById('btn-switch').textContent = '🔄 Cambiar Cámara';
-}
-
-function switchCamera() {
-  if(!scannerRunning){ toast('Inicia la cámara primero','warning'); return; }
-  usandoTrasera = !usandoTrasera;
-  stopScanner();
-  setTimeout(() => startScanner(), 300);
-  toast(usandoTrasera ? '📷 Cámara trasera' : '🤳 Cámara frontal', 'info');
 }
 
 function onQRSuccess(text) {
