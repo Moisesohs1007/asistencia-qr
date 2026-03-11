@@ -660,6 +660,16 @@
   }
 
 
+
+  /* Ocultar UI por defecto de html5-qrcode */
+  #qr-reader__scan_region { border-radius: 12px; overflow: hidden; }
+  #qr-reader__dashboard { display: none !important; }
+  #qr-reader__header_message { display: none !important; }
+  #qr-reader img[alt="Info icon"] { display: none !important; }
+  #qr-reader__status_span { display: none !important; }
+  #qr-reader__camera_selection { display: none !important; }
+  #qr-reader__filescan_input { display: none !important; }
+  #qr-reader > div:last-child { display: none !important; }
   /* BOTTOM NAV - Mobile */
   .bottom-nav {
     display: none;
@@ -799,25 +809,8 @@
 
   <!-- ===== SCAN ===== -->
   <div class="section active" id="sec-scan">
-    <div class="stats-row">
-      <div class="stat-card blue">
-        <div class="stat-num" id="stat-total">0</div>
-        <div class="stat-label">Alumnos registrados</div>
-      </div>
-      <div class="stat-card green">
-        <div class="stat-num" id="stat-hoy">0</div>
-        <div class="stat-label">Ingresos hoy</div>
-      </div>
-      <div class="stat-card yellow">
-        <div class="stat-num" id="stat-tarde">0</div>
-        <div class="stat-label">Tardanzas hoy</div>
-      </div>
-      <div class="stat-card red">
-        <div class="stat-num" id="stat-ausentes">0</div>
-        <div class="stat-label">Ausentes hoy</div>
-      </div>
-    </div>
 
+    <!-- CÁMARA + CONTROLES -->
     <div class="scan-controls">
       <button class="btn btn-primary" id="btn-start-scan" onclick="startScanner()">
         <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9V5a2 2 0 012-2h4M3 15v4a2 2 0 002 2h4m6-18h4a2 2 0 012 2v4m0 6v4a2 2 0 01-2 2h-4"/></svg>
@@ -829,21 +822,22 @@
       </button>
     </div>
 
-    <div class="manual-input">
-      <div class="form-group">
-        <label>O ingresa ID manualmente</label>
-        <input type="text" id="manual-id" placeholder="Ej: 12345678" maxlength="8" oninput="this.value=this.value.replace(/\D/g,'')" onkeydown="if(event.key==='Enter') manualRegister()">
-      </div>
-      <button class="btn btn-ghost" onclick="manualRegister()">Registrar</button>
-    </div>
-
     <div class="scanner-layout">
+      <!-- COLUMNA IZQUIERDA: cámara -->
       <div>
         <div id="qr-reader" style="width:100%;border-radius:12px;overflow:hidden;"></div>
         <div class="scan-status" id="scan-status">Cámara inactiva</div>
         <canvas id="qr-canvas" style="display:none;"></canvas>
+        <div class="manual-input" style="margin-top:10px;">
+          <div class="form-group">
+            <label>O ingresa ID manualmente</label>
+            <input type="text" id="manual-id" placeholder="Ej: 12345678" maxlength="8" oninput="this.value=this.value.replace(/\D/g,'')" onkeydown="if(event.key==='Enter') manualRegister()">
+          </div>
+          <button class="btn btn-ghost" onclick="manualRegister()">Registrar</button>
+        </div>
       </div>
 
+      <!-- COLUMNA DERECHA: datos alumno -->
       <div class="result-box" id="result-box">
         <div class="result-empty" id="result-empty">
           <svg width="40" height="40" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
@@ -869,6 +863,26 @@
             <button class="btn btn-ghost"   onclick="confirmRegister('SALIDA')">🚪 Registrar Salida</button>
           </div>
         </div>
+      </div>
+    </div>
+
+    <!-- STATS ABAJO -->
+    <div class="stats-row" style="margin-top:16px;">
+      <div class="stat-card blue">
+        <div class="stat-num" id="stat-total">0</div>
+        <div class="stat-label">Alumnos registrados</div>
+      </div>
+      <div class="stat-card green">
+        <div class="stat-num" id="stat-hoy">0</div>
+        <div class="stat-label">Ingresos hoy</div>
+      </div>
+      <div class="stat-card yellow">
+        <div class="stat-num" id="stat-tarde">0</div>
+        <div class="stat-label">Tardanzas hoy</div>
+      </div>
+      <div class="stat-card red">
+        <div class="stat-num" id="stat-ausentes">0</div>
+        <div class="stat-label">Ausentes hoy</div>
       </div>
     </div>
   </div>
