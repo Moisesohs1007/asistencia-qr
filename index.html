@@ -116,9 +116,9 @@
   @media(max-width:700px){
     main { padding: 14px 12px 80px; }
     .stats-row { grid-template-columns: 1fr 1fr; gap: 8px; }
-    .stat-card { padding: 10px 12px; }
-    .stat-num { font-size: 1.3rem; }
-    .stat-label { font-size: 0.68rem; }
+    .stat-card { padding: 8px 10px; }
+    .stat-num { font-size: 1.1rem; }
+    .stat-label { font-size: 0.62rem; }
     .page-title { font-size: 1.2rem; }
     .page-sub { font-size: 0.78rem; }
     .card { padding: 12px 14px; }
@@ -258,8 +258,7 @@
     animation: pulse-border 2s ease-in-out infinite;
   }
   @media(max-width:700px){
-    #qr-reader { max-height: 220px; }
-    .qr-frame { width: 65%; }
+    #qr-reader { max-height: 180px; }
   }
 
   .scan-overlay {
@@ -1636,6 +1635,7 @@ function aplicarPermisos(rol) {
 }
 
 function showSectionDirect(id) {
+  currentSection = id;
   document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
   document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
   const sec = document.getElementById('sec-'+id);
@@ -1722,6 +1722,7 @@ let scannerRunning = false;
 let lastScanned = '';
 let lastScanTime = 0;
 let pendingStudent = null;
+let currentSection = "scan";
 
 function setUIScanning(active) {
   document.getElementById('btn-start-scan').disabled = active;
@@ -1736,10 +1737,12 @@ function startScanner() {
     html5QrCode = new Html5Qrcode('qr-reader');
   }
 
+  const isMobile = window.innerWidth <= 700;
+  const boxSize = isMobile ? 150 : 250;
   const config = {
     fps: 15,
-    qrbox: { width: 250, height: 250 },
-    aspectRatio: 1.0,
+    qrbox: { width: boxSize, height: boxSize },
+    aspectRatio: isMobile ? 1.0 : 1.33,
     experimentalFeatures: { useBarCodeDetectorIfSupported: true }
   };
 
@@ -3673,7 +3676,7 @@ async function generarPDFIncidente(inc) {
 function renderBottomNav() {
   const inner = document.getElementById('bottom-nav-inner');
   if(!inner) return;
-  const tabs = [
+  const allTabs = [
     { id: 'scan',       icon: '📷', label: 'Escanear'  },
     { id: 'alumnos',    icon: '👥', label: 'Alumnos'   },
     { id: 'registro',   icon: '📋', label: 'Registro'  },
@@ -3689,7 +3692,7 @@ function renderBottomNav() {
     portero:  ['scan'],
   };
   const allowed = permisos[currentRol] || ['scan'];
-  inner.innerHTML = tabs
+  inner.innerHTML = allTabs
     .filter(t => allowed.includes(t.id))
     .map(t => `
       <button class="bnav-btn ${currentSection===t.id?'active':''}" id="bnav-${t.id}" onclick="showSection('${t.id}')">
