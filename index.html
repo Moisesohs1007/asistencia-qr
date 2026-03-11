@@ -2147,7 +2147,7 @@ async function showQR(id) {
   document.getElementById('carnet-year').textContent = new Date().getFullYear();
 
   // QR automático con el DNI
-  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(a.id)}&bgcolor=ffffff&color=0a0e1a&margin=8&ecc=M`;
+  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(a.id)}&bgcolor=ffffff&color=000000&margin=10&ecc=H`;
   document.getElementById('carnet-qr').src = qrUrl;
 
   document.getElementById('modal-qr').classList.add('open');
