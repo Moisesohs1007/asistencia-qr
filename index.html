@@ -2069,6 +2069,24 @@ async function confirmRegister(tipo) {
     document.getElementById('result-empty').style.display = 'flex';
     document.getElementById('result-student').style.display = 'none';
     toast(`${tipo} registrado: ${alumno.nombres} — ${estado}`, tipo==='INGRESO' ? 'success' : 'info');
+
+    // Enviar WhatsApp al apoderado
+    if(alumno.telefono) {
+      const cfg2 = await getConfig();
+      const nomColegio = cfg2?.nombreColegio || 'Institución Educativa';
+      const horaActual = reg.hora;
+      const fechaActual = reg.fecha;
+      let msg = '';
+      if(tipo === 'INGRESO' && estado === 'A tiempo') {
+        msg = `✅ *INGRESO REGISTRADO*\n${nomColegio}\n\n👤 *Alumno:* ${alumno.nombres} ${alumno.apellidos}\n🏫 *Grado:* ${alumno.grado} ${alumno.seccion} — ${alumno.turno}\n🕐 *Hora:* ${horaActual}\n📅 *Fecha:* ${fechaActual}\n\n✔️ Su hijo/a ingresó *puntualmente* al colegio.`;
+      } else if(tipo === 'INGRESO' && estado === 'Tardanza') {
+        msg = `⚠️ *TARDANZA REGISTRADA*\n${nomColegio}\n\n👤 *Alumno:* ${alumno.nombres} ${alumno.apellidos}\n🏫 *Grado:* ${alumno.grado} ${alumno.seccion} — ${alumno.turno}\n🕐 *Hora:* ${horaActual}\n📅 *Fecha:* ${fechaActual}\n\n⏰ Su hijo/a ingresó *con tardanza* al colegio. Por favor tome las medidas necesarias.`;
+      } else if(tipo === 'SALIDA') {
+        msg = `🚪 *SALIDA REGISTRADA*\n${nomColegio}\n\n👤 *Alumno:* ${alumno.nombres} ${alumno.apellidos}\n🏫 *Grado:* ${alumno.grado} ${alumno.seccion} — ${alumno.turno}\n🕐 *Hora:* ${horaActual}\n📅 *Fecha:* ${fechaActual}\n\n🏠 Su hijo/a ha salido del colegio. Por favor recójalo a la brevedad.`;
+      }
+      if(msg) sendWhatsApp(alumno.telefono, msg);
+    }
+
   } catch(e) {
     toast('Error al guardar registro','error');
     console.error(e);
