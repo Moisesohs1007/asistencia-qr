@@ -450,6 +450,9 @@
     font-size: 0.88rem;
     transition: border-color 0.2s;
     outline: none;
+    -webkit-appearance: auto;
+    appearance: auto;
+    width: 100%;
   }
   .form-group input:focus, .form-group select:focus {
     border-color: var(--accent);
@@ -1208,50 +1211,13 @@
       </div>
       <div class="form-group">
         <label>Rol / Permisos</label>
-        <input type="hidden" id="u-rol" value="portero">
-        <div id="rol-cards" style="display:flex;flex-direction:column;gap:8px;margin-top:4px;">
-
-          <label onclick="selectRolCard(this,'portero')" class="rol-card rol-card-active" data-rol="portero" style="display:flex;align-items:center;gap:12px;padding:10px 14px;border:2px solid var(--accent);border-radius:10px;cursor:pointer;background:var(--surface2);transition:border-color .2s,background .2s;">
-            <span style="font-size:1.5rem;line-height:1;">🚪</span>
-            <div>
-              <div style="font-weight:700;font-size:0.88rem;color:var(--text);">Solo Escanear</div>
-              <div style="font-size:0.75rem;color:var(--muted);margin-top:1px;">Acceso únicamente al escáner QR de ingreso y salida</div>
-            </div>
-          </label>
-
-          <label onclick="selectRolCard(this,'profesor')" class="rol-card" data-rol="profesor" style="display:flex;align-items:center;gap:12px;padding:10px 14px;border:2px solid var(--border);border-radius:10px;cursor:pointer;background:var(--surface2);transition:border-color .2s,background .2s;">
-            <span style="font-size:1.5rem;line-height:1;">📋</span>
-            <div>
-              <div style="font-weight:700;font-size:0.88rem;color:var(--text);">Alumnos + Registro</div>
-              <div style="font-size:0.75rem;color:var(--muted);margin-top:1px;">Gestión de alumnos y registro de asistencia</div>
-            </div>
-          </label>
-
-          <label onclick="selectRolCard(this,'coordinador')" class="rol-card" data-rol="coordinador" style="display:flex;align-items:center;gap:12px;padding:10px 14px;border:2px solid var(--border);border-radius:10px;cursor:pointer;background:var(--surface2);transition:border-color .2s,background .2s;">
-            <span style="font-size:1.5rem;line-height:1;">📊</span>
-            <div>
-              <div style="font-weight:700;font-size:0.88rem;color:var(--text);">Alumnos + Registro + Reportes + Incidentes</div>
-              <div style="font-size:0.75rem;color:var(--muted);margin-top:1px;">Gestión académica completa con reportes e incidencias</div>
-            </div>
-          </label>
-
-          <label onclick="selectRolCard(this,'director')" class="rol-card" data-rol="director" style="display:flex;align-items:center;gap:12px;padding:10px 14px;border:2px solid var(--border);border-radius:10px;cursor:pointer;background:var(--surface2);transition:border-color .2s,background .2s;">
-            <span style="font-size:1.5rem;line-height:1;">🏫</span>
-            <div>
-              <div style="font-weight:700;font-size:0.88rem;color:var(--text);">Alumnos + Registro + Reportes + Incidentes + Usuarios</div>
-              <div style="font-size:0.75rem;color:var(--muted);margin-top:1px;">Gestión institucional con administración de usuarios</div>
-            </div>
-          </label>
-
-          <label onclick="selectRolCard(this,'admin')" class="rol-card" data-rol="admin" style="display:flex;align-items:center;gap:12px;padding:10px 14px;border:2px solid var(--border);border-radius:10px;cursor:pointer;background:var(--surface2);transition:border-color .2s,background .2s;">
-            <span style="font-size:1.5rem;line-height:1;">⚙️</span>
-            <div>
-              <div style="font-weight:700;font-size:0.88rem;color:var(--text);">Acceso Total</div>
-              <div style="font-size:0.75rem;color:var(--muted);margin-top:1px;">Control completo: todos los módulos y configuración del sistema</div>
-            </div>
-          </label>
-
-        </div>
+        <select id="u-rol" onchange="togglePrivilegios()" style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 14px;color:var(--text);font-family:var(--font-body);font-size:0.88rem;width:100%;display:block;-webkit-appearance:menulist;appearance:menulist;cursor:pointer;">
+          <option value="portero">🚪 Solo Escanear</option>
+          <option value="profesor">📋 Alumnos, Registro</option>
+          <option value="coordinador">📊 Alumnos, Registro, Reportes, Incidentes</option>
+          <option value="director">🏫 Alumnos, Registro, Reportes, Incidentes, Usuarios</option>
+          <option value="admin">⚙️ Acceso Total</option>
+        </select>
       </div>
       <div class="form-group">
         <label>Cargo</label>
@@ -3286,12 +3252,6 @@ async function openModalUsuario(uid, nombre, rol, email) {
     if(email)  document.getElementById('u-email').value  = email;
     if(rol) {
       document.getElementById('u-rol').value = rol;
-      // Sync card selection
-      document.querySelectorAll('.rol-card').forEach(c => {
-        const isMatch = c.dataset.rol === rol;
-        c.style.borderColor = isMatch ? 'var(--accent)' : 'var(--border)';
-        c.classList.toggle('rol-card-active', isMatch);
-      });
     }
     // Cargar cargo desde Firestore
     try {
@@ -3321,11 +3281,6 @@ async function openModalUsuario(uid, nombre, rol, email) {
     document.getElementById('u-email').style.opacity = '1';
     ['u-nombre','u-email'].forEach(x => document.getElementById(x).value = '');
     document.getElementById('u-rol').value = 'portero';
-    document.querySelectorAll('.rol-card').forEach(c => {
-      const isPortero = c.dataset.rol === 'portero';
-      c.style.borderColor = isPortero ? 'var(--accent)' : 'var(--border)';
-      c.classList.toggle('rol-card-active', isPortero);
-    });
     document.getElementById('u-cargo-select').value = '';
     document.getElementById('u-cargo-custom').value = '';
     document.getElementById('u-cargo-custom').style.display = 'none';
@@ -3452,20 +3407,6 @@ function toggleBtnConfigurar() {
   const checked = document.getElementById('u-restringir').checked;
   const btn = document.getElementById('btn-configurar-privilegios');
   if(btn) btn.disabled = !checked;
-}
-
-function selectRolCard(el, rol) {
-  // Remove active from all cards
-  document.querySelectorAll('.rol-card').forEach(c => {
-    c.style.borderColor = 'var(--border)';
-    c.classList.remove('rol-card-active');
-  });
-  // Activate selected
-  el.style.borderColor = 'var(--accent)';
-  el.classList.add('rol-card-active');
-  // Set hidden value
-  document.getElementById('u-rol').value = rol;
-  togglePrivilegios();
 }
 
 function togglePrivilegios() {
