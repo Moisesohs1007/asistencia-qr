@@ -1208,12 +1208,50 @@
       </div>
       <div class="form-group">
         <label>Rol / Permisos</label>
-        <select id="u-rol" onchange="togglePrivilegios()">
-          <option value="portero">🚪 Portero — Solo escanear QR</option>
-          <option value="profesor">👨‍🏫 Profesor — Escanear, Alumnos y Registro</option>
-          <option value="director">🏫 Director — Solo Reportes y Registro</option>
-          <option value="admin">⚙ Administrador — Acceso total</option>
-        </select>
+        <input type="hidden" id="u-rol" value="portero">
+        <div id="rol-cards" style="display:flex;flex-direction:column;gap:8px;margin-top:4px;">
+
+          <label onclick="selectRolCard(this,'portero')" class="rol-card rol-card-active" data-rol="portero" style="display:flex;align-items:center;gap:12px;padding:10px 14px;border:2px solid var(--accent);border-radius:10px;cursor:pointer;background:var(--surface2);transition:border-color .2s,background .2s;">
+            <span style="font-size:1.5rem;line-height:1;">🚪</span>
+            <div>
+              <div style="font-weight:700;font-size:0.88rem;color:var(--text);">Solo Escanear</div>
+              <div style="font-size:0.75rem;color:var(--muted);margin-top:1px;">Acceso únicamente al escáner QR de ingreso y salida</div>
+            </div>
+          </label>
+
+          <label onclick="selectRolCard(this,'profesor')" class="rol-card" data-rol="profesor" style="display:flex;align-items:center;gap:12px;padding:10px 14px;border:2px solid var(--border);border-radius:10px;cursor:pointer;background:var(--surface2);transition:border-color .2s,background .2s;">
+            <span style="font-size:1.5rem;line-height:1;">📋</span>
+            <div>
+              <div style="font-weight:700;font-size:0.88rem;color:var(--text);">Alumnos + Registro</div>
+              <div style="font-size:0.75rem;color:var(--muted);margin-top:1px;">Gestión de alumnos y registro de asistencia</div>
+            </div>
+          </label>
+
+          <label onclick="selectRolCard(this,'coordinador')" class="rol-card" data-rol="coordinador" style="display:flex;align-items:center;gap:12px;padding:10px 14px;border:2px solid var(--border);border-radius:10px;cursor:pointer;background:var(--surface2);transition:border-color .2s,background .2s;">
+            <span style="font-size:1.5rem;line-height:1;">📊</span>
+            <div>
+              <div style="font-weight:700;font-size:0.88rem;color:var(--text);">Alumnos + Registro + Reportes + Incidentes</div>
+              <div style="font-size:0.75rem;color:var(--muted);margin-top:1px;">Gestión académica completa con reportes e incidencias</div>
+            </div>
+          </label>
+
+          <label onclick="selectRolCard(this,'director')" class="rol-card" data-rol="director" style="display:flex;align-items:center;gap:12px;padding:10px 14px;border:2px solid var(--border);border-radius:10px;cursor:pointer;background:var(--surface2);transition:border-color .2s,background .2s;">
+            <span style="font-size:1.5rem;line-height:1;">🏫</span>
+            <div>
+              <div style="font-weight:700;font-size:0.88rem;color:var(--text);">Alumnos + Registro + Reportes + Incidentes + Usuarios</div>
+              <div style="font-size:0.75rem;color:var(--muted);margin-top:1px;">Gestión institucional con administración de usuarios</div>
+            </div>
+          </label>
+
+          <label onclick="selectRolCard(this,'admin')" class="rol-card" data-rol="admin" style="display:flex;align-items:center;gap:12px;padding:10px 14px;border:2px solid var(--border);border-radius:10px;cursor:pointer;background:var(--surface2);transition:border-color .2s,background .2s;">
+            <span style="font-size:1.5rem;line-height:1;">⚙️</span>
+            <div>
+              <div style="font-weight:700;font-size:0.88rem;color:var(--text);">Acceso Total</div>
+              <div style="font-size:0.75rem;color:var(--muted);margin-top:1px;">Control completo: todos los módulos y configuración del sistema</div>
+            </div>
+          </label>
+
+        </div>
       </div>
       <div class="form-group">
         <label>Cargo</label>
@@ -3246,7 +3284,15 @@ async function openModalUsuario(uid, nombre, rol, email) {
     document.getElementById('u-email').style.opacity = '0.6';
     if(nombre) document.getElementById('u-nombre').value = nombre;
     if(email)  document.getElementById('u-email').value  = email;
-    if(rol)    document.getElementById('u-rol').value    = rol;
+    if(rol) {
+      document.getElementById('u-rol').value = rol;
+      // Sync card selection
+      document.querySelectorAll('.rol-card').forEach(c => {
+        const isMatch = c.dataset.rol === rol;
+        c.style.borderColor = isMatch ? 'var(--accent)' : 'var(--border)';
+        c.classList.toggle('rol-card-active', isMatch);
+      });
+    }
     // Cargar cargo desde Firestore
     try {
       const uDoc = await db.collection('usuarios').doc(uid).get();
@@ -3274,7 +3320,12 @@ async function openModalUsuario(uid, nombre, rol, email) {
     document.getElementById('u-email').readOnly = false;
     document.getElementById('u-email').style.opacity = '1';
     ['u-nombre','u-email'].forEach(x => document.getElementById(x).value = '');
-    document.getElementById('u-rol').value = 'profesor';
+    document.getElementById('u-rol').value = 'portero';
+    document.querySelectorAll('.rol-card').forEach(c => {
+      const isPortero = c.dataset.rol === 'portero';
+      c.style.borderColor = isPortero ? 'var(--accent)' : 'var(--border)';
+      c.classList.toggle('rol-card-active', isPortero);
+    });
     document.getElementById('u-cargo-select').value = '';
     document.getElementById('u-cargo-custom').value = '';
     document.getElementById('u-cargo-custom').style.display = 'none';
@@ -3356,8 +3407,8 @@ async function renderUsuarios() {
   if(!tbody) return;
   try {
     const snap = await db.collection('usuarios').get();
-    const rolLabels = { admin:'⚙ Admin', director:'🏫 Director', profesor:'👨‍🏫 Profesor', portero:'🚪 Portero' };
-    const rolColors = { admin:'var(--accent)', director:'#a78bfa', profesor:'#34d399', portero:'#fb923c' };
+    const rolLabels = { admin:'⚙️ Admin', director:'🏫 Director', coordinador:'📊 Coordinador', profesor:'📋 Profesor', portero:'🚪 Portero' };
+    const rolColors = { admin:'var(--accent)', director:'#a78bfa', coordinador:'#60a5fa', profesor:'#34d399', portero:'#fb923c' };
     tbody.innerHTML = snap.docs.map(d => {
       const u = d.data();
       const esYo = d.id === currentUser.uid ? ' (tú)' : '';
@@ -3401,6 +3452,20 @@ function toggleBtnConfigurar() {
   const checked = document.getElementById('u-restringir').checked;
   const btn = document.getElementById('btn-configurar-privilegios');
   if(btn) btn.disabled = !checked;
+}
+
+function selectRolCard(el, rol) {
+  // Remove active from all cards
+  document.querySelectorAll('.rol-card').forEach(c => {
+    c.style.borderColor = 'var(--border)';
+    c.classList.remove('rol-card-active');
+  });
+  // Activate selected
+  el.style.borderColor = 'var(--accent)';
+  el.classList.add('rol-card-active');
+  // Set hidden value
+  document.getElementById('u-rol').value = rol;
+  togglePrivilegios();
 }
 
 function togglePrivilegios() {
