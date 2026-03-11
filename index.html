@@ -116,12 +116,14 @@
   @media(max-width:700px){
     main { padding: 14px 12px 80px; }
     .stats-row { grid-template-columns: 1fr 1fr; gap: 8px; }
-    .stat-card { padding: 12px; }
-    .stat-num { font-size: 1.6rem; }
-    .stat-label { font-size: 0.7rem; }
+    .stat-card { padding: 10px 12px; }
+    .stat-num { font-size: 1.3rem; }
+    .stat-label { font-size: 0.68rem; }
     .page-title { font-size: 1.2rem; }
     .page-sub { font-size: 0.78rem; }
-    .card { padding: 14px 16px; }
+    .card { padding: 12px 14px; }
+    .table-wrap { font-size: 0.78rem; }
+    th, td { padding: 8px 10px; }
   }
 
   /* SECTIONS */
@@ -661,10 +663,28 @@
   }
 
   @media(max-width:700px){
-    .header-inner { padding: 10px 14px; gap: 8px; }
+    header {
+      height: auto;
+      flex-wrap: wrap;
+      padding: 8px 14px 0;
+      gap: 6px;
+    }
+    header nav.nav-tabs {
+      width: 100%;
+      border-radius: 0;
+      border: none;
+      border-top: 1px solid var(--border);
+      background: transparent;
+      padding: 4px 0 2px;
+      margin: 0 -14px;
+      padding-left: 14px;
+      padding-right: 14px;
+      width: calc(100% + 28px);
+    }
     .logo { font-size: 1.1rem; }
-    #user-name-display { display: none; }
+    #user-name-display { display: none !important; }
     #btn-logout { font-size: 0.75rem; padding: 5px 10px; }
+    main { padding-top: 10px; }
   }
   @media(max-width:640px){
     header { padding: 0 14px; }
