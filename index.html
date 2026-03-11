@@ -1633,13 +1633,12 @@ function startScanner() {
     config,
     (decodedText) => {
       const now = Date.now();
-      if(decodedText !== lastScanned || now - lastScanTime > 3000) {
-        lastScanned = decodedText;
-        lastScanTime = now;
-        onQRSuccess(decodedText);
-      }
+      if(decodedText === lastScanned && now - lastScanTime < 3000) return;
+      lastScanned = decodedText;
+      lastScanTime = now;
+      processQR(decodedText.trim());
     },
-    () => {} // error silencioso por frame
+    () => {}
   ).then(() => {
     scannerRunning = true;
     setUIScanning(true);
@@ -1763,9 +1762,6 @@ function stopScanner() {
 }
 
 function onQRSuccess(text) {
-  const now = Date.now();
-  if(text === lastScanned && now - lastScanTime < 3000) return;
-  lastScanned = text; lastScanTime = now;
   processQR(text.trim());
 }
 
