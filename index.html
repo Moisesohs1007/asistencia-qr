@@ -961,9 +961,10 @@
     <!-- Contador + acciones -->
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
       <span id="alumnos-count" style="color:var(--muted);font-size:0.85rem;"></span>
-      <div style="display:flex;gap:8px;">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
         <button class="btn btn-primary" onclick="openModalAlumno()">+ Nuevo Alumno</button>
         <button class="btn btn-ghost" onclick="importCSV()">📥 Importar CSV</button>
+        <button class="btn btn-ghost" onclick="imprimirCarnetsMasivo()" id="btn-imprimir-carnets" style="background:var(--navy,#1a2b5e);color:#fff;border-color:#1a2b5e;">🖨 Imprimir Carnets</button>
       </div>
     </div>
 
@@ -972,6 +973,7 @@
         <table>
           <thead>
             <tr>
+              <th><input type="checkbox" id="chk-all" onclick="toggleSelectAll(this)" title="Seleccionar todos"></th>
               <th>ID</th>
               <th>Nombre completo</th>
               <th>Grado</th>
@@ -1535,6 +1537,7 @@
 // ============================================================
 // FIREBASE CONFIG
 // ============================================================
+const LOGO_B64 = 'data:image/png;base64,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';
 const firebaseConfig = {
   apiKey: "AIzaSyBLI0I41vWjMK2q1ZjH1c1BK4SAFno7sfY",
   authDomain: "asistencia-qr-a3346.firebaseapp.com",
@@ -2217,6 +2220,7 @@ async function renderAlumnos() {
     alumnos = aplicarFiltroProfesor(alumnos);
     tbody.innerHTML = alumnos.map(a => {
       return `<tr>
+        <td><input type="checkbox" class="chk-alumno" value="${a.id}" onchange="updateSeleccionados()"></td>
         <td class="td-id">${a.id}</td>
         <td class="td-name">${a.nombres} ${a.apellidos}</td>
         <td>${a.grado}</td>
@@ -2592,6 +2596,240 @@ function handleCSV(e) {
   };
   reader.readAsText(file, 'UTF-8');
   e.target.value = '';
+}
+
+
+// ============================================================
+// IMPRESIÓN MASIVA DE CARNETS
+// ============================================================
+function toggleSelectAll(chk) {
+  document.querySelectorAll('.chk-alumno').forEach(c => c.checked = chk.checked);
+  updateSeleccionados();
+}
+
+function updateSeleccionados() {
+  const total = document.querySelectorAll('.chk-alumno').length;
+  const sel = document.querySelectorAll('.chk-alumno:checked').length;
+  const btn = document.getElementById('btn-imprimir-carnets');
+  btn.textContent = sel > 0 ? `🖨 Imprimir Carnets (${sel})` : '🖨 Imprimir Carnets';
+  const chkAll = document.getElementById('chk-all');
+  if(chkAll) chkAll.indeterminate = sel > 0 && sel < total;
+  if(chkAll) chkAll.checked = sel === total && total > 0;
+}
+
+async function imprimirCarnetsMasivo() {
+  // Obtener IDs seleccionados
+  const selIds = [...document.querySelectorAll('.chk-alumno:checked')].map(c => c.value);
+  if(!selIds.length) { toast('Selecciona al menos un alumno', 'warning'); return; }
+
+  toast('Generando PDF... espera', 'info');
+
+  // Cargar config del colegio
+  const cfg = await DB.getConfig();
+  const nombreColegio = cfg?.nombreColegio || 'Institución Educativa';
+  const anio = cfg?.anio || new Date().getFullYear();
+
+  // Cargar alumnos seleccionados
+  const todosAlumnos = await DB.getAlumnos();
+  const alumnos = todosAlumnos.filter(a => selIds.includes(a.id));
+
+  // Generar QR para cada alumno (cargar imágenes)
+  const qrPromises = alumnos.map(a =>
+    new Promise(resolve => {
+      const img = new Image();
+      img.crossOrigin = 'Anonymous';
+      img.onload = () => resolve({ alumno: a, qrImg: img });
+      img.onerror = () => resolve({ alumno: a, qrImg: null });
+      img.src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(a.id)}&bgcolor=ffffff&color=000000&margin=5&ecc=H`;
+    })
+  );
+
+  // Cargar logo
+  const logoPromise = new Promise(resolve => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => resolve(null);
+    img.src = LOGO_B64;
+  });
+
+  const [qrResults, logoImg] = await Promise.all([Promise.all(qrPromises), logoPromise]);
+
+  // Generar PDF con jsPDF
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+
+  const PAGE_W = 210, PAGE_H = 297;
+  const COLS = 2, ROWS = 5;
+  const W = 85.6, H = 54;
+  const MX = (PAGE_W - COLS * W) / (COLS + 1);
+  const MY = (PAGE_H - ROWS * H) / (ROWS + 1);
+
+  // Colores
+  const NAVY_DARK = [13, 26, 58];
+  const NAVY      = [26, 43, 94];
+  const GOLD      = [201, 168, 76];
+  const LIGHT_BG  = [240, 244, 255];
+  const MUTED_C   = [107, 122, 153];
+  const TEXT_DARK = [13, 26, 58];
+
+  function roundRect(doc, x, y, w, h, r) {
+    doc.roundedRect(x, y, w, h, r, r, 'F');
+  }
+
+  function drawCarnet(doc, x, y, alumno, qrImg, pageLogoImg) {
+    const HEADER_H = 17;
+    const FOOTER_H = 7;
+    const LOGO_S = 14;
+
+    // Fondo blanco
+    doc.setFillColor(255,255,255);
+    doc.roundedRect(x, y, W, H, 2.5, 2.5, 'F');
+
+    // Header azul marino
+    doc.setFillColor(...NAVY_DARK);
+    doc.roundedRect(x, y, W, HEADER_H, 2.5, 2.5, 'F');
+    doc.rect(x, y + HEADER_H/2, W, HEADER_H/2, 'F');
+
+    // Línea dorada
+    doc.setFillColor(...GOLD);
+    doc.rect(x, y + HEADER_H, W, 0.8, 'F');
+
+    // Logo blanco en header
+    if(pageLogoImg) {
+      try { doc.addImage(pageLogoImg, 'PNG', x+2, y+1.5, LOGO_S, LOGO_S); } catch(e) {}
+    }
+
+    // Nombre colegio centrado
+    const txtStartX = x + LOGO_S + 4;
+    const txtCenterX = txtStartX + (W - LOGO_S - 6) / 2;
+    const headerMidY = y + HEADER_H / 2;
+
+    doc.setTextColor(255,255,255);
+    doc.setFontSize(10);
+    doc.setFont('helvetica','bold');
+    doc.text(nombreColegio, txtCenterX, headerMidY + 1.5, { align: 'center' });
+
+    doc.setFontSize(5);
+    doc.setFont('helvetica','normal');
+    doc.setTextColor(176, 196, 232);
+    doc.text('Cong. Padres Oblatos de San José de Asti', txtCenterX, headerMidY + 5.5, { align: 'center' });
+
+    // Footer
+    doc.setFillColor(...NAVY);
+    doc.roundedRect(x, y+H-FOOTER_H, W, FOOTER_H, 2.5, 2.5, 'F');
+    doc.rect(x, y+H-FOOTER_H, W, FOOTER_H/2, 'F');
+    doc.setTextColor(255,255,255);
+    doc.setFontSize(5.5);
+    doc.setFont('helvetica','bold');
+    doc.text(`${alumno.grado} Sección ${alumno.seccion}  ·  ${alumno.turno}`, x + W/2, y+H-2, { align: 'center' });
+
+    // Zona contenido
+    const contTop = y + HEADER_H + 0.8 + 1;
+    const contH = H - HEADER_H - 0.8 - FOOTER_H - 1;
+    const contMidY = contTop + contH/2;
+
+    // Foto círculo
+    const fotoR = 7.5;
+    const fotoCX = x + 4.5 + fotoR;
+    const fotoCY = contMidY;
+    doc.setFillColor(...LIGHT_BG);
+    doc.circle(fotoCX, fotoCY, fotoR, 'F');
+    doc.setDrawColor(...NAVY);
+    doc.setLineWidth(0.8);
+    doc.circle(fotoCX, fotoCY, fotoR, 'S');
+
+    if(alumno.foto) {
+      try {
+        doc.addImage(alumno.foto, fotoCX - fotoR, fotoCY - fotoR, fotoR*2, fotoR*2);
+      } catch(e) {
+        doc.setTextColor(...NAVY);
+        doc.setFontSize(9); doc.setFont('helvetica','bold');
+        doc.text((alumno.nombres[0]||'?')+(alumno.apellidos[0]||'?'), fotoCX, fotoCY+2, {align:'center'});
+      }
+    } else {
+      doc.setTextColor(...NAVY);
+      doc.setFontSize(9); doc.setFont('helvetica','bold');
+      doc.text((alumno.nombres[0]||'?')+(alumno.apellidos[0]||'?'), fotoCX, fotoCY+2, {align:'center'});
+    }
+
+    // Línea separadora
+    const sepX = x + 4.5 + fotoR*2 + 3;
+    doc.setDrawColor(221,228,240);
+    doc.setLineWidth(0.4);
+    doc.line(sepX, contTop+1, sepX, contTop+contH-1);
+
+    // Datos
+    const dx = sepX + 3;
+    doc.setTextColor(...TEXT_DARK);
+    doc.setFontSize(7); doc.setFont('helvetica','bold');
+    doc.text(alumno.nombres, dx, contTop + contH - 13);
+    doc.text(alumno.apellidos, dx, contTop + contH - 8);
+
+    // Línea dorada decorativa
+    doc.setDrawColor(...GOLD);
+    doc.setLineWidth(0.6);
+    doc.line(dx, contTop+contH-6.5, dx+22, contTop+contH-6.5);
+
+    // DNI
+    doc.setTextColor(...MUTED_C);
+    doc.setFontSize(4); doc.setFont('helvetica','normal');
+    doc.text('DNI:', dx, contTop+contH-4.5);
+    doc.setTextColor(...TEXT_DARK);
+    doc.setFontSize(6.5); doc.setFont('helvetica','bold');
+    doc.text(alumno.id, dx, contTop+contH-1.5);
+
+    // QR
+    const QR_S = 13;
+    const qrX = x + W - QR_S - 2;
+    const qrY = contTop + (contH - QR_S)/2;
+    doc.setFillColor(255,255,255);
+    doc.roundedRect(qrX-1, qrY-1, QR_S+2, QR_S+2, 1, 1, 'F');
+    if(qrImg) {
+      try { doc.addImage(qrImg, 'PNG', qrX, qrY, QR_S, QR_S); } catch(e) {}
+    }
+
+    // Año bajo QR
+    doc.setTextColor(...NAVY);
+    doc.setFontSize(5.5); doc.setFont('helvetica','bold');
+    doc.text(String(anio), qrX + QR_S/2, qrY + QR_S + 2.5, { align: 'center' });
+
+    // Borde general
+    doc.setDrawColor(200, 212, 234);
+    doc.setLineWidth(0.5);
+    doc.roundedRect(x, y, W, H, 2.5, 2.5, 'S');
+  }
+
+  // Dibujar carnets paginados
+  let idx = 0;
+  for(const { alumno, qrImg } of qrResults) {
+    if(idx > 0 && idx % (COLS * ROWS) === 0) doc.addPage();
+    const pos = idx % (COLS * ROWS);
+    const col = pos % COLS;
+    const row = Math.floor(pos / COLS);
+    const x = MX + col * (W + MX);
+    const y = MY + row * (H + MY);
+    drawCarnet(doc, x, y, alumno, qrImg, logoImg);
+
+    // Líneas de corte
+    if(pos === 0) {
+      doc.setDrawColor(180,180,180);
+      doc.setLineWidth(0.2);
+      doc.setLineDashPattern([1.5,2], 0);
+      for(let c=0;c<=COLS;c++) {
+        const lx = c===0 ? MX/2 : c===COLS ? PAGE_W-MX/2 : MX+c*(W+MX)-MX/2;
+        doc.line(lx, 2, lx, PAGE_H-2);
+      }
+      for(let r=0;r<=ROWS;r++) {
+        const ly = r===0 ? MY/2 : r===ROWS ? PAGE_H-MY/2 : MY+r*(H+MY)-MY/2;
+        doc.line(2, ly, PAGE_W-2, ly);
+      }
+      doc.setLineDashPattern([], 0);
+    }
+    idx++;
+  }
+
+  doc.save(`carnets_${new Date().toISOString().slice(0,10)}.pdf`);
+  toast(`PDF generado con ${alumnos.length} carnet${alumnos.length!==1?'s':''}`, 'success');
 }
 
 // ============================================================
