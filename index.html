@@ -2800,10 +2800,10 @@ async function imprimirCarnetsMasivo() {
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
 
   const PAGE_W = 210, PAGE_H = 297;
-  const COLS = 2, ROWS = 4;
-  const MX = 8, MY = 6;
-  const W = (PAGE_W - MX * (COLS + 1)) / COLS;   // ~93mm
-  const H = (PAGE_H - MY * (ROWS + 1)) / ROWS;   // ~66.8mm
+  const COLS = 3, ROWS = 3;
+  const W = 56, H = 86;
+  const MX = (PAGE_W - COLS * W) / (COLS + 1);   // ~10.5mm
+  const MY = (PAGE_H - ROWS * H) / (ROWS + 1);   // ~9.8mm
 
   // Colores
   const NAVY_DARK = [13, 26, 58];
@@ -2818,126 +2818,148 @@ async function imprimirCarnetsMasivo() {
   }
 
   function drawCarnet(doc, x, y, alumno, qrImg, pageLogoImg) {
-    const HEADER_H = 22;
-    const FOOTER_H = 9;
-    const LOGO_S   = 18;
+    const HEADER_H = 12;
+    const FOOTER_H = 7;
+    const BORDER   = 0.6;
 
-    // Fondo blanco
-    doc.setFillColor(255,255,255);
-    doc.roundedRect(x, y, W, H, 3, 3, 'F');
-
-    // Header azul marino
-    doc.setFillColor(...NAVY_DARK);
-    doc.roundedRect(x, y, W, HEADER_H, 3, 3, 'F');
-    doc.rect(x, y + HEADER_H/2, W, HEADER_H/2, 'F');
-
-    // Línea dorada
+    // Borde dorado exterior grueso
     doc.setFillColor(...GOLD);
-    doc.rect(x, y + HEADER_H, W, 1, 'F');
+    doc.roundedRect(x, y, W, H, 2.5, 2.5, 'F');
 
-    // Logo blanco en header
+    // Fondo header azul marino
+    doc.setFillColor(...NAVY_DARK);
+    doc.roundedRect(x+BORDER, y+BORDER, W-BORDER*2, HEADER_H-BORDER, 2, 2, 'F');
+    doc.rect(x+BORDER, y+BORDER+2, W-BORDER*2, HEADER_H-BORDER-2, 'F');
+
+    // Línea dorada bajo header
+    doc.setFillColor(...GOLD);
+    doc.rect(x+BORDER, y+HEADER_H, W-BORDER*2, 0.7, 'F');
+
+    // Logo izquierda en header
+    const LOGO_S = 10;
     if(pageLogoImg) {
-      try { doc.addImage(pageLogoImg, 'PNG', x+3, y+2, LOGO_S, LOGO_S); } catch(e) {}
+      try { doc.addImage(pageLogoImg, 'PNG', x+BORDER+1.5, y+BORDER+1, LOGO_S, LOGO_S); } catch(e) {}
     }
 
-    // Nombre colegio
-    const txtStartX = x + LOGO_S + 6;
-    const txtCenterX = txtStartX + (W - LOGO_S - 8) / 2;
-    const headerMidY = y + HEADER_H / 2;
-
-    doc.setTextColor(255,255,255);
-    doc.setFontSize(11.5);
-    doc.setFont('helvetica','bold');
-    doc.text(nombreColegio, txtCenterX, headerMidY + 1.5, { align: 'center' });
-
-    doc.setFontSize(6);
-    doc.setFont('helvetica','normal');
+    // Textos header
+    const hcx = x + BORDER + LOGO_S + 2 + (W - BORDER - LOGO_S - 3) / 2;
     doc.setTextColor(176, 196, 232);
-    doc.text('Cong. Padres Oblatos de San José de Asti', txtCenterX, headerMidY + 6.5, { align: 'center' });
-
-    // Footer
-    doc.setFillColor(...NAVY);
-    doc.roundedRect(x, y+H-FOOTER_H, W, FOOTER_H, 3, 3, 'F');
-    doc.rect(x, y+H-FOOTER_H, W, FOOTER_H/2, 'F');
+    doc.setFontSize(4.5); doc.setFont('helvetica','normal');
+    doc.text('INSTITUCIÓN EDUCATIVA PRIVADA', hcx, y+BORDER+3.5, {align:'center'});
     doc.setTextColor(255,255,255);
-    doc.setFontSize(7);
-    doc.setFont('helvetica','bold');
-    doc.text(`${alumno.grado}  Sección ${alumno.seccion}  ·  ${alumno.turno}`, x + W/2, y+H-2.5, { align: 'center' });
+    doc.setFontSize(7); doc.setFont('helvetica','bold');
+    doc.text(nombreColegio, hcx, y+BORDER+7, {align:'center', maxWidth: W - BORDER - LOGO_S - 5});
+    doc.setTextColor(176, 196, 232);
+    doc.setFontSize(3.5); doc.setFont('helvetica','normal');
+    doc.text('Cong. Padres Oblatos de San José de Asti', hcx, y+BORDER+10, {align:'center'});
 
-    // Zona contenido
-    const contTop  = y + HEADER_H + 1 + 1.5;
-    const contH    = H - HEADER_H - 1 - FOOTER_H - 1.5;
-    const contMidY = contTop + contH/2;
-
-    // QR — ocupa zona derecha completa
-    const QR_S = contH - 4;
-    const qrX  = x + W - QR_S - 4;
-    const qrY  = contTop + (contH - QR_S)/2;
+    // Fondo blanco body
     doc.setFillColor(255,255,255);
-    doc.roundedRect(qrX-2, qrY-2, QR_S+4, QR_S+4, 2, 2, 'F');
-    if(qrImg) {
-      try { doc.addImage(qrImg, 'PNG', qrX, qrY, QR_S, QR_S); } catch(e) {}
-    }
-    // Año bajo QR
-    doc.setTextColor(...NAVY);
-    doc.setFontSize(6); doc.setFont('helvetica','bold');
-    doc.text(String(anio), qrX + QR_S/2, qrY + QR_S + 3.5, { align: 'center' });
+    const bodyTop = y + HEADER_H + 0.7;
+    const bodyH   = H - HEADER_H - 0.7 - FOOTER_H - BORDER;
+    doc.rect(x+BORDER, bodyTop, W-BORDER*2, bodyH, 'F');
 
-    // Foto círculo — zona izquierda
-    const fotoR  = 10;
-    const fotoCX = x + 5 + fotoR;
-    const fotoCY = contMidY - 2;
-    doc.setFillColor(...LIGHT_BG);
-    doc.circle(fotoCX, fotoCY, fotoR, 'F');
-    doc.setDrawColor(...NAVY);
-    doc.setLineWidth(1);
-    doc.circle(fotoCX, fotoCY, fotoR, 'S');
+    // Marca de agua
+    if(pageLogoImg) {
+      doc.saveGraphicsState();
+      doc.setGState(new doc.GState({opacity: 0.06}));
+      try {
+        const wSize = (W - BORDER*2) * 0.55;
+        const wX = x + BORDER + (W-BORDER*2-wSize)/2;
+        const wY = bodyTop + (bodyH-wSize)/2;
+        doc.addImage(pageLogoImg, 'PNG', wX, wY, wSize, wSize);
+      } catch(e) {}
+      doc.restoreGraphicsState();
+    }
+
+    const contCX  = x + W/2;
+    const contTop = bodyTop + 2;
+
+    // Foto circular con anillo dorado
+    const fotoR = 9.5;
+    const fotoCY = contTop + fotoR + 0.5;
+    doc.setFillColor(...GOLD);
+    doc.circle(contCX, fotoCY, fotoR + 1, 'F');
+    doc.setFillColor(30, 50, 100);
+    doc.circle(contCX, fotoCY, fotoR, 'F');
 
     if(alumno.foto) {
-      try { doc.addImage(alumno.foto, fotoCX - fotoR, fotoCY - fotoR, fotoR*2, fotoR*2); }
+      try { doc.addImage(alumno.foto, contCX-fotoR, fotoCY-fotoR, fotoR*2, fotoR*2); }
       catch(e) {
-        doc.setTextColor(...NAVY); doc.setFontSize(11); doc.setFont('helvetica','bold');
-        doc.text((alumno.nombres[0]||'?')+(alumno.apellidos[0]||'?'), fotoCX, fotoCY+3, {align:'center'});
+        doc.setTextColor(255,255,255); doc.setFontSize(11); doc.setFont('helvetica','bold');
+        doc.text((alumno.nombres[0]||'?')+(alumno.apellidos[0]||'?'), contCX, fotoCY+3, {align:'center'});
       }
     } else {
-      doc.setTextColor(...NAVY); doc.setFontSize(11); doc.setFont('helvetica','bold');
-      doc.text((alumno.nombres[0]||'?')+(alumno.apellidos[0]||'?'), fotoCX, fotoCY+3, {align:'center'});
+      doc.setTextColor(255,255,255); doc.setFontSize(11); doc.setFont('helvetica','bold');
+      doc.text((alumno.nombres[0]||'?')+(alumno.apellidos[0]||'?'), contCX, fotoCY+3, {align:'center'});
     }
 
-    // Línea separadora vertical
-    const sepX = x + 5 + fotoR*2 + 3;
-    doc.setDrawColor(221,228,240);
-    doc.setLineWidth(0.4);
-    doc.line(sepX, contTop+2, sepX, contTop+contH-2);
+    // Nombre alumno
+    const afterFoto = fotoCY + fotoR + 2;
+    const words = (alumno.nombres + ' ' + alumno.apellidos).split(' ');
+    const mid = Math.ceil(words.length/2);
+    const l1 = words.slice(0,mid).join(' ');
+    const l2 = words.slice(mid).join(' ');
+    doc.setTextColor(...NAVY_DARK);
+    doc.setFontSize(6.5); doc.setFont('helvetica','bold');
+    doc.text(l1, contCX, afterFoto + 1, {align:'center'});
+    if(l2) doc.text(l2, contCX, afterFoto + 5, {align:'center'});
 
-    // Datos — zona central
-    const dx   = sepX + 4;
-    const maxW = qrX - dx - 3;
-    doc.setTextColor(...TEXT_DARK);
-    doc.setFontSize(8.5); doc.setFont('helvetica','bold');
-    // Truncar nombres si son muy largos
-    const nom = alumno.nombres.length > 14 ? alumno.nombres.substring(0,13)+'.' : alumno.nombres;
-    const ape = alumno.apellidos.length > 14 ? alumno.apellidos.substring(0,13)+'.' : alumno.apellidos;
-    doc.text(nom, dx, contTop + contH - 16);
-    doc.text(ape, dx, contTop + contH - 10);
-
-    // Línea dorada decorativa
+    // Línea dorada
+    const lineY = afterFoto + (l2 ? 7 : 4);
     doc.setDrawColor(...GOLD);
-    doc.setLineWidth(0.8);
-    doc.line(dx, contTop+contH-8, dx+26, contTop+contH-8);
-
-    // DNI
-    doc.setTextColor(...MUTED_C);
-    doc.setFontSize(5); doc.setFont('helvetica','normal');
-    doc.text('DNI / CÓDIGO:', dx, contTop+contH-5.5);
-    doc.setTextColor(...TEXT_DARK);
-    doc.setFontSize(8); doc.setFont('helvetica','bold');
-    doc.text(alumno.id, dx, contTop+contH-1.5);
-
-    // Borde general
-    doc.setDrawColor(200, 212, 234);
     doc.setLineWidth(0.5);
-    doc.roundedRect(x, y, W, H, 3, 3, 'S');
+    doc.line(x+BORDER+5, lineY, x+W-BORDER-5, lineY);
+
+    // DNI / NIVEL / AÑO
+    const dataY = lineY + 4;
+    const col1 = x + W*0.2, col2 = x + W*0.5, col3 = x + W*0.8;
+    doc.setFontSize(3.5); doc.setFont('helvetica','bold');
+    doc.setTextColor(...GOLD);
+    doc.text('DNI',   col1, dataY-2, {align:'center'});
+    doc.text('NIVEL', col2, dataY-2, {align:'center'});
+    doc.text('AÑO',   col3, dataY-2, {align:'center'});
+    doc.setTextColor(...NAVY_DARK);
+    doc.setFontSize(5); doc.setFont('helvetica','bold');
+    doc.text(alumno.id,      col1, dataY+1.5, {align:'center'});
+    doc.text(alumno.turno,   col2, dataY+1.5, {align:'center'});
+    doc.text(String(anio),   col3, dataY+1.5, {align:'center'});
+
+    // QR — ocupa el resto del body
+    const qrTop  = dataY + 3;
+    const qrBot  = bodyTop + bodyH - 4;
+    const QR_S   = Math.min(qrBot - qrTop, W - BORDER*2 - 8);
+    const qrX    = x + (W - QR_S) / 2;
+
+    doc.setFillColor(255,255,255);
+    doc.setDrawColor(200,200,200);
+    doc.setLineWidth(0.4);
+    doc.roundedRect(qrX-1, qrTop-1, QR_S+2, QR_S+2, 1, 1, 'FD');
+    if(qrImg) {
+      try { doc.addImage(qrImg, 'PNG', qrX, qrTop, QR_S, QR_S); } catch(e) {}
+    }
+
+    // Texto bajo QR
+    doc.setTextColor(150,150,150);
+    doc.setFontSize(3); doc.setFont('helvetica','normal');
+    doc.text('ESCANEA PARA REGISTRAR ASISTENCIA', contCX, qrTop+QR_S+2.5, {align:'center'});
+
+    // Footer azul
+    const footerY = y + H - FOOTER_H - BORDER;
+    doc.setFillColor(...NAVY_DARK);
+    doc.rect(x+BORDER, footerY, W-BORDER*2, FOOTER_H, 'F');
+    doc.roundedRect(x+BORDER, footerY, W-BORDER*2, FOOTER_H, 0, 2, 'F');
+
+    // Línea dorada sobre footer
+    doc.setFillColor(...GOLD);
+    doc.rect(x+BORDER, footerY, W-BORDER*2, 0.7, 'F');
+
+    doc.setTextColor(...GOLD);
+    doc.setFontSize(5.8); doc.setFont('helvetica','bold');
+    doc.text(`${alumno.grado}  ·  Sección ${alumno.seccion}`, contCX, footerY+3.5, {align:'center'});
+    doc.setTextColor(176,196,232);
+    doc.setFontSize(5); doc.setFont('helvetica','normal');
+    doc.text(alumno.turno, contCX, footerY+6, {align:'center'});
   }
 
   // Dibujar carnets paginados
