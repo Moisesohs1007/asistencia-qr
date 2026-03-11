@@ -1636,7 +1636,6 @@ function startScanner() {
       if(decodedText === lastScanned && now - lastScanTime < 3000) return;
       lastScanned = decodedText;
       lastScanTime = now;
-      toast('QR: ' + decodedText, 'info');
       processQR(decodedText.trim());
     },
     () => {}
