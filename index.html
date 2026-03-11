@@ -718,6 +718,10 @@
       <button class="btn btn-ghost" onclick="switchCamera()" id="btn-switch">
         🔄 Cambiar Cámara
       </button>
+      <label class="btn btn-ghost" style="cursor:pointer;" title="Toma foto del QR o selecciona imagen">
+        📷 Foto QR
+        <input type="file" accept="image/*" capture="environment" onchange="escanearFotoQR(this)" style="display:none;">
+      </label>
     </div>
 
     <div class="manual-input">
@@ -1682,6 +1686,33 @@ function startScanner() {
           toast('No se pudo acceder a la cámara: ' + err.message, 'error');
         });
     });
+}
+
+function escanearFotoQR(input) {
+  const file = input.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0);
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const code = jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: 'attemptBoth' });
+      if(code && code.data) {
+        toast('QR detectado ✅', 'success');
+        onQRSuccess(code.data);
+      } else {
+        toast('No se detectó QR en la imagen. Intenta con mejor luz o más cerca.', 'error');
+      }
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+  input.value = '';
 }
 
 function startScanLoop() {
