@@ -2639,7 +2639,7 @@ async function imprimirCarnetsMasivo() {
   }
 
   // Cargar config del colegio
-  const cfg = await DB.getConfig();
+  const cfg = await getConfig();
   const nombreColegio = cfg?.nombreColegio || 'Institución Educativa';
   const anio = cfg?.anio || new Date().getFullYear();
 
