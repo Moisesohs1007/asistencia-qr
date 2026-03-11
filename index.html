@@ -1041,6 +1041,21 @@
           <option value="admin">⚙ Administrador — Acceso total</option>
         </select>
       </div>
+      <div class="form-group">
+        <label>Cargo</label>
+        <select id="u-cargo-select" onchange="toggleCargoCustum()">
+          <option value="">Seleccionar...</option>
+          <option value="Docente de aula">Docente de aula</option>
+          <option value="Docente de área">Docente de área</option>
+          <option value="Auxiliar">Auxiliar</option>
+          <option value="Psicólogo">Psicólogo</option>
+          <option value="Subdirector">Subdirector</option>
+          <option value="Director">Director</option>
+          <option value="otro">Otro (especificar)...</option>
+        </select>
+        <input type="text" id="u-cargo-custom" placeholder="Escribe el cargo..." style="display:none;margin-top:6px;">
+        <input type="hidden" id="u-cargo">
+      </div>
       <!-- Solo visible si rol = profesor -->
       <div id="u-privilegios-group" style="display:none;">
         <hr class="divider">
@@ -1095,6 +1110,7 @@
           <thead>
             <tr>
               <th>Fecha</th>
+              <th>DNI</th>
               <th>Alumno</th>
               <th>Grado</th>
               <th>Tipo</th>
@@ -2514,6 +2530,26 @@ async function openModalUsuario(uid, nombre, rol, email) {
     if(nombre) document.getElementById('u-nombre').value = nombre;
     if(email)  document.getElementById('u-email').value  = email;
     if(rol)    document.getElementById('u-rol').value    = rol;
+    // Cargar cargo desde Firestore
+    try {
+      const uDoc = await db.collection('usuarios').doc(uid).get();
+      const cargo = uDoc.exists ? (uDoc.data().cargo || '') : '';
+      const cargoSel = document.getElementById('u-cargo-select');
+      const cargoCustom = document.getElementById('u-cargo-custom');
+      const cargoHidden = document.getElementById('u-cargo');
+      const opciones = Array.from(cargoSel.options).map(o => o.value);
+      if(opciones.includes(cargo)) {
+        cargoSel.value = cargo;
+        cargoCustom.style.display = 'none';
+      } else if(cargo) {
+        cargoSel.value = 'otro';
+        cargoCustom.style.display = 'block';
+        cargoCustom.value = cargo;
+      } else {
+        cargoSel.value = '';
+      }
+      cargoHidden.value = cargo;
+    } catch(e) {}
   } else {
     document.getElementById('u-pass-group').style.display = 'block';
     document.getElementById('u-pass-label').textContent = 'Contraseña';
@@ -2522,6 +2558,10 @@ async function openModalUsuario(uid, nombre, rol, email) {
     document.getElementById('u-email').style.opacity = '1';
     ['u-nombre','u-email'].forEach(x => document.getElementById(x).value = '');
     document.getElementById('u-rol').value = 'profesor';
+    document.getElementById('u-cargo-select').value = '';
+    document.getElementById('u-cargo-custom').value = '';
+    document.getElementById('u-cargo-custom').style.display = 'none';
+    document.getElementById('u-cargo').value = '';
     tempAsignaciones = {};
     document.getElementById('u-restringir').checked = false;
   }
@@ -2538,6 +2578,9 @@ async function saveUsuario() {
   const email  = document.getElementById('u-email').value.trim();
   const pass   = document.getElementById('u-pass').value;
   const rol    = document.getElementById('u-rol').value;
+  // Sync cargo hidden field
+  toggleCargoCustum();
+  const cargo  = document.getElementById('u-cargo').value.trim();
 
   if(!nombre){ toast('Completa el nombre','warning'); return; }
   if(!editingUsuarioId && !email){ toast('Completa el correo','warning'); return; }
@@ -2556,11 +2599,11 @@ async function saveUsuario() {
       const uid = cred.user.uid;
       await secondaryAuth.signOut();
       await secondaryApp.delete();
-      await db.collection('usuarios').doc(uid).set({ nombre, email, rol, restringir, asignaciones, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+      await db.collection('usuarios').doc(uid).set({ nombre, email, rol, cargo, restringir, asignaciones, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
       toast('Usuario creado correctamente','success');
     } else {
       // EDITAR usuario
-      await db.collection('usuarios').doc(editingUsuarioId).update({ nombre, rol, restringir, asignaciones });
+      await db.collection('usuarios').doc(editingUsuarioId).update({ nombre, rol, cargo, restringir, asignaciones });
       // Si se ingresó nueva contraseña, cambiarla
       if(pass && pass.length >= 6) {
         // Re-autenticar como admin no es posible en client SDK para otros usuarios
@@ -2604,7 +2647,7 @@ async function renderUsuarios() {
       return `<tr>
         <td style="font-weight:500;">${u.nombre}${esYo}</td>
         <td style="color:var(--muted);font-size:0.85rem;">${u.email}</td>
-        <td><span style="color:${rolColors[u.rol]||'#fff'};font-weight:600;">${rolLabels[u.rol]||u.rol}</span>${u.rol==='profesor'&&u.restringir?`<br><span style="font-size:0.72rem;color:var(--muted);">Restringido: ${Object.keys(u.asignaciones||{}).join(', ')||'sin asignar'}</span>`:''}</td>
+        <td><span style="color:${rolColors[u.rol]||'#fff'};font-weight:600;">${rolLabels[u.rol]||u.rol}</span>${u.cargo?`<br><span style="font-size:0.72rem;color:var(--muted);">${u.cargo}</span>`:''} ${u.rol==='profesor'&&u.restringir?`<br><span style="font-size:0.72rem;color:var(--accent);">Restringido: ${Object.keys(u.asignaciones||{}).join(', ')||'sin asignar'}</span>`:''}</td>
         <td style="display:flex;gap:6px;">
           <button class="btn btn-ghost" style="padding:5px 10px;font-size:0.78rem;" onclick="openModalUsuario('${d.id}','${u.nombre}','${u.rol}','${u.email}')">✏</button>
           ${d.id !== currentUser.uid ? `<button class="btn btn-danger" style="padding:5px 10px;font-size:0.78rem;" onclick="deleteUsuario('${d.id}')">✕</button>` : ''}
@@ -2622,6 +2665,20 @@ async function renderUsuarios() {
 
 // Almacén temporal de asignaciones mientras edita
 let tempAsignaciones = {};
+
+function toggleCargoCustum() {
+  const sel = document.getElementById('u-cargo-select').value;
+  const custom = document.getElementById('u-cargo-custom');
+  const hidden = document.getElementById('u-cargo');
+  if(sel === 'otro') {
+    custom.style.display = 'block';
+    custom.oninput = () => hidden.value = custom.value;
+    hidden.value = custom.value;
+  } else {
+    custom.style.display = 'none';
+    hidden.value = sel;
+  }
+}
 
 function toggleBtnConfigurar() {
   const checked = document.getElementById('u-restringir').checked;
@@ -3141,6 +3198,13 @@ function cargarJsPDF() {
 let incAlumnoSeleccionado = null;
 
 
+async function getCargoUsuario(uid) {
+  try {
+    const doc = await db.collection('usuarios').doc(uid).get();
+    return doc.exists ? (doc.data().cargo || '') : '';
+  } catch(e) { return ''; }
+}
+
 function limpiarFiltroFechaInc() {
   const f = document.getElementById('inc-filter-fecha');
   if(f && document.getElementById('inc-filter-search').value) f.value = '';
@@ -3249,6 +3313,7 @@ async function guardarIncidente() {
     fotoData: fotoData ? 'si' : 'no', // no guardamos imagen en Firestore por tamaño
     responsableId: currentUser.uid,
     responsableNombre: document.getElementById('user-name-display').textContent,
+    responsableCargo: await getCargoUsuario(currentUser.uid),
     timestamp: firebase.firestore.FieldValue.serverTimestamp()
   };
 
@@ -3299,11 +3364,12 @@ async function renderIncidentes() {
     tbody.innerHTML = docs.map(d => `
       <tr>
         <td class="ts">${d.fecha}</td>
+        <td class="td-id">${d.alumnoId||'-'}</td>
         <td class="td-name">${d.alumnoNombre}</td>
         <td>${d.grado} ${d.seccion}</td>
         <td>${d.tipo}</td>
         <td><span class="badge ${sevColors[d.severidad]||'blue'}">${d.severidad}</span></td>
-        <td style="font-size:0.82rem;">${d.responsableNombre||'-'}</td>
+        <td style="font-size:0.82rem;">${d.responsableNombre||'-'}${d.responsableCargo?`<br><span style="color:var(--muted);font-size:0.72rem;">${d.responsableCargo}</span>`:''}</td>
         <td style="display:flex;gap:6px;">
           <button class="btn btn-ghost" style="padding:4px 10px;font-size:0.78rem;" onclick="reimprimirIncidente('${d.id}')">🖨️ PDF</button>
           ${currentRol==='admin'||currentRol==='director' ? `<button class="btn btn-danger" style="padding:4px 10px;font-size:0.78rem;" onclick="eliminarIncidente('${d.id}')">✕</button>` : ''}
@@ -3359,14 +3425,15 @@ async function generarPDFIncidente(inc) {
   doc.setFontSize(7);
   doc.text('ALUMNO', margin+4, y+6);
   doc.text('DNI', margin+80, y+6);
-  doc.text('GRADO / SECCIÓN', margin+110, y+6);
+  doc.text('ID / DNI', margin+80, y+6);
+  doc.text('GRADO / SECCIÓN', margin+120, y+6);
   doc.text('NIVEL', margin+155, y+6);
   doc.setTextColor(30, 41, 59);
   doc.setFont('helvetica','normal');
   doc.setFontSize(9);
   doc.text(inc.alumnoNombre||'-', margin+4, y+13);
   doc.text(inc.alumnoId||'-', margin+80, y+13);
-  doc.text((inc.grado||'-') + ' — Sección ' + (inc.seccion||'-'), margin+110, y+13);
+  doc.text((inc.grado||'-') + ' — Secc. ' + (inc.seccion||'-'), margin+120, y+13);
   doc.text(inc.turno||'-', margin+155, y+13);
   doc.setTextColor(100, 116, 139);
   doc.setFont('helvetica','bold');
@@ -3437,7 +3504,8 @@ async function generarPDFIncidente(inc) {
   doc.text(inc.responsableNombre||'Responsable', margin+35, y+5, { align:'center' });
   doc.text('Director(a) / V°B°', W-margin-35, y+5, { align:'center' });
   doc.setFontSize(7);
-  doc.text('Firma del responsable', margin+35, y+9, { align:'center' });
+  const cargoLabel = inc.responsableCargo || 'Responsable';
+  doc.text(cargoLabel, margin+35, y+9, { align:'center' });
   doc.text('Firma y sello', W-margin-35, y+9, { align:'center' });
 
   // Footer
