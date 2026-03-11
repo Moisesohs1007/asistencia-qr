@@ -661,15 +661,45 @@
 
 
 
-  /* Ocultar UI por defecto de html5-qrcode */
-  #qr-reader__scan_region { border-radius: 12px; overflow: hidden; }
-  #qr-reader__dashboard { display: none !important; }
-  #qr-reader__header_message { display: none !important; }
-  #qr-reader img[alt="Info icon"] { display: none !important; }
-  #qr-reader__status_span { display: none !important; }
-  #qr-reader__camera_selection { display: none !important; }
-  #qr-reader__filescan_input { display: none !important; }
-  #qr-reader > div:last-child { display: none !important; }
+  /* html5-qrcode UI override */
+  #qr-reader__dashboard,
+  #qr-reader__header_message,
+  #qr-reader__status_span,
+  #qr-reader__camera_selection,
+  #qr-reader__filescan_input,
+  #qr-reader img { display: none !important; }
+
+  #qr-reader { position: relative; }
+  #qr-reader__scan_region {
+    border-radius: 12px;
+    overflow: hidden;
+    position: relative;
+  }
+  /* Ocultar el recuadro feo de html5-qrcode y reemplazar con uno propio */
+  #qr-reader__scan_region > img { display: none !important; }
+  #qr-shaded-region {
+    border: none !important;
+    box-shadow: none !important;
+  }
+  /* Esquinas personalizadas sobre el video */
+  #qr-reader__scan_region::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background:
+      linear-gradient(to right, #38bdf8 3px, transparent 3px) 0 0,
+      linear-gradient(to right, #38bdf8 3px, transparent 3px) 0 100%,
+      linear-gradient(to left,  #38bdf8 3px, transparent 3px) 100% 0,
+      linear-gradient(to left,  #38bdf8 3px, transparent 3px) 100% 100%,
+      linear-gradient(to bottom,#38bdf8 3px, transparent 3px) 0 0,
+      linear-gradient(to bottom,#38bdf8 3px, transparent 3px) 100% 0,
+      linear-gradient(to top,   #38bdf8 3px, transparent 3px) 0 100%,
+      linear-gradient(to top,   #38bdf8 3px, transparent 3px) 100% 100%;
+    background-repeat: no-repeat;
+    background-size: 24px 24px;
+    border-radius: 12px;
+  }
   /* BOTTOM NAV - Mobile */
   .bottom-nav {
     display: none;
