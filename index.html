@@ -978,13 +978,13 @@
         <table>
           <thead>
             <tr>
-              <th id="th-chk-all" style="display:none;"><input type="checkbox" id="chk-all" onclick="toggleSelectAll(this)" title="Seleccionar todos"></th>
               <th>ID</th>
               <th>Nombre completo</th>
               <th>Grado</th>
               <th>Sección</th>
               <th>Nivel</th>
               <th>Acciones</th>
+              <th id="th-chk-all" style="display:none;"><input type="checkbox" id="chk-all" onclick="toggleSelectAll(this)" title="Seleccionar todos"></th>
             </tr>
           </thead>
           <tbody id="alumnos-tbody"></tbody>
@@ -2290,7 +2290,6 @@ async function renderAlumnos() {
     alumnos = aplicarFiltroProfesor(alumnos);
     tbody.innerHTML = alumnos.map(a => {
       return `<tr>
-        <td><input type="checkbox" class="chk-alumno" value="${a.id}" onchange="updateSeleccionados()"></td>
         <td class="td-id">${a.id}</td>
         <td class="td-name">${a.nombres} ${a.apellidos}</td>
         <td>${a.grado}</td>
@@ -2301,6 +2300,7 @@ async function renderAlumnos() {
           <button class="btn btn-ghost btn-accion-alumno" style="padding:5px 10px;font-size:0.78rem;" onclick="openModalAlumno('${a.id}')">✏</button>
           ${currentRol !== 'profesor' ? `<button class="btn btn-danger btn-accion-alumno" style="padding:5px 10px;font-size:0.78rem;" onclick="deleteAlumno('${a.id}')">✕</button>` : ''}
         </td>
+        <td class="td-chk-alumno" style="display:none;text-align:center;"><input type="checkbox" class="chk-alumno" value="${a.id}" onchange="updateSeleccionados()"></td>
       </tr>`;
     }).join('');
   } catch(e) { console.error('renderAlumnos:', e); toast('Error al cargar alumnos','error'); }
