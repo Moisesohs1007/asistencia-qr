@@ -280,6 +280,12 @@
     position: relative;
     animation: pulse-border 2s ease-in-out infinite;
   }
+  .qr-frame.detected {
+    border-color: #4ade80 !important;
+    box-shadow: 0 0 0 9999px rgba(0,0,0,0.4), 0 0 24px rgba(74,222,128,0.8) !important;
+    animation: none !important;
+    transition: border-color 0.1s, box-shadow 0.1s;
+  }
   @keyframes pulse-border {
     0%,100%{ border-color: var(--accent); box-shadow: 0 0 0 9999px rgba(0,0,0,0.35), 0 0 16px rgba(56,189,248,0.4); }
     50%    { border-color: var(--accent2); box-shadow: 0 0 0 9999px rgba(0,0,0,0.35), 0 0 28px rgba(129,140,248,0.5); }
@@ -1927,7 +1933,15 @@ function onQRSuccess(text) {
   processQR(text.trim());
 }
 
+function flashGreenFrame() {
+  const frame = document.querySelector('.qr-frame');
+  if(!frame) return;
+  frame.classList.add('detected');
+  setTimeout(() => frame.classList.remove('detected'), 1000);
+}
+
 async function processQR(id) {
+  flashGreenFrame();
   try {
     const alumnos = await DB.getAlumnos();
     const alumno = alumnos.find(a => a.id === id);
