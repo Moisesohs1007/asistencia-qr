@@ -6,7 +6,7 @@
 <meta http-equiv="Permissions-Policy" content="camera=*, microphone=*">
 <title>AsistenciaQR — Sistema Escolar</title>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
+
 
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
@@ -870,7 +870,22 @@
     <div class="scanner-layout">
       <!-- COLUMNA IZQUIERDA: cámara -->
       <div>
-        <div id="qr-reader" style="width:100%;border-radius:12px;overflow:hidden;"></div>
+        <div id="qr-reader">
+          <div class="result-empty" id="cam-placeholder" style="height:100%;min-height:260px;">
+            <svg width="48" height="48" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 9V5a2 2 0 012-2h4M3 15v4a2 2 0 002 2h4m6-18h4a2 2 0 012 2v4m0 6v4a2 2 0 01-2 2h-4"/></svg>
+            Presiona "Iniciar Cámara" para escanear
+          </div>
+          <video id="qr-video" autoplay playsinline muted style="display:none;width:100%;height:100%;object-fit:cover;"></video>
+          <canvas id="qr-canvas" style="display:none;"></canvas>
+          <div class="qr-frame-overlay" id="qr-frame-overlay" style="display:none;">
+            <div class="qr-frame">
+              <div class="corner tl"></div>
+              <div class="corner tr"></div>
+              <div class="corner bl"></div>
+              <div class="corner br"></div>
+            </div>
+          </div>
+        </div>
         <div class="scan-status" id="scan-status">Cámara inactiva</div>
         <canvas id="qr-canvas" style="display:none;"></canvas>
         <div class="manual-input" style="margin-top:10px;">
@@ -1939,6 +1954,1957 @@ function onQRSuccess(text) {
 }
 
 async function processQR(id) {
+  try {
+    const alumnos = await DB.getAlumnos();
+    const alumno = alumnos.find(a => a.id === id);
+    if(!alumno) { toast(`DNI "${id}" no encontrado`, 'error'); return; }
+    showStudentResult(alumno);
+  } catch(e) { toast('Error al buscar alumno','error'); }
+}
+
+function manualRegister() {
+  const id = document.getElementById('manual-id').value.trim();
+  if(!id){ toast('Ingresa un ID', 'warning'); return; }
+  processQR(id);
+  document.getElementById('manual-id').value = '';
+}
+
+async function showStudentResult(alumno) {
+  pendingStudent = alumno;
+  const initials = (alumno.nombres[0]||'?') + (alumno.apellidos[0]||'?');
+  document.getElementById('stu-avatar').textContent = initials.toUpperCase();
+  document.getElementById('stu-name').textContent = alumno.nombres + ' ' + alumno.apellidos;
+  document.getElementById('stu-meta').textContent = alumno.grado + ' ' + alumno.seccion + ' — ' + alumno.turno;
+  document.getElementById('stu-id').textContent = alumno.id;
+  document.getElementById('stu-grade').textContent = alumno.grado + ' ' + alumno.seccion;
+
+  const now = new Date();
+  document.getElementById('stu-time').textContent = now.toLocaleTimeString('es-PE', {hour:'2-digit',minute:'2-digit'});
+
+  try {
+    const regs = await DB.getRegistros({fecha: hoy(), alumnoId: alumno.id});
+    const tieneIngreso = regs.some(r => r.tipo === 'INGRESO');
+    const tieneSalida  = regs.some(r => r.tipo === 'SALIDA');
+    let tipo = tieneIngreso ? 'SALIDA' : 'INGRESO';
+    document.getElementById('stu-type').textContent = tipo;
+
+    const limiteStr = await getLimiteByNivel(alumno.turno);
+    const [lh, lm] = limiteStr.split(':').map(Number);
+    const tardanza = now.getHours() > lh || (now.getHours() === lh && now.getMinutes() > lm);
+    let badgeHtml = '';
+    if(tipo === 'INGRESO') {
+      badgeHtml = tardanza ? '<span class="badge yellow">⚠ Tardanza</span>' : '<span class="badge green">✓ A tiempo</span>';
+    } else {
+      badgeHtml = tieneSalida ? '<span class="badge red">⚠ Ya registró salida hoy</span>' : '<span class="badge blue">🚪 Salida</span>';
+    }
+    document.getElementById('stu-badge-wrap').innerHTML = badgeHtml;
+  } catch(e) {
+    document.getElementById('stu-badge-wrap').innerHTML = '';
+  }
+
+  document.getElementById('result-empty').style.display = 'none';
+  document.getElementById('result-student').style.display = 'flex';
+  document.getElementById('result-student').style.flexDirection = 'column';
+  document.getElementById('result-student').style.gap = '12px';
+}
+
+async function confirmRegister(tipo) {
+  if(!pendingStudent){ toast('Escanea un alumno primero','warning'); return; }
+  const alumno = pendingStudent;
+  const now = new Date();
+  const today = hoy();
+
+  try {
+    const regsHoy = await DB.getRegistros({fecha: today, alumnoId: alumno.id});
+    if(tipo === 'INGRESO') {
+      if(regsHoy.some(r => r.tipo === 'INGRESO')){
+        toast(alumno.nombres + ' ya tiene ingreso registrado hoy','warning'); return;
+      }
+    }
+    if(tipo === 'SALIDA') {
+      if(!regsHoy.some(r => r.tipo === 'INGRESO')){
+        toast('No hay ingreso registrado para '+alumno.nombres,'warning'); return;
+      }
+      if(regsHoy.some(r => r.tipo === 'SALIDA')){
+        toast(alumno.nombres + ' ya tiene salida registrada hoy','warning'); return;
+      }
+    }
+
+    const limiteStr = await getLimiteByNivel(alumno.turno);
+    const [lh, lm] = limiteStr.split(':').map(Number);
+    const tardanza = tipo === 'INGRESO' && (now.getHours() > lh || (now.getHours() === lh && now.getMinutes() > lm));
+    const estado = tipo === 'SALIDA' ? 'Salida normal' : (tardanza ? 'Tardanza' : 'A tiempo');
+
+    const reg = {
+      alumnoId: alumno.id,
+      nombre: alumno.nombres + ' ' + alumno.apellidos,
+      grado: alumno.grado,
+      seccion: alumno.seccion,
+      turno: alumno.turno,
+      tipo, estado,
+      hora: now.toLocaleTimeString('es-PE', {hour:'2-digit', minute:'2-digit', second:'2-digit'}),
+      fecha: today,
+    };
+
+    await DB.saveRegistro(reg);
+    await updateStats();
+    pendingStudent = null;
+    document.getElementById('result-empty').style.display = 'flex';
+    document.getElementById('result-student').style.display = 'none';
+    toast(`${tipo} registrado: ${alumno.nombres} — ${estado}`, tipo==='INGRESO' ? 'success' : 'info');
+  } catch(e) {
+    toast('Error al guardar registro','error');
+    console.error(e);
+  }
+}
+
+// ============================================================
+// ALUMNOS
+// ============================================================
+let editingId = null;
+
+async function openModalAlumno(id) {
+  editingId = id || null;
+  document.getElementById('modal-title-text').textContent = id ? 'Editar Alumno' : 'Nuevo Alumno';
+  if(id) {
+    const alumnos = await DB.getAlumnos();
+    const a = alumnos.find(x => x.id === id);
+    document.getElementById('f-id').value = a.id;
+    document.getElementById('f-id').readOnly = false;
+    document.getElementById('f-id').style.opacity = '1';
+    document.getElementById('f-id').title = '';
+    document.getElementById('f-nombres').value = a.nombres;
+    document.getElementById('f-apellidos').value = a.apellidos;
+    // Primero poblar el select de nivel con opciones de config
+    const cfgTemp = await getConfig();
+    const fTurno = document.getElementById('f-turno');
+    fTurno.innerHTML = '<option value="">Seleccionar</option>';
+    (cfgTemp.niveles||[]).forEach(n => {
+      fTurno.innerHTML += `<option value="${n.nombre}">${n.nombre}</option>`;
+    });
+    fTurno.value = a.turno;
+    // Luego cargar grados y secciones
+    await cargarGradosPorNivel(a.turno);
+    document.getElementById('f-grado').value = a.grado;
+    await cargarSeccionesPorGrado();
+    document.getElementById('f-seccion').value = a.seccion;
+    document.getElementById('f-telefono').value = a.telefono||'';
+    const fotoData = a.foto||'';
+    document.getElementById('f-foto-data').value = fotoData;
+    document.getElementById('f-foto-url').value = fotoData.startsWith('http') ? fotoData : '';
+    const fotoImg = document.getElementById('foto-preview-img');
+    const fotoPh  = document.getElementById('foto-preview-placeholder');
+    if(fotoData){ fotoImg.src=fotoData; fotoImg.style.display='block'; fotoPh.style.display='none'; }
+    else        { fotoImg.style.display='none'; fotoPh.style.display='block'; }
+  } else {
+    document.getElementById('f-id').readOnly = false;
+    document.getElementById('f-id').style.opacity = '1';
+    document.getElementById('f-id').title = '';
+    ['f-id','f-nombres','f-apellidos','f-telefono','f-foto-url','f-foto-data'].forEach(x => document.getElementById(x).value='');
+    document.getElementById('foto-preview-img').style.display='none';
+    document.getElementById('foto-preview-placeholder').style.display='block';
+    document.getElementById('f-grado').value = '';
+    document.getElementById('f-seccion').value = 'A';
+    document.getElementById('f-turno').value = '';
+  }
+  document.getElementById('modal-alumno').classList.add('open');
+}
+
+async function saveAlumno() {
+  const id = document.getElementById('f-id').value.trim();
+  const nombres = document.getElementById('f-nombres').value.trim();
+  const apellidos = document.getElementById('f-apellidos').value.trim();
+  const grado = document.getElementById('f-grado').value;
+  if(!id||!nombres||!apellidos||!grado){ toast('Completa los campos obligatorios','warning'); return; }
+  if(!/^\d{8}$/.test(id)){ toast('El DNI debe tener exactamente 8 dígitos','warning'); return; }
+
+  try {
+    const alumnos = await DB.getAlumnos();
+    if(alumnos.find(a => a.id === id && a.id !== editingId)){ toast('Ese DNI ya está registrado','error'); return; }
+
+    const alumno = {
+      id, nombres, apellidos, grado,
+      seccion: document.getElementById('f-seccion').value,
+      turno: document.getElementById('f-turno').value,
+      limite: await getLimiteByNivel(document.getElementById('f-turno').value),
+      telefono: document.getElementById('f-telefono').value.trim(),
+      foto: document.getElementById('f-foto-data').value.trim(),
+    };
+
+    if(editingId && editingId !== id) {
+      await DB.updateAlumnoId(editingId, alumno);
+      // Actualizar registros con nuevo ID
+      const snap = await db.collection('registros').where('alumnoId','==',editingId).get();
+      const batch = db.batch();
+      snap.docs.forEach(d => batch.update(d.ref, {alumnoId: id}));
+      await batch.commit();
+      toast('Alumno actualizado','success');
+    } else {
+      await DB.saveAlumno(alumno);
+      toast(editingId ? 'Alumno actualizado' : 'Alumno registrado','success');
+    }
+    closeModal('modal-alumno');
+    renderAlumnos();
+    updateStats();
+  } catch(e) { toast('Error al guardar','error'); console.error(e); }
+}
+
+async function deleteAlumno(id) {
+  if(!confirm('¿Eliminar este alumno?')) return;
+  try {
+    await DB.deleteAlumno(id);
+    toast('Alumno eliminado','info');
+    renderAlumnos();
+    updateStats();
+  } catch(e) { toast('Error al eliminar','error'); }
+}
+
+function limpiarFiltrosAlumnos() {
+  document.getElementById('fa-grado').value = '';
+  document.getElementById('fa-seccion').value = '';
+  document.getElementById('fa-nivel').value = '';
+  document.getElementById('search-alumnos').value = '';
+  mostrarEstadoInicial();
+}
+
+async function mostrarEstadoInicial() {
+  document.getElementById('alumnos-tbody').innerHTML = '';
+  document.getElementById('alumnos-empty').style.display = 'block';
+  document.getElementById('alumnos-empty').querySelector('p').textContent =
+    'Usa los filtros de arriba para buscar alumnos';
+  try {
+    const alumnos = await DB.getAlumnos();
+    document.getElementById('alumnos-count').textContent =
+      alumnos.length + ' alumno' + (alumnos.length!==1?'s':'') + ' registrado' + (alumnos.length!==1?'s':'') + ' en total';
+  } catch(e) { document.getElementById('alumnos-count').textContent = ''; }
+}
+
+async function renderAlumnos() {
+  const grado   = document.getElementById('fa-grado').value;
+  const seccion = document.getElementById('fa-seccion').value;
+  const nivel   = document.getElementById('fa-nivel').value;
+  const q       = (document.getElementById('search-alumnos').value||'').toLowerCase();
+
+  // "" = sin tocar (no muestra nada), "TODOS" = sin filtro en ese campo, valor específico = filtra
+  const filtroActivo = grado || seccion || nivel || q;
+  if(!filtroActivo) { mostrarEstadoInicial(); return; }
+
+  const tbody = document.getElementById('alumnos-tbody');
+  const empty = document.getElementById('alumnos-empty');
+  const count = document.getElementById('alumnos-count');
+
+  try {
+    let alumnos = await DB.getAlumnos();
+    const totalDB = alumnos.length;
+    if(grado   && grado   !== 'TODOS') alumnos = alumnos.filter(a => a.grado === grado);
+    if(seccion && seccion !== 'TODOS') alumnos = alumnos.filter(a => a.seccion === seccion);
+    if(nivel   && nivel   !== 'TODOS') alumnos = alumnos.filter(a => a.turno === nivel);
+    if(q) alumnos = alumnos.filter(a =>
+      a.nombres.toLowerCase().includes(q) ||
+      a.apellidos.toLowerCase().includes(q) ||
+      a.id.includes(q)
+    );
+
+    count.textContent = 'Mostrando ' + alumnos.length + ' de ' + totalDB + ' alumno' + (totalDB!==1?'s':'');
+
+    if(!alumnos.length) {
+      tbody.innerHTML = '';
+      empty.style.display = 'block';
+      empty.querySelector('p').textContent = 'No se encontraron alumnos con ese filtro';
+      return;
+    }
+    empty.style.display = 'none';
+
+    alumnos = [...alumnos].sort((a,b) => a.apellidos.localeCompare(b.apellidos));
+    alumnos = aplicarFiltroProfesor(alumnos);
+    tbody.innerHTML = alumnos.map(a => {
+      return `<tr>
+        <td class="td-id">${a.id}</td>
+        <td class="td-name">${a.nombres} ${a.apellidos}</td>
+        <td>${a.grado}</td>
+        <td>${a.seccion}</td>
+        <td>${a.turno}</td>
+        <td style="display:flex;gap:6px;flex-wrap:wrap;">
+          <button class="btn btn-ghost" style="padding:5px 10px;font-size:0.78rem;" onclick="showQR('${a.id}')">QR</button>
+          <button class="btn btn-ghost" style="padding:5px 10px;font-size:0.78rem;" onclick="openModalAlumno('${a.id}')">✏</button>
+          ${currentRol !== 'profesor' ? `<button class="btn btn-danger" style="padding:5px 10px;font-size:0.78rem;" onclick="deleteAlumno('${a.id}')">✕</button>` : ''}
+        </td>
+      </tr>`;
+    }).join('');
+  } catch(e) { console.error('renderAlumnos:', e); toast('Error al cargar alumnos','error'); }
+}
+
+// ============================================================
+// QR GENERATION (via API)
+// ============================================================
+async function showQR(id) {
+  const alumnos = await DB.getAlumnos();
+  const a = alumnos.find(x => x.id === id);
+  if(!a) return;
+
+  // School name (could be customized)
+  document.getElementById('carnet-school').textContent = 'Institución Educativa';
+
+  // Photo or initials
+  const fotoEl = document.getElementById('carnet-foto');
+  const initEl = document.getElementById('carnet-initials');
+  if(a.foto) {
+    fotoEl.src = a.foto;
+    fotoEl.style.display = 'block';
+    initEl.style.display = 'none';
+  } else {
+    fotoEl.style.display = 'none';
+    initEl.style.display = 'block';
+    initEl.textContent = (a.nombres[0]||'?') + (a.apellidos[0]||'?');
+  }
+
+  document.getElementById('carnet-name').textContent = a.nombres + ' ' + a.apellidos;
+  document.getElementById('carnet-grade').textContent = a.grado + ' ' + a.seccion + ' — ' + a.turno;
+  document.getElementById('carnet-dni').textContent = a.id;
+  document.getElementById('carnet-turno').textContent = a.turno;
+  document.getElementById('carnet-year').textContent = new Date().getFullYear();
+
+  // QR automático con el DNI
+  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(a.id)}&bgcolor=ffffff&color=000000&margin=10&ecc=H`;
+  document.getElementById('carnet-qr').src = qrUrl;
+
+  document.getElementById('modal-qr').classList.add('open');
+}
+
+function printCarnet() {
+  // Open carnet in print-friendly new window
+  const carnet = document.getElementById('carnet-print').outerHTML;
+  const win = window.open('', '_blank');
+  win.document.write(`<!DOCTYPE html><html><head>
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&display=swap" rel="stylesheet">
+    <style>
+      body{margin:0;display:flex;align-items:center;justify-content:center;min-height:100vh;background:#f0f0f0;}
+      #carnet-print{width:320px;font-family:Arial,sans-serif;}
+      @media print{body{background:white;} @page{margin:0;}}
+    </style>
+  </head><body>${carnet}<script>window.onload=()=>window.print();<\/script>
+  <!-- ===== MODAL PRIVILEGIOS PROFESOR ===== -->
+  <div class="modal-bg" id="modal-privilegios" onclick="if(event.target===this)closeModal('modal-privilegios')">
+    <div class="modal" onclick="event.stopPropagation()" style="max-width:520px;">
+      <div class="modal-header">
+        <div class="modal-title">📚 Grados y Secciones asignados</div>
+        <button class="modal-close" onclick="closeModal('modal-privilegios')">✕</button>
+      </div>
+      <div style="font-size:0.8rem;color:var(--muted);margin-bottom:14px;">
+        Marca los grados que dicta y las secciones correspondientes a cada uno. Solo verá los alumnos de los grados y secciones que marques.
+      </div>
+      <div id="u-niveles-checks" style="max-height:60vh;overflow-y:auto;"></div>
+      <div style="display:flex;gap:10px;margin-top:20px;">
+        <button class="btn btn-primary" onclick="savePrivilegios()" style="flex:1;justify-content:center;">💾 Guardar privilegios</button>
+        <button class="btn btn-ghost" onclick="closeModal('modal-privilegios')" style="flex:1;justify-content:center;">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+</body></html>`);
+  win.document.close();
+}
+
+function downloadCarnet() {
+  // Use html2canvas if available, otherwise just print
+  printCarnet();
+}
+
+// Foto preview functions
+function previewFotoUrl(url) {
+  const img = document.getElementById('foto-preview-img');
+  const ph  = document.getElementById('foto-preview-placeholder');
+  if(url) {
+    img.src = url;
+    img.style.display = 'block';
+    ph.style.display  = 'none';
+    document.getElementById('f-foto-data').value = url;
+  } else {
+    img.style.display = 'none';
+    ph.style.display  = 'block';
+    document.getElementById('f-foto-data').value = '';
+  }
+}
+
+function previewFotoFile(input) {
+  if(!input.files || !input.files[0]) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const data = e.target.result;
+    const img = document.getElementById('foto-preview-img');
+    const ph  = document.getElementById('foto-preview-placeholder');
+    img.src = data;
+    img.style.display = 'block';
+    ph.style.display  = 'none';
+    document.getElementById('f-foto-data').value = data;
+    document.getElementById('f-foto-url').value = '';
+  };
+  reader.readAsDataURL(input.files[0]);
+}
+
+// ============================================================
+// REGISTRO
+// ============================================================
+function setTodayFilter() {
+  const hoyStr = hoy();
+  document.getElementById('filter-desde').value = hoyStr;
+  document.getElementById('filter-hasta').value = hoyStr;
+}
+
+function limpiarFiltrosRegistro() {
+  document.getElementById('filter-desde').value = '';
+  document.getElementById('filter-hasta').value = '';
+  document.getElementById('filter-grado').value = '';
+  document.getElementById('filter-seccion').value = '';
+  document.getElementById('filter-nivel').value = '';
+  document.getElementById('filter-tipo').value = '';
+  document.getElementById('filter-search').value = '';
+  document.getElementById('registro-tbody').innerHTML = '';
+  document.getElementById('registro-empty').style.display = 'block';
+  document.getElementById('registro-empty').querySelector('p').textContent = 'Selecciona una fecha u otro filtro para ver los registros';
+  DB.getRegistros({}).then(r => document.getElementById('registro-count').textContent = r.length + ' registros en total').catch(()=>{});
+}
+
+function validarRangoFecha() {
+  const desde = document.getElementById('filter-desde').value;
+  const hasta = document.getElementById('filter-hasta').value;
+  // Si desde > hasta, corregir automáticamente
+  if(desde && hasta && desde > hasta) {
+    document.getElementById('filter-hasta').value = desde;
+  }
+  // Saltar fines de semana en el campo desde
+  if(desde) {
+    const d = new Date(desde + 'T00:00:00');
+    if(d.getDay() === 6) { // sábado → lunes
+      d.setDate(d.getDate() + 2);
+      document.getElementById('filter-desde').value = d.toISOString().split('T')[0];
+    } else if(d.getDay() === 0) { // domingo → lunes
+      d.setDate(d.getDate() + 1);
+      document.getElementById('filter-desde').value = d.toISOString().split('T')[0];
+    }
+  }
+  if(hasta) {
+    const h = new Date(hasta + 'T00:00:00');
+    if(h.getDay() === 6) { // sábado → viernes
+      h.setDate(h.getDate() - 1);
+      document.getElementById('filter-hasta').value = h.toISOString().split('T')[0];
+    } else if(h.getDay() === 0) { // domingo → viernes
+      h.setDate(h.getDate() - 2);
+      document.getElementById('filter-hasta').value = h.toISOString().split('T')[0];
+    }
+  }
+}
+
+async function renderRegistro() {
+  const desde   = document.getElementById('filter-desde').value;
+  const hasta   = document.getElementById('filter-hasta').value;
+  const grado   = document.getElementById('filter-grado').value;
+  const seccion = document.getElementById('filter-seccion').value;
+  const nivel   = document.getElementById('filter-nivel').value;
+  const tipo    = document.getElementById('filter-tipo').value;
+  const q       = (document.getElementById('filter-search').value||'').toLowerCase();
+
+  const filtroActivo = desde || hasta || grado || seccion || nivel || tipo || q;
+  const tbody = document.getElementById('registro-tbody');
+  const empty = document.getElementById('registro-empty');
+  const count = document.getElementById('registro-count');
+
+  if(!filtroActivo) {
+    tbody.innerHTML = '';
+    empty.style.display = 'block';
+    empty.querySelector('p').textContent = 'Selecciona una fecha u otro filtro para ver los registros';
+    DB.getRegistros({}).then(r => count.textContent = r.length + ' registro' + (r.length!==1?'s':'') + ' en total').catch(()=>{});
+    return;
+  }
+
+  try {
+    // 1. Obtener registros filtrados
+    let regs = await DB.getRegistros({});
+
+    // Filtrar por rango de fechas (excluir sábado y domingo)
+    if(desde || hasta) {
+      regs = regs.filter(r => {
+        if(!r.fecha) return false;
+        const d = new Date(r.fecha + 'T00:00:00');
+        const dia = d.getDay();
+        if(dia === 0 || dia === 6) return false;
+        if(desde && r.fecha < desde) return false;
+        if(hasta && r.fecha > hasta) return false;
+        return true;
+      });
+    }
+    if(grado   && grado   !== 'TODOS') regs = regs.filter(r => r.grado === grado);
+    if(seccion && seccion !== 'TODOS') regs = regs.filter(r => r.seccion === seccion);
+    if(nivel   && nivel   !== 'TODOS') regs = regs.filter(r => r.turno === nivel);
+    if(q) regs = regs.filter(r => r.nombre.toLowerCase().includes(q) || r.alumnoId.includes(q));
+
+    // 2. Agrupar por alumnoId + fecha → una fila por alumno por día
+    const grupos = {};
+    regs.forEach(r => {
+      const key = r.alumnoId + '_' + r.fecha;
+      if(!grupos[key]) {
+        grupos[key] = {
+          alumnoId: r.alumnoId,
+          nombre:   r.nombre,
+          grado:    r.grado,
+          seccion:  r.seccion,
+          turno:    r.turno || '-',
+          fecha:    r.fecha,
+          ingreso:  null,
+          salida:   null,
+          estadoIngreso: '-',
+        };
+      }
+      if(r.tipo === 'INGRESO') {
+        grupos[key].ingreso = r.hora;
+        grupos[key].estadoIngreso = r.estado;
+      }
+      if(r.tipo === 'SALIDA') {
+        grupos[key].salida = r.hora;
+      }
+    });
+
+    // 3. Si hay rango de fechas y filtro de alumno, agregar filas "Sin registro" para días sin datos
+    let filas = Object.values(grupos);
+
+    // Generar fechas hábiles del rango para mostrar "Sin registro"
+    if(desde && hasta && q) {
+      const alumnosEnRango = [...new Set(regs.map(r => r.alumnoId + '|' + r.nombre + '|' + r.grado + '|' + r.seccion + '|' + (r.turno||'-')))];
+      const fechasHabiles = [];
+      let cur = new Date(desde + 'T00:00:00');
+      const fin = new Date(hasta + 'T00:00:00');
+      while(cur <= fin) {
+        const dia = cur.getDay();
+        if(dia !== 0 && dia !== 6) {
+          fechasHabiles.push(cur.toISOString().split('T')[0]);
+        }
+        cur.setDate(cur.getDate() + 1);
+      }
+      alumnosEnRango.forEach(info => {
+        const [aId, aNombre, aGrado, aSeccion, aTurno] = info.split('|');
+        fechasHabiles.forEach(fecha => {
+          const key = aId + '_' + fecha;
+          if(!grupos[key]) {
+            filas.push({ alumnoId: aId, nombre: aNombre, grado: aGrado, seccion: aSeccion, turno: aTurno, fecha, ingreso: null, salida: null, estadoIngreso: 'Sin registro' });
+          }
+        });
+      });
+    }
+
+    // Ordenar por fecha desc, luego por apellido
+    filas.sort((a,b) => b.fecha.localeCompare(a.fecha) || a.nombre.localeCompare(b.nombre));
+
+    // Filtrar por tipo si está seleccionado
+    if(tipo && tipo !== 'TODOS') {
+      if(tipo === 'INGRESO') filas = filas.filter(f => f.ingreso);
+      if(tipo === 'SALIDA')  filas = filas.filter(f => f.salida);
+    }
+
+    const rangoTexto = (desde && hasta && desde !== hasta) ? ` (${desde} al ${hasta})` : (desde ? ` (${desde})` : '');
+    count.textContent = 'Mostrando ' + filas.length + ' registro' + (filas.length!==1?'s':'') + rangoTexto;
+
+    if(!filas.length) {
+      tbody.innerHTML = '';
+      empty.style.display = 'block';
+      empty.querySelector('p').textContent = 'No hay registros con ese filtro';
+      return;
+    }
+    empty.style.display = 'none';
+
+    tbody.innerHTML = filas.map(f => {
+      const sinIngreso = !f.ingreso;
+      const badgeColor = f.estadoIngreso === 'Sin registro' ? 'red' : (f.estadoIngreso === 'Tardanza' ? 'yellow' : (f.estadoIngreso === 'A tiempo' ? 'green' : 'blue'));
+      const cls = f.estadoIngreso === 'Sin registro' ? 'row-salida' : (f.estadoIngreso === 'Tardanza' ? 'row-tarde' : 'row-ingreso');
+      return `<tr class="${cls}">
+        <td class="ts">${f.fecha}</td>
+        <td class="td-id">${f.alumnoId}</td>
+        <td class="td-name">${f.nombre}</td>
+        <td>${f.grado} ${f.seccion}</td>
+        <td>${f.turno}</td>
+        <td class="ts">${f.ingreso || '<span style="color:var(--muted);">—</span>'}</td>
+        <td><span class="badge ${badgeColor}">${f.estadoIngreso}</span></td>
+        <td class="ts">${f.salida || '<span style="color:var(--muted);">—</span>'}</td>
+      </tr>`;
+    }).join('');
+  } catch(e) { console.error('renderRegistro:', e); toast('Error al cargar registros','error'); }
+}
+
+async function clearToday() {
+  if(!confirm('¿Borrar todos los registros de hoy?')) return;
+  try {
+    await DB.deleteRegistrosByFecha(hoy());
+    renderRegistro();
+    updateStats();
+    toast('Registros de hoy eliminados','info');
+  } catch(e) { toast('Error al eliminar','error'); }
+}
+
+async function exportCSV() {
+  const regs = await DB.getRegistros({});
+  if(!regs.length){ toast('No hay registros','warning'); return; }
+  const header = 'Fecha,Hora,ID,Nombre,Grado,Seccion,Tipo,Estado';
+  const rows = regs.map(r => `${r.fecha},${r.hora},${r.alumnoId},"${r.nombre}",${r.grado},${r.seccion},${r.tipo},${r.estado}`);
+  const csv = [header, ...rows].join('\n');
+  const a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+  a.download = `asistencia_${hoy()}.csv`;
+  a.click();
+  toast('CSV exportado','success');
+}
+
+// ============================================================
+// IMPORT CSV
+// ============================================================
+function importCSV() {
+  document.getElementById('csv-input').click();
+}
+
+function handleCSV(e) {
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = async function(ev) {
+    const lines = ev.target.result.split('\n').filter(l => l.trim());
+    const alumnosExistentes = await DB.getAlumnos();
+    const existingIds = new Set(alumnosExistentes.map(a => a.id));
+    let added = 0, updated = 0;
+    for(let idx = 0; idx < lines.length; idx++) {
+      const line = lines[idx];
+      if(idx === 0 && (line.toLowerCase().includes('dni') || line.toLowerCase().includes('nombres'))) continue;
+      const cols = line.split(',').map(c => c.replace(/"/g,'').trim());
+      if(cols.length < 4) continue;
+      const [id, nombres, apellidos, turno, grado, seccion, telefono, foto] = cols;
+      if(!id || !/^\d{8}$/.test(id)) continue;
+      const limite = await getLimiteByNivel(turno||'Primaria');
+      const alumno = { id, nombres, apellidos, grado: grado||'', seccion: seccion||'A', turno: turno||'Primaria', limite, telefono: telefono||'', foto: foto||'' };
+      if(existingIds.has(id)) {
+        // Actualizar alumno existente preservando foto si CSV no trae una
+        const existente = alumnosExistentes.find(a => a.id === id);
+        if(!alumno.foto && existente && existente.foto) alumno.foto = existente.foto;
+        await DB.saveAlumno(alumno);
+        updated++;
+      } else {
+        await DB.saveAlumno(alumno);
+        added++;
+      }
+    }
+    renderAlumnos();
+    updateStats();
+    toast(`${added} alumnos nuevos, ${updated} actualizados`, 'success');
+  };
+  reader.readAsText(file, 'UTF-8');
+  e.target.value = '';
+}
+
+// ============================================================
+// REPORTES
+// ============================================================
+async function renderReportes() {
+  try {
+  const alumnos = await DB.getAlumnos();
+  const registros = await DB.getRegistros({});
+  const today = hoy();
+
+  document.getElementById('rep-total').textContent = alumnos.length;
+
+  // puntualidad: ingresos a tiempo / total ingresos este mes
+  const mesActual = today.slice(0,7);
+  const ingMes = registros.filter(r => r.fecha.startsWith(mesActual) && r.tipo==='INGRESO');
+    const tiempoMes = ingMes.filter(r => r.estado === 'A tiempo');
+  const pct = ingMes.length ? Math.round(tiempoMes.length / ingMes.length * 100) : 0;
+  document.getElementById('rep-puntual').textContent = pct + '%';
+  document.getElementById('rep-tardanzas').textContent = ingMes.filter(r=>r.estado==='Tardanza').length;
+
+  // faltas
+  const diasMes = new Set(registros.filter(r=>r.fecha.startsWith(mesActual)).map(r=>r.fecha));
+  let faltas = 0;
+  diasMes.forEach(dia => {
+    const presentes = new Set(registros.filter(r=>r.fecha===dia&&r.tipo==='INGRESO').map(r=>r.alumnoId));
+    faltas += alumnos.filter(a => !presentes.has(a.id)).length;
+  });
+  document.getElementById('rep-faltas').textContent = faltas;
+
+  // Chart grados hoy
+  const grados = [...new Set(alumnos.map(a=>a.grado))].sort();
+  const chartGrados = document.getElementById('chart-grados');
+  if(!grados.length){ chartGrados.innerHTML = '<p style="color:var(--muted);font-size:.85rem;">Sin datos</p>'; }
+  else {
+    chartGrados.innerHTML = grados.map(g => {
+      const total = alumnos.filter(a=>a.grado===g).length;
+      const pres  = new Set(registros.filter(r=>r.fecha===today&&r.tipo==='INGRESO'&&r.grado===g).map(r=>r.alumnoId)).size;
+      const pctG  = total ? Math.round(pres/total*100) : 0;
+      return `<div style="margin-bottom:10px;">
+        <div style="display:flex;justify-content:space-between;font-size:.8rem;margin-bottom:4px;">
+          <span>${g}</span><span style="color:var(--muted);">${pres}/${total}</span>
+        </div>
+        <div style="background:var(--surface2);border-radius:6px;height:8px;overflow:hidden;">
+          <div style="background:var(--accent);width:${pctG}%;height:100%;border-radius:6px;transition:width .4s;"></div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  // Chart semana
+  const semana = [];
+  for(let i=6;i>=0;i--){
+    const d = new Date(); d.setDate(d.getDate()-i);
+    semana.push(d.toISOString().slice(0,10));
+  }
+  const chartSemana = document.getElementById('chart-semana');
+  const maxV = Math.max(1, ...semana.map(d => new Set(registros.filter(r=>r.fecha===d&&r.tipo==='INGRESO').map(r=>r.alumnoId)).size));
+  chartSemana.innerHTML = `<div style="display:flex;align-items:flex-end;gap:6px;height:80px;">` +
+    semana.map(d => {
+      const cnt = new Set(registros.filter(r=>r.fecha===d&&r.tipo==='INGRESO').map(r=>r.alumnoId)).size;
+      const h = Math.max(4, Math.round(cnt/maxV*72));
+      const isToday = d===today;
+      const label = new Date(d+'T12:00').toLocaleDateString('es-PE',{weekday:'short'});
+      return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;">
+        <span style="font-size:.7rem;color:var(--muted);">${cnt}</span>
+        <div style="width:100%;height:${h}px;background:${isToday?'var(--accent)':'var(--surface2)'};border-radius:4px;border:1px solid ${isToday?'var(--accent)':'var(--border)'};"></div>
+        <span style="font-size:.68rem;color:${isToday?'var(--accent)':'var(--muted)'};">${label}</span>
+      </div>`;
+    }).join('') + `</div>`;
+
+  // Top tardanzas
+  const tardMap = {};
+  registros.filter(r=>r.estado==='Tardanza').forEach(r => {
+    tardMap[r.alumnoId] = (tardMap[r.alumnoId]||0) + 1;
+  });
+  const sorted = Object.entries(tardMap).sort((a,b)=>b[1]-a[1]).slice(0,5);
+  const topEl = document.getElementById('top-tardanzas');
+  if(!sorted.length){ topEl.innerHTML='<p style="color:var(--muted);font-size:.85rem;">Sin tardanzas registradas 🎉</p>'; return; }
+  topEl.innerHTML = sorted.map(([id,cnt]) => {
+    const a = alumnos.find(x=>x.id===id);
+    const name = a ? a.nombres+' '+a.apellidos : id;
+    return `<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);">
+      <span style="font-weight:500;">${name}</span>
+      <span class="badge yellow">${cnt} tardanza${cnt>1?'s':''}</span>
+    </div>`;
+  }).join('');
+  } catch(e) { console.error('renderReportes:', e); }
+}
+
+// ============================================================
+// STATS
+// ============================================================
+async function updateStats() {
+  try {
+    const [alumnos, regsHoy] = await Promise.all([
+      DB.getAlumnos(),
+      DB.getRegistros({fecha: hoy()})
+    ]);
+    const ingresosHoy = new Set(regsHoy.filter(r=>r.tipo==='INGRESO').map(r=>r.alumnoId));
+    const tardanzasHoy = regsHoy.filter(r=>r.estado==='Tardanza').length;
+    document.getElementById('stat-total').textContent = alumnos.length;
+    document.getElementById('stat-hoy').textContent = ingresosHoy.size;
+    document.getElementById('stat-tarde').textContent = tardanzasHoy;
+    document.getElementById('stat-ausentes').textContent = Math.max(0, alumnos.length - ingresosHoy.size);
+  } catch(e) { console.error('updateStats:', e); }
+}
+
+// ============================================================
+// UTILS
+// ============================================================
+function hoy() {
+  return new Date().toISOString().slice(0,10);
+}
+
+function closeModal(id) {
+  const el = document.getElementById(id);
+  if(!el) return;
+  el.classList.remove('open');
+  el.classList.remove('active');
+  el.style.display = 'none';
+  // Reset display after so CSS can reopen it
+  setTimeout(() => { el.style.display = ''; }, 50);
+}
+
+function toast(msg, type='success') {
+  const icons = { success:'✓', error:'✕', warning:'⚠', info:'ℹ' };
+  const el = document.createElement('div');
+  el.className = `toast ${type==='info'?'success':type}`;
+  el.innerHTML = `<span style="font-size:1rem;">${icons[type]||'ℹ'}</span><span class="toast-msg">${msg}</span>`;
+  document.getElementById('toast-container').appendChild(el);
+  setTimeout(() => el.remove(), 3500);
+}
+
+// Modal close handled via onclick on modal-bg elements directly
+
+// ============================================================
+// GESTIÓN DE USUARIOS
+// ============================================================
+let editingUsuarioId = null;
+
+async function openModalUsuario(uid, nombre, rol, email) {
+  editingUsuarioId = uid || null;
+  document.getElementById('modal-usuario-title').textContent = uid ? 'Editar Usuario' : 'Nuevo Usuario';
+  document.getElementById('u-pass').value = '';
+  document.getElementById('btn-toggle-upass').textContent = '👁';
+  document.getElementById('u-pass').type = 'password';
+
+  if(uid) {
+    document.getElementById('u-pass-group').style.display = 'block';
+    document.getElementById('u-pass-label').textContent = 'Nueva contraseña (opcional)';
+    document.getElementById('u-pass-note').style.display = 'block';
+    document.getElementById('u-email').readOnly = true;
+    document.getElementById('u-email').style.opacity = '0.6';
+    if(nombre) document.getElementById('u-nombre').value = nombre;
+    if(email)  document.getElementById('u-email').value  = email;
+    if(rol)    document.getElementById('u-rol').value    = rol;
+    // Cargar cargo desde Firestore
+    try {
+      const uDoc = await db.collection('usuarios').doc(uid).get();
+      const cargo = uDoc.exists ? (uDoc.data().cargo || '') : '';
+      const cargoSel = document.getElementById('u-cargo-select');
+      const cargoCustom = document.getElementById('u-cargo-custom');
+      const cargoHidden = document.getElementById('u-cargo');
+      const opciones = Array.from(cargoSel.options).map(o => o.value);
+      if(opciones.includes(cargo)) {
+        cargoSel.value = cargo;
+        cargoCustom.style.display = 'none';
+      } else if(cargo) {
+        cargoSel.value = 'otro';
+        cargoCustom.style.display = 'block';
+        cargoCustom.value = cargo;
+      } else {
+        cargoSel.value = '';
+      }
+      cargoHidden.value = cargo;
+    } catch(e) {}
+  } else {
+    document.getElementById('u-pass-group').style.display = 'block';
+    document.getElementById('u-pass-label').textContent = 'Contraseña';
+    document.getElementById('u-pass-note').style.display = 'none';
+    document.getElementById('u-email').readOnly = false;
+    document.getElementById('u-email').style.opacity = '1';
+    ['u-nombre','u-email'].forEach(x => document.getElementById(x).value = '');
+    document.getElementById('u-rol').value = 'profesor';
+    document.getElementById('u-cargo-select').value = '';
+    document.getElementById('u-cargo-custom').value = '';
+    document.getElementById('u-cargo-custom').style.display = 'none';
+    document.getElementById('u-cargo').value = '';
+    tempAsignaciones = {};
+    document.getElementById('u-restringir').checked = false;
+  }
+
+  // Cargar checkboxes de privilegios
+  await cargarCheckboxesPrivilegios(uid);
+  togglePrivilegios();
+  toggleBtnConfigurar();
+  document.getElementById('modal-usuario').classList.add('open');
+}
+
+async function saveUsuario() {
+  const nombre = document.getElementById('u-nombre').value.trim();
+  const email  = document.getElementById('u-email').value.trim();
+  const pass   = document.getElementById('u-pass').value;
+  const rol    = document.getElementById('u-rol').value;
+  // Sync cargo hidden field
+  toggleCargoCustum();
+  const cargo  = document.getElementById('u-cargo').value.trim();
+
+  if(!nombre){ toast('Completa el nombre','warning'); return; }
+  if(!editingUsuarioId && !email){ toast('Completa el correo','warning'); return; }
+
+  try {
+    // Obtener asignaciones si es profesor
+    const restringir = rol === 'profesor' ? document.getElementById('u-restringir').checked : false;
+    const asignaciones = (rol === 'profesor' && restringir) ? tempAsignaciones : {};
+
+    if(!editingUsuarioId) {
+      // NUEVO usuario
+      if(!pass || pass.length < 6){ toast('La contraseña debe tener al menos 6 caracteres','warning'); return; }
+      const secondaryApp = firebase.initializeApp(firebaseConfig, 'secondary_' + Date.now());
+      const secondaryAuth = secondaryApp.auth();
+      const cred = await secondaryAuth.createUserWithEmailAndPassword(email, pass);
+      const uid = cred.user.uid;
+      await secondaryAuth.signOut();
+      await secondaryApp.delete();
+      await db.collection('usuarios').doc(uid).set({ nombre, email, rol, cargo, restringir, asignaciones, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+      toast('Usuario creado correctamente','success');
+    } else {
+      // EDITAR usuario
+      await db.collection('usuarios').doc(editingUsuarioId).update({ nombre, rol, cargo, restringir, asignaciones });
+      // Si se ingresó nueva contraseña, cambiarla
+      if(pass && pass.length >= 6) {
+        // Re-autenticar como admin no es posible en client SDK para otros usuarios
+        // Usamos workaround: crear app secundaria con las credenciales actuales no es posible
+        // Mejor opción: mostrar mensaje informativo
+        toast('Datos actualizados. Para cambiar la contraseña el usuario debe usar "¿Olvidé mi contraseña?" en el login.','info');
+      } else {
+        toast('Usuario actualizado correctamente','success');
+      }
+    }
+    closeModal('modal-usuario');
+    renderUsuarios();
+  } catch(e) {
+    console.error(e);
+    if(e.code === 'auth/email-already-in-use') toast('Ese correo ya está registrado','error');
+    else if(e.code === 'auth/invalid-email') toast('Correo inválido','error');
+    else toast('Error: ' + e.message,'error');
+  }
+}
+
+async function deleteUsuario(uid) {
+  if(uid === currentUser.uid){ toast('No puedes eliminar tu propia cuenta','warning'); return; }
+  if(!confirm('¿Eliminar este usuario? No podrá ingresar al sistema.')) return;
+  try {
+    await db.collection('usuarios').doc(uid).delete();
+    toast('Usuario eliminado','info');
+    renderUsuarios();
+  } catch(e) { toast('Error al eliminar','error'); }
+}
+
+async function renderUsuarios() {
+  const tbody = document.getElementById('usuarios-tbody');
+  if(!tbody) return;
+  try {
+    const snap = await db.collection('usuarios').get();
+    const rolLabels = { admin:'⚙ Admin', director:'🏫 Director', profesor:'👨‍🏫 Profesor', portero:'🚪 Portero' };
+    const rolColors = { admin:'var(--accent)', director:'#a78bfa', profesor:'#34d399', portero:'#fb923c' };
+    tbody.innerHTML = snap.docs.map(d => {
+      const u = d.data();
+      const esYo = d.id === currentUser.uid ? ' (tú)' : '';
+      return `<tr>
+        <td style="font-weight:500;">${u.nombre}${esYo}</td>
+        <td style="color:var(--muted);font-size:0.85rem;">${u.email}</td>
+        <td><span style="color:${rolColors[u.rol]||'#fff'};font-weight:600;">${rolLabels[u.rol]||u.rol}</span>${u.cargo?`<br><span style="font-size:0.72rem;color:var(--muted);">${u.cargo}</span>`:''} ${u.rol==='profesor'&&u.restringir?`<br><span style="font-size:0.72rem;color:var(--accent);">Restringido: ${Object.keys(u.asignaciones||{}).join(', ')||'sin asignar'}</span>`:''}</td>
+        <td style="display:flex;gap:6px;">
+          <button class="btn btn-ghost" style="padding:5px 10px;font-size:0.78rem;" onclick="openModalUsuario('${d.id}','${u.nombre}','${u.rol}','${u.email}')">✏</button>
+          ${d.id !== currentUser.uid ? `<button class="btn btn-danger" style="padding:5px 10px;font-size:0.78rem;" onclick="deleteUsuario('${d.id}')">✕</button>` : ''}
+        </td>
+      </tr>`;
+    }).join('');
+  } catch(e) { tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--muted);">Error al cargar usuarios</td></tr>'; }
+}
+
+
+
+// ============================================================
+// PRIVILEGIOS DE PROFESOR
+// ============================================================
+
+// Almacén temporal de asignaciones mientras edita
+let tempAsignaciones = {};
+
+function toggleCargoCustum() {
+  const sel = document.getElementById('u-cargo-select').value;
+  const custom = document.getElementById('u-cargo-custom');
+  const hidden = document.getElementById('u-cargo');
+  if(sel === 'otro') {
+    custom.style.display = 'block';
+    custom.oninput = () => hidden.value = custom.value;
+    hidden.value = custom.value;
+  } else {
+    custom.style.display = 'none';
+    hidden.value = sel;
+  }
+}
+
+function toggleBtnConfigurar() {
+  const checked = document.getElementById('u-restringir').checked;
+  const btn = document.getElementById('btn-configurar-privilegios');
+  if(btn) btn.disabled = !checked;
+}
+
+function togglePrivilegios() {
+  const rol = document.getElementById('u-rol').value;
+  document.getElementById('u-privilegios-group').style.display = rol === 'profesor' ? 'block' : 'none';
+}
+
+function actualizarResumenPrivilegios() {
+  const resumen = document.getElementById('u-privilegios-resumen');
+  if(!resumen) return;
+  const grados = Object.keys(tempAsignaciones);
+  if(!grados.length) {
+    resumen.textContent = 'Sin restricciones configuradas';
+    return;
+  }
+  resumen.textContent = grados.map(g => {
+    const s = (tempAsignaciones[g]||[]);
+    return g + (s.length ? ' ('+s.join(',')+')' : ' (todas)');
+  }).join(' · ');
+}
+
+async function abrirModalPrivilegios() {
+  await cargarCheckboxesPrivilegios(null); // usa tempAsignaciones
+  document.getElementById('modal-privilegios').classList.add('open');
+}
+
+async function savePrivilegios() {
+  // Leer checks del modal privilegios
+  tempAsignaciones = {};
+  document.querySelectorAll('.chk-grado:checked').forEach(chk => {
+    const g = chk.dataset.grado;
+    const seccs = Array.from(
+      document.querySelectorAll(`.chk-seccion[data-grado="${g}"]:checked`)
+    ).map(c => c.value);
+    tempAsignaciones[g] = seccs;
+  });
+  actualizarResumenPrivilegios();
+  closeModal('modal-privilegios');
+  // Auto-check restringir si hay asignaciones
+  if(Object.keys(tempAsignaciones).length) {
+    document.getElementById('u-restringir').checked = true;
+  }
+}
+
+async function cargarCheckboxesPrivilegios(uid) {
+  const cfg = await getConfig();
+  const secciones = cfg.secciones || ['A','B','C','D'];
+
+  // Si uid, cargar desde Firestore; si no, usar tempAsignaciones
+  if(uid) {
+    try {
+      const doc = await db.collection('usuarios').doc(uid).get();
+      if(doc.exists) {
+        tempAsignaciones = doc.data().asignaciones || {};
+        document.getElementById('u-restringir').checked = doc.data().restringir || false;
+      }
+    } catch(e) {}
+  }
+
+  const asignaciones = tempAsignaciones;
+
+  // Render por nivel en modal-privilegios
+  const nivelesEl = document.getElementById('u-niveles-checks');
+  nivelesEl.innerHTML = (cfg.niveles||[]).map(n => {
+    const grados = (cfg.grados||{})[n.nombre] || [];
+    const nivelKey = n.nombre.replace(/[^a-z0-9]/gi,'_');
+    return `
+      <div style="margin-bottom:16px;padding:12px;background:var(--surface2);border-radius:10px;">
+        <div style="font-size:0.82rem;font-weight:700;color:var(--accent);margin-bottom:10px;">${n.nombre}</div>
+        ${grados.map(g => {
+          const seccsAsignadas = asignaciones[g] || [];
+          const gradoKey = nivelKey + '_' + g.replace(/[^a-z0-9]/gi,'_');
+          return `
+            <div style="margin-bottom:8px;">
+              <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:0.85rem;font-weight:600;margin-bottom:5px;">
+                <input type="checkbox" class="chk-grado" data-grado="${g}" data-key="${gradoKey}"
+                  onchange="toggleGradoSecciones(this)"
+                  ${seccsAsignadas.length?'checked':''}
+                  style="accent-color:var(--accent);width:15px;height:15px;">
+                ${g}
+              </label>
+              <div id="secc-${gradoKey}" style="display:${seccsAsignadas.length?'flex':'none'};flex-wrap:wrap;gap:8px;padding-left:22px;margin-top:4px;">
+                ${secciones.map(s => `
+                  <label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-size:0.82rem;">
+                    <input type="checkbox" class="chk-seccion" data-grado="${g}" data-key="${gradoKey}" value="${s}"
+                      ${seccsAsignadas.includes(s)?'checked':''}
+                      style="accent-color:var(--accent);width:14px;height:14px;">
+                    ${s}
+                  </label>
+                `).join('')}
+              </div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    `;
+  }).join('');
+  actualizarResumenPrivilegios();
+}
+
+function toggleGradoSecciones(chk) {
+  const key = chk.dataset.key;
+  const secDiv = document.getElementById('secc-' + key);
+  if(secDiv) secDiv.style.display = chk.checked ? 'flex' : 'none';
+  if(!chk.checked && secDiv) {
+    secDiv.querySelectorAll('input[type=checkbox]').forEach(c => c.checked = false);
+  }
+}
+
+function getAsignaciones() {
+  const result = {};
+  document.querySelectorAll('.chk-grado:checked').forEach(chk => {
+    const g = chk.dataset.grado;
+    const key = chk.dataset.key;
+    const seccs = Array.from(
+      document.querySelectorAll(`.chk-seccion[data-key="${key}"]:checked`)
+    ).map(c => c.value);
+    result[g] = seccs;
+  });
+  return result;
+}
+
+// Privilegios del usuario actual
+let currentPrivilegios = { restringir: false, asignaciones: {} };
+
+async function cargarPrivilegiosActuales() {
+  if(!currentUser || currentRol !== 'profesor') {
+    currentPrivilegios = { restringir: false, asignaciones: {} };
+    return;
+  }
+  try {
+    const doc = await db.collection('usuarios').doc(currentUser.uid).get();
+    if(doc.exists) {
+      currentPrivilegios = {
+        restringir:   doc.data().restringir   || false,
+        asignaciones: doc.data().asignaciones || {},
+      };
+    }
+  } catch(e) {
+    currentPrivilegios = { restringir: false, asignaciones: {} };
+  }
+}
+
+// Aplicar restricción a lista de alumnos
+function aplicarFiltroProfesor(alumnos) {
+  if(currentRol !== 'profesor') return alumnos;
+  if(!currentPrivilegios.restringir) return alumnos;
+  const asig = currentPrivilegios.asignaciones;
+  if(!Object.keys(asig).length) return alumnos;
+  return alumnos.filter(a => {
+    if(!asig[a.grado]) return false;
+    const seccs = asig[a.grado];
+    // Si no hay secciones marcadas para ese grado, ve todas las secciones de ese grado
+    if(!seccs.length) return true;
+    return seccs.includes(a.seccion);
+  });
+}
+
+
+// ============================================================
+// FILTROS DINÁMICOS POR NIVEL → GRADO → SECCIÓN
+// ============================================================
+
+async function poblarFiltroNivel(selectId, onchangeFn) {
+  const cfg = await getConfig();
+  const el = document.getElementById(selectId);
+  if(!el) return;
+  const niveles = (cfg.niveles||[]).map(n => n.nombre);
+  // Si es profesor con restricciones, solo sus niveles
+  let nivelesVisibles = niveles;
+  if(currentRol === 'profesor' && currentPrivilegios.restringir) {
+    const gradosAsig = Object.keys(currentPrivilegios.asignaciones || {});
+    const nivelesAsig = new Set();
+    niveles.forEach(nv => {
+      const grados = (cfg.grados||{})[nv] || [];
+      if(grados.some(g => gradosAsig.includes(g))) nivelesAsig.add(nv);
+    });
+    nivelesVisibles = niveles.filter(n => nivelesAsig.has(n));
+  }
+  el.innerHTML = `<option value="" disabled selected>-- Nivel --</option><option value="TODOS">Todos</option>`;
+  nivelesVisibles.forEach(n => { el.innerHTML += `<option value="${n}">${n}</option>`; });
+}
+
+async function poblarFiltroGrado(selectId, nivel) {
+  const cfg = await getConfig();
+  const el = document.getElementById(selectId);
+  if(!el) return;
+  let grados = nivel && nivel !== 'TODOS'
+    ? (cfg.grados||{})[nivel] || []
+    : [...new Set(Object.values(cfg.grados||{}).flat())];
+
+  // Solo grados que tienen alumnos
+  const alumnos = await DB.getAlumnos();
+  const gradosConAlumnos = new Set(
+    alumnos
+      .filter(a => !nivel || nivel === 'TODOS' || a.turno === nivel)
+      .map(a => a.grado)
+  );
+  grados = grados.filter(g => gradosConAlumnos.has(g));
+
+  // Si es profesor con restricciones, solo sus grados
+  if(currentRol === 'profesor' && currentPrivilegios.restringir) {
+    const gradosAsig = Object.keys(currentPrivilegios.asignaciones || {});
+    grados = grados.filter(g => gradosAsig.includes(g));
+  }
+  el.innerHTML = `<option value="" disabled selected>-- Grado --</option><option value="TODOS">Todos</option>`;
+  grados.forEach(g => { el.innerHTML += `<option value="${g}">${g}</option>`; });
+}
+
+async function poblarFiltroSeccion(selectId, grado) {
+  const cfg = await getConfig();
+  const el = document.getElementById(selectId);
+  if(!el) return;
+  let secciones = cfg.secciones || ['A','B','C','D'];
+
+  // Obtener secciones que realmente tienen alumnos
+  const alumnos = await DB.getAlumnos();
+  const seccionesConAlumnos = new Set(
+    alumnos
+      .filter(a => !grado || grado === 'TODOS' || a.grado === grado)
+      .map(a => a.seccion)
+  );
+  secciones = secciones.filter(s => seccionesConAlumnos.has(s));
+
+  if(currentRol === 'profesor' && currentPrivilegios.restringir) {
+    const asig = currentPrivilegios.asignaciones || {};
+    if(grado && grado !== 'TODOS') {
+      const seccsAsig = asig[grado] || [];
+      if(seccsAsig.length) secciones = secciones.filter(s => seccsAsig.includes(s));
+    } else {
+      const todasPermitidas = new Set();
+      Object.values(asig).forEach(seccs => seccs.forEach(s => todasPermitidas.add(s)));
+      if(todasPermitidas.size) secciones = secciones.filter(s => todasPermitidas.has(s));
+    }
+  }
+  el.innerHTML = `<option value="" disabled selected>-- Sección --</option><option value="TODOS">Todas</option>`;
+  secciones.forEach(s => { el.innerHTML += `<option value="${s}">${s}</option>`; });
+}
+
+async function onNivelChangeAlumnos() {
+  const nivel = document.getElementById('fa-nivel').value;
+  await poblarFiltroGrado('fa-grado', nivel);
+  await poblarFiltroSeccion('fa-seccion', null);
+  document.getElementById('fa-grado').value = '';
+  document.getElementById('fa-seccion').value = '';
+  renderAlumnos();
+}
+
+async function onNivelChangeRegistro() {
+  const nivel = document.getElementById('filter-nivel').value;
+  await poblarFiltroGrado('filter-grado', nivel);
+  await poblarFiltroSeccion('filter-seccion', null);
+  document.getElementById('filter-grado').value = '';
+  document.getElementById('filter-seccion').value = '';
+  renderRegistro();
+}
+
+async function inicializarFiltros() {
+  await poblarFiltroNivel('fa-nivel', 'onNivelChangeAlumnos');
+  await poblarFiltroGrado('fa-grado', null);
+  await poblarFiltroSeccion('fa-seccion', null);
+  await poblarFiltroNivel('filter-nivel', 'onNivelChangeRegistro');
+  await poblarFiltroGrado('filter-grado', null);
+  await poblarFiltroSeccion('filter-seccion', null);
+}
+
+// ============================================================
+// CONFIGURACIÓN — Firestore collection: 'config'
+// ============================================================
+
+// Config defaults
+const CONFIG_DEFAULTS = {
+  nombreColegio: 'Institución Educativa',
+  anio: '2026',
+  niveles: [
+    { nombre: 'Inicial',    horaLimite: '08:00' },
+    { nombre: 'Primaria',   horaLimite: '08:00' },
+    { nombre: 'Secundaria', horaLimite: '07:45' },
+  ],
+  grados: {
+    'Inicial':    ['3 años','4 años','5 años'],
+    'Primaria':   ['1°','2°','3°','4°','5°','6°'],
+    'Secundaria': ['1°','2°','3°','4°','5°'],
+  },
+  secciones: ['A','B','C','D'],
+};
+
+let configCache = null;
+
+async function getConfig() {
+  if(configCache) return configCache;
+  try {
+    const doc = await db.collection('config').doc('general').get();
+    configCache = doc.exists ? { ...CONFIG_DEFAULTS, ...doc.data() } : { ...CONFIG_DEFAULTS };
+  } catch(e) {
+    configCache = { ...CONFIG_DEFAULTS };
+  }
+  return configCache;
+}
+
+function invalidateConfig() { configCache = null; }
+
+async function getLimiteByNivel(nivel) {
+  const cfg = await getConfig();
+  const n = (cfg.niveles||[]).find(x => x.nombre === nivel);
+  return n ? n.horaLimite : '08:00';
+}
+
+async function renderConfig() {
+  const cfg = await getConfig();
+
+  // Info colegio
+  document.getElementById('cfg-nombre-colegio').value = cfg.nombreColegio || '';
+  document.getElementById('cfg-anio').value = cfg.anio || '';
+
+  // Niveles y horarios
+  const nivelesEl = document.getElementById('cfg-niveles-list');
+  nivelesEl.innerHTML = (cfg.niveles||[]).map((n,i) => `
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;flex-wrap:wrap;">
+      <div style="flex:1;min-width:120px;">
+        <div style="font-weight:600;font-size:0.9rem;">${n.nombre}</div>
+      </div>
+      <div class="form-group" style="flex:1;min-width:140px;margin:0;">
+        <label style="font-size:0.75rem;">Hora límite ingreso</label>
+        <input type="time" id="cfg-hora-${i}" value="${n.horaLimite||'08:00'}">
+      </div>
+    </div>
+  `).join('');
+
+  // Grados
+  const gradosEl = document.getElementById('cfg-grados-list');
+  gradosEl.innerHTML = (cfg.niveles||[]).map((n,i) => {
+    const grados = (cfg.grados||{})[n.nombre] || [];
+    return `
+      <div style="margin-bottom:14px;">
+        <div style="font-weight:600;font-size:0.9rem;margin-bottom:6px;">${n.nombre}</div>
+        <input type="text" id="cfg-grados-${i}" value="${grados.join(', ')}" placeholder="1°, 2°, 3°" style="width:100%;box-sizing:border-box;">
+        <div style="font-size:0.75rem;color:var(--muted);margin-top:4px;">Separados por coma</div>
+      </div>
+    `;
+  }).join('');
+
+  // Secciones
+  document.getElementById('cfg-secciones').value = (cfg.secciones||[]).join(', ');
+}
+
+async function guardarInfoColegio() {
+  const nombre = document.getElementById('cfg-nombre-colegio').value.trim();
+  const anio   = document.getElementById('cfg-anio').value.trim();
+  if(!nombre){ toast('Ingresa el nombre del colegio','warning'); return; }
+  try {
+    await db.collection('config').doc('general').set({ nombreColegio: nombre, anio }, { merge: true });
+    invalidateConfig();
+    toast('Información guardada','success');
+  } catch(e) { toast('Error al guardar','error'); }
+}
+
+async function guardarHorarios() {
+  const cfg = await getConfig();
+  const niveles = (cfg.niveles||[]).map((n,i) => ({
+    nombre: n.nombre,
+    horaLimite: document.getElementById('cfg-hora-'+i)?.value || '08:00'
+  }));
+  try {
+    await db.collection('config').doc('general').set({ niveles }, { merge: true });
+    invalidateConfig();
+    toast('Horarios guardados','success');
+  } catch(e) { toast('Error al guardar','error'); }
+}
+
+async function guardarGrados() {
+  const cfg = await getConfig();
+  const grados = {};
+  (cfg.niveles||[]).forEach((n,i) => {
+    const val = document.getElementById('cfg-grados-'+i)?.value || '';
+    grados[n.nombre] = val.split(',').map(x => x.trim()).filter(Boolean);
+  });
+  try {
+    await db.collection('config').doc('general').set({ grados }, { merge: true });
+    invalidateConfig();
+    // Update filter combos
+    await actualizarFiltrosGrado();
+    toast('Grados guardados','success');
+  } catch(e) { toast('Error al guardar','error'); }
+}
+
+async function guardarSecciones() {
+  const val = document.getElementById('cfg-secciones').value;
+  const secciones = val.split(',').map(x => x.trim()).filter(Boolean);
+  if(!secciones.length){ toast('Ingresa al menos una sección','warning'); return; }
+  try {
+    await db.collection('config').doc('general').set({ secciones }, { merge: true });
+    invalidateConfig();
+    await actualizarFiltrosSeccion();
+    toast('Secciones guardadas','success');
+  } catch(e) { toast('Error al guardar','error'); }
+}
+
+// Cargar grados en el formulario de alumno según nivel seleccionado
+async function cargarGradosPorNivel(nivelParam) {
+  const nivel = nivelParam || document.getElementById('f-turno').value;
+  const gradoSel = document.getElementById('f-grado');
+  gradoSel.innerHTML = '<option value="">Seleccionar</option>';
+  if(!nivel) return;
+  const cfg = await getConfig();
+  const grados = (cfg.grados||{})[nivel] || [];
+  grados.forEach(g => {
+    const opt = document.createElement('option');
+    opt.value = g; opt.textContent = g;
+    gradoSel.appendChild(opt);
+  });
+  await cargarSeccionesPorGrado();
+}
+
+async function cargarSeccionesPorGrado() {
+  const seccionSel = document.getElementById('f-seccion');
+  if(!seccionSel) return;
+  const cfg = await getConfig();
+  const secciones = cfg.secciones || ['A','B','C','D'];
+  seccionSel.innerHTML = '<option value="">Seleccionar</option>';
+  secciones.forEach(s => {
+    const opt = document.createElement('option');
+    opt.value = s; opt.textContent = s;
+    seccionSel.appendChild(opt);
+  });
+}
+
+// Cargar niveles, grados y secciones en todos los selects del sistema
+async function actualizarTodosLosFiltros() {
+  const cfg = await getConfig();
+  const niveles = (cfg.niveles||[]).map(n => n.nombre);
+  const secciones = cfg.secciones || ['A','B','C','D'];
+  const todosGrados = [...new Set(Object.values(cfg.grados||{}).flat())];
+
+  // Helper to rebuild select
+  function rebuildSelect(id, opciones, addTodos=true) {
+    const el = document.getElementById(id);
+    if(!el) return;
+    const cur = el.value;
+    el.innerHTML = `<option value="" disabled selected>-- ${el.closest('.form-group')?.querySelector('label')?.textContent||''} --</option>`;
+    if(addTodos) el.innerHTML += `<option value="TODOS">Todos</option>`;
+    opciones.forEach(o => { el.innerHTML += `<option value="${o}">${o}</option>`; });
+    if(cur) el.value = cur;
+  }
+
+  // Filtros alumnos
+  rebuildSelect('fa-nivel', niveles);
+  rebuildSelect('fa-seccion', secciones);
+  rebuildSelect('fa-grado', todosGrados);
+
+  // Filtros registro
+  rebuildSelect('filter-nivel', niveles);
+  rebuildSelect('filter-seccion', secciones);
+  rebuildSelect('filter-grado', todosGrados);
+
+  // Modal alumno — nivel
+  const fTurno = document.getElementById('f-turno');
+  if(fTurno) {
+    fTurno.innerHTML = '<option value="">Seleccionar</option>';
+    niveles.forEach(n => { fTurno.innerHTML += `<option value="${n}">${n}</option>`; });
+  }
+
+  // Modal alumno — secciones
+  const fSeccion = document.getElementById('f-seccion');
+  if(fSeccion) {
+    fSeccion.innerHTML = '<option value="">Seleccionar</option>';
+    secciones.forEach(s => { fSeccion.innerHTML += `<option value="${s}">${s}</option>`; });
+  }
+}
+
+async function actualizarFiltrosGrado() {
+  const cfg = await getConfig();
+  const todosGrados = [...new Set(Object.values(cfg.grados||{}).flat())];
+  ['fa-grado','filter-grado'].forEach(id => {
+    const el = document.getElementById(id);
+    if(!el) return;
+    el.innerHTML = `<option value="" disabled selected>-- Grado --</option><option value="TODOS">Todos los grados</option>`;
+    todosGrados.forEach(g => { el.innerHTML += `<option value="${g}">${g}</option>`; });
+  });
+}
+
+async function actualizarFiltrosSeccion() {
+  const cfg = await getConfig();
+  const secciones = cfg.secciones || ['A','B','C','D'];
+  ['fa-seccion','filter-seccion','f-seccion'].forEach(id => {
+    const el = document.getElementById(id);
+    if(!el) return;
+    const addTodos = id.startsWith('fa-') || id.startsWith('filter-');
+    el.innerHTML = addTodos
+      ? `<option value="" disabled selected>-- Sección --</option><option value="TODOS">Todas</option>`
+      : `<option value="">Seleccionar</option>`;
+    secciones.forEach(s => { el.innerHTML += `<option value="${s}">${s}</option>`; });
+  });
+}
+
+
+// ============================================================
+// INCIDENTES
+// ============================================================
+
+// jsPDF via CDN — loaded dynamically
+function cargarJsPDF() {
+  return new Promise((resolve) => {
+    if(window.jspdf) { resolve(); return; }
+    const s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+    s.onload = resolve;
+    document.head.appendChild(s);
+  });
+}
+
+let incAlumnoSeleccionado = null;
+
+
+async function getCargoUsuario(uid) {
+  try {
+    const doc = await db.collection('usuarios').doc(uid).get();
+    return doc.exists ? (doc.data().cargo || '') : '';
+  } catch(e) { return ''; }
+}
+
+function limpiarFiltroFechaInc() {
+  const f = document.getElementById('inc-filter-fecha');
+  if(f && document.getElementById('inc-filter-search').value) f.value = '';
+}
+function limpiarFiltroAlumnoInc() {
+  const s = document.getElementById('inc-filter-search');
+  if(s && document.getElementById('inc-filter-fecha').value) s.value = '';
+}
+function limpiarFiltrosIncidentes() {
+  document.getElementById('inc-filter-fecha').value = '';
+  document.getElementById('inc-filter-search').value = '';
+  renderIncidentes();
+}
+function abrirModalIncidente() {
+  incAlumnoSeleccionado = null;
+  document.getElementById('inc-buscar').value = '';
+  document.getElementById('inc-alumno-resultado').innerHTML = '';
+  document.getElementById('inc-alumno-id').value = '';
+  document.getElementById('inc-fecha').value = hoy();
+  document.getElementById('inc-hora').value = new Date().toTimeString().slice(0,5);
+  document.getElementById('inc-tipo').value = '';
+  document.getElementById('inc-descripcion').value = '';
+  document.getElementById('inc-medidas').value = '';
+  document.getElementById('inc-foto-data').value = '';
+  document.getElementById('inc-foto-preview').style.display = 'none';
+  document.querySelector('input[name="inc-sev"][value="Moderado"]').checked = true;
+  document.getElementById('modal-incidente').classList.add('open');
+}
+
+async function buscarAlumnoIncidente(q) {
+  const res = document.getElementById('inc-alumno-resultado');
+  if(!q || q.length < 2) { res.innerHTML = ''; return; }
+  const alumnos = await DB.getAlumnos();
+  const filtrados = alumnos.filter(a =>
+    a.id.includes(q) ||
+    (a.nombres + ' ' + a.apellidos).toLowerCase().includes(q.toLowerCase())
+  ).slice(0, 5);
+
+  if(!filtrados.length) {
+    res.innerHTML = '<div style="color:var(--muted);font-size:0.82rem;padding:8px;">No se encontraron alumnos</div>';
+    return;
+  }
+  res.innerHTML = filtrados.map(a => `
+    <div onclick="seleccionarAlumnoIncidente('${a.id}')"
+      style="padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;cursor:pointer;margin-bottom:6px;display:flex;align-items:center;gap:10px;"
+      onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">
+      <span style="font-size:1.2rem;">👤</span>
+      <div>
+        <div style="font-weight:600;font-size:0.88rem;">${a.nombres} ${a.apellidos}</div>
+        <div style="font-size:0.75rem;color:var(--muted);">DNI: ${a.id} · ${a.grado} ${a.seccion} · ${a.turno}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function seleccionarAlumnoIncidente(id) {
+  const alumnos = await DB.getAlumnos();
+  const a = alumnos.find(x => x.id === id);
+  if(!a) return;
+  incAlumnoSeleccionado = a;
+  document.getElementById('inc-alumno-id').value = id;
+  document.getElementById('inc-buscar').value = a.nombres + ' ' + a.apellidos;
+  document.getElementById('inc-alumno-resultado').innerHTML = `
+    <div style="background:var(--surface2);border:1px solid var(--accent);border-radius:10px;padding:10px 14px;display:flex;align-items:center;gap:10px;margin-top:4px;">
+      <span style="font-size:1.3rem;">✅</span>
+      <div>
+        <div style="font-weight:600;font-size:0.88rem;">${a.nombres} ${a.apellidos}</div>
+        <div style="font-size:0.75rem;color:var(--muted);">DNI: ${a.id} · ${a.grado} ${a.seccion} · ${a.turno}</div>
+      </div>
+    </div>
+  `;
+}
+
+function previewIncFoto(input) {
+  const file = input.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    document.getElementById('inc-foto-data').value = e.target.result;
+    document.getElementById('inc-foto-img').src = e.target.result;
+    document.getElementById('inc-foto-preview').style.display = 'block';
+  };
+  reader.readAsDataURL(file);
+}
+
+async function guardarIncidente() {
+  const alumnoId = document.getElementById('inc-alumno-id').value;
+  if(!alumnoId || !incAlumnoSeleccionado) { toast('Selecciona un alumno','warning'); return; }
+  const tipo = document.getElementById('inc-tipo').value;
+  if(!tipo) { toast('Selecciona el tipo de incidente','warning'); return; }
+  const descripcion = document.getElementById('inc-descripcion').value.trim();
+  if(!descripcion) { toast('Escribe la descripción del incidente','warning'); return; }
+
+  const severidad = document.querySelector('input[name="inc-sev"]:checked').value;
+  const fecha = document.getElementById('inc-fecha').value;
+  const hora = document.getElementById('inc-hora').value;
+  const medidas = document.getElementById('inc-medidas').value.trim();
+  const fotoData = document.getElementById('inc-foto-data').value;
+  const a = incAlumnoSeleccionado;
+
+  const incidente = {
+    alumnoId: a.id,
+    alumnoNombre: a.nombres + ' ' + a.apellidos,
+    grado: a.grado, seccion: a.seccion, turno: a.turno,
+    tipo, severidad, fecha, hora, descripcion, medidas,
+    fotoData: fotoData ? 'si' : 'no', // no guardamos imagen en Firestore por tamaño
+    responsableId: currentUser.uid,
+    responsableNombre: document.getElementById('user-name-display').textContent,
+    responsableCargo: await getCargoUsuario(currentUser.uid),
+    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+  };
+
+  try {
+    await db.collection('incidentes').add(incidente);
+    toast('Reporte guardado','success');
+    closeModal('modal-incidente');
+    renderIncidentes();
+    // Generar PDF
+    await generarPDFIncidente({ ...incidente, fotoData });
+  } catch(e) { toast('Error al guardar: ' + e.message, 'error'); }
+}
+
+async function renderIncidentes() {
+  const tbody = document.getElementById('incidentes-tbody');
+  const empty = document.getElementById('incidentes-empty');
+  if(!tbody) return;
+  try {
+    let snap = await db.collection('incidentes').limit(200).get();
+    let docs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+    // Filtro profesor
+    if(currentRol === 'profesor' && currentPrivilegios.restringir) {
+      docs = docs.filter(d => aplicarFiltroProfesor([{ grado: d.grado, seccion: d.seccion }]).length > 0);
+    }
+    // Si es profesor, solo sus reportes
+    if(currentRol === 'profesor') {
+      docs = docs.filter(d => d.responsableId === currentUser.uid);
+    }
+
+    // Filtros UI
+    const fecha = document.getElementById('inc-filter-fecha')?.value;
+    const q = (document.getElementById('inc-filter-search')?.value||'').toLowerCase();
+    if(fecha) docs = docs.filter(d => d.fecha === fecha);
+    if(q) docs = docs.filter(d => d.alumnoNombre.toLowerCase().includes(q) || d.alumnoId.includes(q));
+
+    // Sort by fecha desc
+    docs.sort((a,b) => (b.fecha||'').localeCompare(a.fecha||''));
+
+    if(!docs.length) {
+      tbody.innerHTML = '';
+      empty.style.display = 'block';
+      return;
+    }
+    empty.style.display = 'none';
+
+    const sevColors = { Leve: 'green', Moderado: 'yellow', Grave: 'red' };
+    tbody.innerHTML = docs.map(d => `
+      <tr>
+        <td class="ts">${d.fecha}</td>
+        <td class="td-id">${d.alumnoId||'-'}</td>
+        <td class="td-name">${d.alumnoNombre}</td>
+        <td>${d.grado} ${d.seccion}</td>
+        <td>${d.tipo}</td>
+        <td><span class="badge ${sevColors[d.severidad]||'blue'}">${d.severidad}</span></td>
+        <td style="font-size:0.82rem;">${d.responsableNombre||'-'}${d.responsableCargo?`<br><span style="color:var(--muted);font-size:0.72rem;">${d.responsableCargo}</span>`:''}</td>
+        <td style="display:flex;gap:6px;">
+          <button class="btn btn-ghost" style="padding:4px 10px;font-size:0.78rem;" onclick="reimprimirIncidente('${d.id}')">🖨️ PDF</button>
+          ${currentRol==='admin'||currentRol==='director' ? `<button class="btn btn-danger" style="padding:4px 10px;font-size:0.78rem;" onclick="eliminarIncidente('${d.id}')">✕</button>` : ''}
+        </td>
+      </tr>
+    `).join('');
+  } catch(e) { console.error(e); }
+}
+
+async function eliminarIncidente(id) {
+  if(!confirm('¿Eliminar este reporte?')) return;
+  await db.collection('incidentes').doc(id).delete();
+  toast('Reporte eliminado','info');
+  renderIncidentes();
+}
+
+async function reimprimirIncidente(id) {
+  const doc = await db.collection('incidentes').doc(id).get();
+  if(!doc.exists) { toast('Reporte no encontrado','error'); return; }
+  await generarPDFIncidente({ ...doc.data(), fotoData: null });
+}
+
+async function generarPDFIncidente(inc) {
+  await cargarJsPDF();
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+  const cfg = await getConfig();
+  const nombreColegio = cfg.nombreColegio || 'Institución Educativa';
+  const anio = cfg.anio || '2026';
+  const W = 210, margin = 20;
+
+  // Header
+  doc.setFillColor(239, 68, 68);
+  doc.rect(0, 0, W, 28, 'F');
+  doc.setTextColor(255,255,255);
+  doc.setFont('helvetica','bold');
+  doc.setFontSize(13);
+  doc.text(nombreColegio.toUpperCase(), W/2, 12, { align: 'center' });
+  doc.setFontSize(9);
+  doc.setFont('helvetica','normal');
+  doc.text('Año Escolar ' + anio, W/2, 19, { align: 'center' });
+  doc.text('REPORTE DE INCIDENTE', W/2, 25, { align: 'center' });
+
+  let y = 38;
+
+  // Datos alumno
+  doc.setFillColor(248, 250, 252);
+  doc.roundedRect(margin, y, W - margin*2, 28, 3, 3, 'F');
+  doc.setDrawColor(226, 232, 240);
+  doc.roundedRect(margin, y, W - margin*2, 28, 3, 3, 'S');
+  doc.setTextColor(100, 116, 139);
+  doc.setFont('helvetica','bold');
+  doc.setFontSize(7);
+  doc.text('ALUMNO', margin+4, y+6);
+  doc.text('DNI', margin+80, y+6);
+  doc.text('ID / DNI', margin+80, y+6);
+  doc.text('GRADO / SECCIÓN', margin+120, y+6);
+  doc.text('NIVEL', margin+155, y+6);
+  doc.setTextColor(30, 41, 59);
+  doc.setFont('helvetica','normal');
+  doc.setFontSize(9);
+  doc.text(inc.alumnoNombre||'-', margin+4, y+13);
+  doc.text(inc.alumnoId||'-', margin+80, y+13);
+  doc.text((inc.grado||'-') + ' — Secc. ' + (inc.seccion||'-'), margin+120, y+13);
+  doc.text(inc.turno||'-', margin+155, y+13);
+  doc.setTextColor(100, 116, 139);
+  doc.setFont('helvetica','bold');
+  doc.setFontSize(7);
+  doc.text('FECHA', margin+4, y+21);
+  doc.text('HORA', margin+60, y+21);
+  doc.text('TIPO', margin+100, y+21);
+  doc.text('SEVERIDAD', margin+150, y+21);
+  doc.setTextColor(30, 41, 59);
+  doc.setFont('helvetica','normal');
+  doc.setFontSize(9);
+  doc.text(inc.fecha||'-', margin+4, y+27);
+  doc.text(inc.hora||'-', margin+60, y+27);
+  doc.text(inc.tipo||'-', margin+100, y+27);
+  const sevColor = inc.severidad==='Grave'?[239,68,68]:inc.severidad==='Moderado'?[245,158,11]:[16,185,129];
+  doc.setTextColor(...sevColor);
+  doc.setFont('helvetica','bold');
+  doc.text(inc.severidad||'-', margin+150, y+27);
+
+  y += 36;
+
+  // Descripción
+  doc.setTextColor(100,116,139); doc.setFont('helvetica','bold'); doc.setFontSize(7);
+  doc.text('DESCRIPCIÓN DEL INCIDENTE', margin, y);
+  y += 4;
+  doc.setFillColor(248,250,252);
+  doc.setDrawColor(226,232,240);
+  const descLines = doc.splitTextToSize(inc.descripcion||'-', W - margin*2 - 8);
+  const descH = Math.max(20, descLines.length * 5 + 8);
+  doc.roundedRect(margin, y, W-margin*2, descH, 2, 2, 'FD');
+  doc.setTextColor(51,65,85); doc.setFont('helvetica','normal'); doc.setFontSize(9);
+  doc.text(descLines, margin+4, y+6);
+  y += descH + 6;
+
+  // Medidas
+  if(inc.medidas) {
+    doc.setTextColor(100,116,139); doc.setFont('helvetica','bold'); doc.setFontSize(7);
+    doc.text('MEDIDAS TOMADAS', margin, y);
+    y += 4;
+    const medLines = doc.splitTextToSize(inc.medidas, W-margin*2-8);
+    const medH = Math.max(14, medLines.length * 5 + 8);
+    doc.setFillColor(248,250,252); doc.setDrawColor(226,232,240);
+    doc.roundedRect(margin, y, W-margin*2, medH, 2, 2, 'FD');
+    doc.setTextColor(51,65,85); doc.setFont('helvetica','normal'); doc.setFontSize(9);
+    doc.text(medLines, margin+4, y+6);
+    y += medH + 6;
+  }
+
+  // Foto
+  if(inc.fotoData && inc.fotoData.startsWith('data:image')) {
+    try {
+      doc.setTextColor(100,116,139); doc.setFont('helvetica','bold'); doc.setFontSize(7);
+      doc.text('EVIDENCIA FOTOGRÁFICA', margin, y);
+      y += 4;
+      const imgW = W - margin*2;
+      const imgH = 60;
+      doc.addImage(inc.fotoData, 'JPEG', margin, y, imgW, imgH);
+      y += imgH + 8;
+    } catch(e) { console.warn('No se pudo agregar imagen al PDF'); }
+  }
+
+  // Firmas
+  y = Math.max(y, 230);
+  doc.setDrawColor(148,163,184);
+  doc.line(margin, y, margin+70, y);
+  doc.line(W-margin-70, y, W-margin, y);
+  doc.setTextColor(100,116,139); doc.setFont('helvetica','normal'); doc.setFontSize(8);
+  doc.text(inc.responsableNombre||'Responsable', margin+35, y+5, { align:'center' });
+  doc.text('Director(a) / V°B°', W-margin-35, y+5, { align:'center' });
+  doc.setFontSize(7);
+  const cargoLabel = inc.responsableCargo || 'Responsable';
+  doc.text(cargoLabel, margin+35, y+9, { align:'center' });
+  doc.text('Firma y sello', W-margin-35, y+9, { align:'center' });
+
+  // Footer
+  doc.setFillColor(239,68,68);
+  doc.rect(0, 287, W, 10, 'F');
+  doc.setTextColor(255,255,255); doc.setFontSize(7);
+  doc.text('Documento generado por AsistenciaQR · ' + new Date().toLocaleString('es-PE'), W/2, 293, { align:'center' });
+
+  const filename = 'incidente_' + (inc.alumnoNombre||'').replace(/\s+/g,'_') + '_' + (inc.fecha||'') + '.pdf';
+  doc.save(filename);
+}
+
+
+// ============================================================
+// BOTTOM NAV MOBILE
+// ============================================================
+function renderBottomNav() {
+  const inner = document.getElementById('bottom-nav-inner');
+  if(!inner) return;
+  const allTabs = [
+    { id: 'scan',       icon: '📷', label: 'Escanear'  },
+    { id: 'alumnos',    icon: '👥', label: 'Alumnos'   },
+    { id: 'registro',   icon: '📋', label: 'Registro'  },
+    { id: 'reportes',   icon: '📊', label: 'Reportes'  },
+    { id: 'incidentes', icon: '🚨', label: 'Incidentes'},
+    { id: 'usuarios',   icon: '👤', label: 'Usuarios'  },
+    { id: 'config',     icon: '⚙',  label: 'Config'   },
+  ];
+  const permisos = {
+    admin:    ['scan','alumnos','registro','reportes','incidentes','usuarios','config'],
+    director: ['registro','reportes','incidentes'],
+    profesor: ['alumnos','registro','incidentes'],
+    portero:  ['scan'],
+  };
+  const allowed = permisos[currentRol] || ['scan'];
+  inner.innerHTML = allTabs
+    .filter(t => allowed.includes(t.id))
+    .map(t => `
+      <button class="bnav-btn ${currentSection===t.id?'active':''}" id="bnav-${t.id}" onclick="showSection('${t.id}')">
+        <span class="bnav-icon">${t.icon}</span>
+        <span>${t.label}</span>
+      </button>
+    `).join('');
+}
+
+function updateBottomNavActive(id) {
+  document.querySelectorAll('.bnav-btn').forEach(b => b.classList.remove('active'));
+  const btn = document.getElementById('bnav-' + id);
+  if(btn) btn.classList.add('active');
+}
+// INIT — auth listener maneja el inicio
+</script>
+
+  <!-- ===== MODAL PRIVILEGIOS PROFESOR ===== -->
+  <div class="modal-bg" id="modal-privilegios" onclick="if(event.target===this)closeModal('modal-privilegios')">
+    <div class="modal" onclick="event.stopPropagation()" style="max-width:520px;">
+      <div class="modal-header">
+        <div class="modal-title">📚 Grados y Secciones asignados</div>
+        <button class="modal-close" onclick="closeModal('modal-privilegios')">✕</button>
+      </div>
+      <div style="font-size:0.8rem;color:var(--muted);margin-bottom:14px;">
+        Marca los grados que dicta y las secciones correspondientes a cada uno. Solo verá los alumnos de los grados y secciones que marques.
+      </div>
+      <div id="u-niveles-checks" style="max-height:60vh;overflow-y:auto;"></div>
+      <div style="display:flex;gap:10px;margin-top:20px;">
+        <button class="btn btn-primary" onclick="savePrivilegios()" style="flex:1;justify-content:center;">💾 Guardar privilegios</button>
+        <button class="btn btn-ghost" onclick="closeModal('modal-privilegios')" style="flex:1;justify-content:center;">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>let videoStream = null;
+let scannerRunning = false;
+let scanInterval = null;
+let usandoTrasera = true;
+let lastScanned = '';
+let lastScanTime = 0;
+let pendingStudent = null;
+let currentSection = 'scan';
+
+function setUIScanning(active) {
+  document.getElementById('btn-start-scan').disabled = active;
+  document.getElementById('btn-stop-scan').disabled = !active;
+  const overlay = document.getElementById('qr-frame-overlay');
+  if(overlay) overlay.style.display = active ? 'flex' : 'none';
+}
+
+function showPlaceholder(show) {
+  const ph = document.getElementById('cam-placeholder');
+  const vid = document.getElementById('qr-video');
+  if(ph) ph.style.display = show ? 'flex' : 'none';
+  if(vid) vid.style.display = show ? 'none' : 'block';
+}
+
+function startScanner() {
+  document.getElementById('scan-status').textContent = '⏳ Solicitando permiso de cámara...';
+  document.getElementById('btn-start-scan').disabled = true;
+  showPlaceholder(false);
+
+  navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } } })
+    .then(stream => {
+      videoStream = stream;
+      const video = document.getElementById('qr-video');
+      video.srcObject = stream;
+      video.style.display = 'block';
+      video.play().catch(() => {});
+      const onReady = () => {
+        scannerRunning = true;
+        setUIScanning(true);
+        showPlaceholder(false);
+        document.getElementById('scan-status').textContent = '🟢 Cámara activa — apunta al QR';
+        startScanLoop();
+      };
+      video.onloadedmetadata = onReady;
+      setTimeout(() => { if(!scannerRunning) onReady(); }, 1500);
+    })
+    .catch(err => {
+      document.getElementById('btn-start-scan').disabled = false;
+      showPlaceholder(true);
+      document.getElementById('scan-status').textContent = '⚠ Sin acceso a cámara';
+      toast('No se pudo acceder a la cámara: ' + err.message, 'error');
+    });
+}
+
+function startScanLoop() {
+  const video = document.getElementById('qr-video');
+  const canvas = document.getElementById('qr-canvas');
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+  if(scanInterval) clearInterval(scanInterval);
+
+  if('BarcodeDetector' in window) {
+    const detector = new BarcodeDetector({ formats: ['qr_code'] });
+    scanInterval = setInterval(async () => {
+      if(!scannerRunning || video.readyState < 2) return;
+      try {
+        const codes = await detector.detect(video);
+        if(codes.length > 0) {
+          const txt = codes[0].rawValue;
+          const now = Date.now();
+          if(txt === lastScanned && now - lastScanTime < 3000) return;
+          lastScanned = txt; lastScanTime = now;
+          processQR(txt.trim());
+        }
+      } catch(e) {}
+    }, 150);
+  } else {
+    scanInterval = setInterval(() => {
+      if(!scannerRunning || video.readyState < 2) return;
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      ctx.drawImage(video, 0, 0);
+      try {
+        const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const code = jsQR(img.data, img.width, img.height, { inversionAttempts: 'attemptBoth' });
+        if(code && code.data) {
+          const now = Date.now();
+          if(code.data === lastScanned && now - lastScanTime < 3000) return;
+          lastScanned = code.data; lastScanTime = now;
+          processQR(code.data.trim());
+        }
+      } catch(e) {}
+    }, 150);
+  }
+}
+
+function stopScanner() {
+  scannerRunning = false;
+  if(scanInterval) { clearInterval(scanInterval); scanInterval = null; }
+  if(videoStream) { videoStream.getTracks().forEach(t => t.stop()); videoStream = null; }
+  const video = document.getElementById('qr-video');
+  if(video) { video.srcObject = null; }
+  setUIScanning(false);
+  showPlaceholder(true);
+  document.getElementById('scan-status').textContent = 'Cámara detenida — presiona Iniciar para escanear';
+}
+
+function processQR(id) {
   try {
     const alumnos = await DB.getAlumnos();
     const alumno = alumnos.find(a => a.id === id);
