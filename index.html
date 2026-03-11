@@ -2639,22 +2639,27 @@ function handleCSV(e) {
 
 
 
-function guardarFactiliza() {
+async function guardarFactiliza() {
   const token    = document.getElementById('factiliza-token').value.trim();
   const instancia = document.getElementById('factiliza-instancia').value.trim();
   if(!token || !instancia) { toast('Completa token e instancia','warning'); return; }
-  localStorage.setItem('factiliza_token', token);
-  localStorage.setItem('factiliza_instancia', instancia);
-  toast('✅ Configuración WhatsApp guardada','success');
+  try {
+    await db.collection('config').doc('factiliza').set({ token, instancia });
+    localStorage.setItem('factiliza_token', token);
+    localStorage.setItem('factiliza_instancia', instancia);
+    toast('✅ Configuración WhatsApp guardada','success');
+  } catch(e) { toast('Error al guardar: '+e.message,'error'); }
 }
 
 async function probarFactiliza() {
   const token    = document.getElementById('factiliza-token').value.trim();
   const instancia = document.getElementById('factiliza-instancia').value.trim();
   if(!token || !instancia) { toast('Completa token e instancia primero','warning'); return; }
+  try {
+    await db.collection('config').doc('factiliza').set({ token, instancia });
+  } catch(e) {}
   localStorage.setItem('factiliza_token', token);
   localStorage.setItem('factiliza_instancia', instancia);
-  // Enviar mensaje de prueba al número de la instancia configurada
   toast('Enviando mensaje de prueba...','info');
   const cfg = await getConfig();
   const msg = `✅ *Conexión exitosa*\nLa integración WhatsApp de ${cfg?.nombreColegio||'AsistenciaQR'} está funcionando correctamente. 🎉`;
@@ -2667,8 +2672,20 @@ async function probarFactiliza() {
 // WHATSAPP — FACTILIZA
 // ============================================================
 async function sendWhatsApp(telefono, mensaje) {
-  const token     = localStorage.getItem('factiliza_token');
-  const instancia = localStorage.getItem('factiliza_instancia');
+  let token     = localStorage.getItem('factiliza_token');
+  let instancia = localStorage.getItem('factiliza_instancia');
+  // Si no está en localStorage, cargar desde Firestore
+  if(!token || !instancia) {
+    try {
+      const snap = await db.collection('config').doc('factiliza').get();
+      if(snap.exists) {
+        token = snap.data().token;
+        instancia = snap.data().instancia;
+        localStorage.setItem('factiliza_token', token);
+        localStorage.setItem('factiliza_instancia', instancia);
+      }
+    } catch(e) { console.warn('Error cargando config Factiliza:', e); }
+  }
   console.log('📱 sendWhatsApp - token:', token ? '✅ presente' : '❌ vacío');
   console.log('📱 sendWhatsApp - instancia:', instancia || '❌ vacía');
   console.log('📱 sendWhatsApp - teléfono raw:', telefono);
