@@ -2800,7 +2800,7 @@ async function imprimirCarnetsMasivo() {
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
 
   const PAGE_W = 210, PAGE_H = 297;
-  const COLS = 2, ROWS = 5;
+  const COLS = 2, ROWS = 4;
   const W = 85.6, H = 54;
   const MX = (PAGE_W - COLS * W) / (COLS + 1);
   const MY = (PAGE_H - ROWS * H) / (ROWS + 1);
@@ -2894,7 +2894,7 @@ async function imprimirCarnetsMasivo() {
     }
 
     // Línea separadora
-    const sepX = x + 4.5 + fotoR*2 + 3;
+    const sepX = x + 4 + fotoR*2 + 2;
     doc.setDrawColor(221,228,240);
     doc.setLineWidth(0.4);
     doc.line(sepX, contTop+1, sepX, contTop+contH-1);
