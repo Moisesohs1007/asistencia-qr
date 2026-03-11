@@ -692,13 +692,19 @@
   }
   /* Ocultar imagen fea pero mantener el recuadro verde de detección */
   #qr-reader__scan_region > img:not([id]) { display: none !important; }
-  /* Mantener el recuadro interno de detección */
+  /* Recuadro de escaneo animado */
   #qr-shaded-region {
     border: none !important;
   }
   #qr-shaded-region div {
-    border-color: #4ade80 !important;
-    border-width: 4px !important;
+    border-color: #ffffff !important;
+    border-width: 3px !important;
+    border-radius: 12px !important;
+    animation: scan-pulse 2s ease-in-out infinite !important;
+  }
+  @keyframes scan-pulse {
+    0%,100% { border-color: #ffffff; box-shadow: 0 0 0 9999px rgba(0,0,0,0.4), 0 0 16px rgba(56,189,248,0.5); }
+    50%      { border-color: #38bdf8; box-shadow: 0 0 0 9999px rgba(0,0,0,0.4), 0 0 28px rgba(129,140,248,0.6); }
   }
   @media(max-width:700px){
     #qr-reader { max-height: 260px; }
@@ -726,19 +732,19 @@
     flex-direction: column;
     align-items: center;
     gap: 3px;
-    padding: 6px 10px;
+    padding: 6px 6px;
     border: none;
     background: transparent;
     color: var(--muted);
     font-family: var(--font-body);
-    font-size: 0.62rem;
+    font-size: 0.68rem;
     font-weight: 500;
     cursor: pointer;
     border-radius: 10px;
     transition: all 0.15s;
-    min-width: 52px;
+    flex: 1;
   }
-  .bnav-btn .bnav-icon { font-size: 1.3rem; line-height: 1; }
+  .bnav-btn .bnav-icon { font-size: 1.5rem; line-height: 1; }
   .bnav-btn.active { color: var(--accent); }
   .bnav-btn.active .bnav-icon {
     filter: drop-shadow(0 0 6px var(--accent));
