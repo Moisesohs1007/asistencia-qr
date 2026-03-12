@@ -3024,12 +3024,12 @@ async function imprimirCarnetsMasivo() {
     doc.setFontSize(3); doc.setFont('helvetica','normal');
     doc.text('ESCANEA PARA REGISTRAR ASISTENCIA', contCX, qrTop+QR_S+2.5, {align:'center'});
 
-    // VIGENCIA vertical — borde izquierdo
+    // VIGENCIA vertical — borde izquierdo, bien dentro del marco
     doc.saveGraphicsState();
     doc.setTextColor(20, 20, 20);
-    doc.setFontSize(3.8); doc.setFont('helvetica','bold');
+    doc.setFontSize(3.3); doc.setFont('helvetica','bold');
     const vigenciaText = `VIGENCIA 31 DE DICIEMBRE DEL ${anio}`;
-    const vigX = x + BORDER + 2.5;
+    const vigX = x + BORDER + 3.5; // un poco más hacia adentro
     const vigY = bodyTop + bodyH / 2;
     doc.text(vigenciaText, vigX, vigY, {angle: 90, align:'center'});
     doc.restoreGraphicsState();
