@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Consulta de Asistencia</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', Arial, sans-serif;
+    background: #0d1a3a;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 24px 16px;
+  }
+  .header {
+    width: 100%; max-width: 480px;
+    display: flex; flex-direction: column; align-items: center;
+    gap: 6px; margin-bottom: 24px;
+  }
+  .header .logo {
+    width: 56px; height: 56px;
+    background: #1e3264; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    border: 3px solid #c9a84c; overflow: hidden;
+  }
+  .header .logo img { width: 100%; height: 100%; object-fit: contain; }
+  .header h1 { color: #fff; font-size: 1.1rem; font-weight: 700; text-align: center; }
+  .header p  { color: #b0c4e8; font-size: 0.78rem; text-align: center; }
+  .gold-line { width: 60px; height: 3px; background: #c9a84c; border-radius: 2px; margin: 4px 0; }
+  .card {
+    width: 100%; max-width: 480px;
+    background: #1a2b5e; border-radius: 16px;
+    padding: 20px; margin-bottom: 16px;
+    border: 1px solid #2a3f7e;
+  }
+  .search-label { color: #b0c4e8; font-size: 0.8rem; margin-bottom: 8px; display: block; }
+  .search-row { display: flex; gap: 8px; }
+  .search-row input {
+    flex: 1; padding: 12px 16px;
+    background: #0d1a3a; border: 1.5px solid #2a3f7e;
+    border-radius: 10px; color: #fff; font-size: 1rem;
+    letter-spacing: 2px; outline: none;
+  }
+  .search-row input:focus { border-color: #c9a84c; }
+  .search-row input::placeholder { color: #4a5f8e; letter-spacing: 1px; font-size: 0.9rem; }
+  .btn-buscar {
+    padding: 12px 20px; background: #c9a84c;
+    border: none; border-radius: 10px;
+    color: #0d1a3a; font-weight: 700; font-size: 0.9rem; cursor: pointer;
+    transition: opacity 0.2s;
+  }
+  .btn-buscar:disabled { opacity: 0.5; cursor: not-allowed; }
+  .btn-buscar:hover:not(:disabled) { opacity: 0.85; }
+  .alumno-card {
+    display: flex; align-items: center; gap: 14px;
+    padding: 14px; background: #0d1a3a;
+    border-radius: 12px; border: 1px solid #c9a84c33;
+    margin-bottom: 16px;
+  }
+  .alumno-avatar {
+    width: 52px; height: 52px; border-radius: 50%;
+    background: #1e3264; border: 2.5px solid #c9a84c;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px; font-weight: 700; color: #fff; flex-shrink: 0;
+    overflow: hidden;
+  }
+  .alumno-avatar img { width: 100%; height: 100%; object-fit: cover; }
+  .alumno-info h2 { color: #fff; font-size: 0.95rem; font-weight: 700; }
+  .alumno-info p  { color: #b0c4e8; font-size: 0.78rem; margin-top: 2px; }
+  .kpi-row { display: flex; gap: 10px; margin-bottom: 16px; }
+  .kpi { flex: 1; padding: 12px 8px; border-radius: 12px; text-align: center; }
+  .kpi.puntual  { background: #0d3320; border: 1px solid #22c55e44; }
+  .kpi.tardanza { background: #2d1f00; border: 1px solid #f59e0b44; }
+  .kpi.ausente  { background: #2d0f0f; border: 1px solid #ef444444; }
+  .kpi .num { font-size: 1.6rem; font-weight: 800; line-height: 1; }
+  .kpi .lbl { font-size: 0.68rem; margin-top: 3px; font-weight: 600; letter-spacing: 0.5px; }
+  .kpi.puntual  .num { color: #22c55e; } .kpi.puntual  .lbl { color: #22c55e99; }
+  .kpi.tardanza .num { color: #f59e0b; } .kpi.tardanza .lbl { color: #f59e0b99; }
+  .kpi.ausente  .num { color: #ef4444; } .kpi.ausente  .lbl { color: #ef444499; }
+  .filtros { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
+  .filtro-btn {
+    padding: 6px 14px; border-radius: 20px; font-size: 0.75rem;
+    font-weight: 600; cursor: pointer; border: 1.5px solid #2a3f7e;
+    background: transparent; color: #b0c4e8; transition: all 0.2s;
+  }
+  .filtro-btn.active { background: #c9a84c; color: #0d1a3a; border-color: #c9a84c; }
+  select.filtro-mes {
+    padding: 6px 12px; border-radius: 20px; font-size: 0.75rem;
+    background: #0d1a3a; border: 1.5px solid #2a3f7e; color: #b0c4e8;
+    cursor: pointer; outline: none;
+  }
+  .registro-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 12px; border-radius: 10px;
+    margin-bottom: 8px; background: #0d1a3a;
+  }
+  .estado-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .dot-puntual  { background: #22c55e; }
+  .dot-tardanza { background: #f59e0b; }
+  .dot-ausente  { background: #ef4444; }
+  .reg-fecha { color: #b0c4e8; font-size: 0.75rem; min-width: 100px; }
+  .reg-estado { font-size: 0.78rem; font-weight: 600; flex: 1; }
+  .estado-puntual  { color: #22c55e; }
+  .estado-tardanza { color: #f59e0b; }
+  .estado-ausente  { color: #ef4444; }
+  .reg-horas { color: #6b7fa0; font-size: 0.72rem; text-align: right; white-space: nowrap; }
+  .empty-state { text-align: center; padding: 30px 20px; color: #4a5f8e; }
+  .empty-state .icon { font-size: 3rem; margin-bottom: 12px; }
+  .empty-state p { font-size: 0.85rem; line-height: 1.6; }
+  .error-msg { color: #ef4444; font-size: 0.82rem; margin-top: 8px; text-align: center; }
+  .loading { color: #b0c4e8; font-size: 0.85rem; text-align: center; padding: 20px; }
+  .no-results { color: #6b7fa0; font-size: 0.82rem; text-align: center; padding: 16px; }
+  .footer { color: #2a3f7e; font-size: 0.7rem; text-align: center; margin-top: 8px; padding-bottom: 16px; }
+  #resultado { display: none; }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="logo">
+    <img id="logo-img" src="" alt="🏫" onerror="this.style.display='none';this.parentElement.innerHTML='🏫';">
+  </div>
+  <div class="gold-line"></div>
+  <h1 id="nombre-colegio">I.E.P. San José Marello</h1>
+  <p>Consulta de Asistencia — Apoderados</p>
+</div>
+
+<!-- BÚSQUEDA -->
+<div class="card">
+  <span class="search-label">Ingresa el DNI del alumno</span>
+  <div class="search-row">
+    <input type="number" id="dni-input" placeholder="Ej: 12345678" maxlength="8"
+      onkeydown="if(event.key==='Enter') buscar()">
+    <button class="btn-buscar" id="btn-buscar" onclick="buscar()">🔍 Buscar</button>
+  </div>
+  <div id="error-msg" class="error-msg" style="display:none;"></div>
+</div>
+
+<!-- ESTADO INICIAL -->
+<div class="card" id="estado-inicial">
+  <div class="empty-state">
+    <div class="icon">🔍</div>
+    <p>Ingresa el DNI del alumno<br>para ver su historial de asistencia</p>
+  </div>
+</div>
+
+<!-- RESULTADO -->
+<div id="resultado">
+  <div class="card">
+    <!-- INFO ALUMNO -->
+    <div class="alumno-card">
+      <div class="alumno-avatar" id="alumno-avatar">JG</div>
+      <div class="alumno-info">
+        <h2 id="alumno-nombre"></h2>
+        <p id="alumno-grado"></p>
+      </div>
+    </div>
+    <!-- KPIs -->
+    <div class="kpi-row">
+      <div class="kpi puntual">
+        <div class="num" id="kpi-puntual">0</div>
+        <div class="lbl">PUNTUALES</div>
+      </div>
+      <div class="kpi tardanza">
+        <div class="num" id="kpi-tardanza">0</div>
+        <div class="lbl">TARDANZAS</div>
+      </div>
+      <div class="kpi ausente">
+        <div class="num" id="kpi-ausente">0</div>
+        <div class="lbl">AUSENCIAS</div>
+      </div>
+    </div>
+    <!-- FILTROS -->
+    <div class="filtros">
+      <button class="filtro-btn active" onclick="setFiltro('todos', this)">Todos</button>
+      <button class="filtro-btn" onclick="setFiltro('puntual', this)">✅ Puntuales</button>
+      <button class="filtro-btn" onclick="setFiltro('tardanza', this)">⚠️ Tardanzas</button>
+      <button class="filtro-btn" onclick="setFiltro('ausente', this)">❌ Ausencias</button>
+      <select class="filtro-mes" id="filtro-mes" onchange="renderRegistros()">
+        <option value="">Todos los meses</option>
+      </select>
+    </div>
+    <!-- LISTA REGISTROS -->
+    <div id="lista-registros"></div>
+  </div>
+</div>
+
+<div class="footer" id="footer-txt">AsistenciaQR · 2025</div>
+
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyBLI0I41vWjMK2q1ZjH1c1BK4SAFno7sfY",
+  authDomain: "asistencia-qr-a3346.firebaseapp.com",
+  projectId: "asistencia-qr-a3346",
+  storageBucket: "asistencia-qr-a3346.firebasestorage.app",
+  messagingSenderId: "617000910031",
+  appId: "1:617000910031:web:ccc2454260d8b4e7704bba"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+let todosRegistros = [];
+let filtroEstado = 'todos';
+
+// Cargar config del colegio al iniciar
+async function cargarConfig() {
+  try {
+    const snap = await db.collection('config').doc('general').get();
+    if(snap.exists) {
+      const cfg = snap.data();
+      if(cfg.nombreColegio) document.getElementById('nombre-colegio').textContent = cfg.nombreColegio;
+      if(cfg.logo) {
+        document.getElementById('logo-img').src = cfg.logo;
+      }
+      const anio = cfg.anio || new Date().getFullYear();
+      document.getElementById('footer-txt').textContent = `AsistenciaQR · ${cfg.nombreColegio || 'I.E.P. San José Marello'} · ${anio}`;
+    }
+  } catch(e) {}
+}
+
+async function buscar() {
+  const dni = document.getElementById('dni-input').value.trim();
+  const errEl = document.getElementById('error-msg');
+  errEl.style.display = 'none';
+
+  if(!/^\d{8}$/.test(dni)) {
+    errEl.textContent = 'Ingresa un DNI válido de 8 dígitos.';
+    errEl.style.display = 'block';
+    return;
+  }
+
+  const btn = document.getElementById('btn-buscar');
+  btn.disabled = true;
+  btn.textContent = '⏳ Buscando...';
+
+  try {
+    // Buscar alumno
+    const alumnoSnap = await db.collection('alumnos').doc(dni).get();
+    if(!alumnoSnap.exists) {
+      errEl.textContent = 'No se encontró ningún alumno con ese DNI.';
+      errEl.style.display = 'block';
+      document.getElementById('estado-inicial').style.display = 'block';
+      document.getElementById('resultado').style.display = 'none';
+      return;
+    }
+    const alumno = alumnoSnap.data();
+
+    // Buscar registros de asistencia
+    const regSnap = await db.collection('registros')
+      .where('alumnoId', '==', dni)
+      .orderBy('fecha', 'desc')
+      .get();
+
+    todosRegistros = regSnap.docs.map(d => d.data());
+
+    // Mostrar info alumno
+    const nombreCompleto = `${alumno.nombres} ${alumno.apellidos}`;
+    document.getElementById('alumno-nombre').textContent = nombreCompleto;
+    document.getElementById('alumno-grado').textContent =
+      `${alumno.grado || ''} ${alumno.seccion || ''} · ${alumno.turno || ''}`;
+
+    // Avatar
+    const avatarEl = document.getElementById('alumno-avatar');
+    if(alumno.foto) {
+      avatarEl.innerHTML = `<img src="${alumno.foto}" alt="${nombreCompleto}">`;
+    } else {
+      avatarEl.textContent = (alumno.nombres[0]||'?') + (alumno.apellidos[0]||'?');
+    }
+
+    // KPIs
+    const puntual  = todosRegistros.filter(r => r.tipo === 'entrada' && r.estado === 'puntual').length;
+    const tardanza = todosRegistros.filter(r => r.tipo === 'entrada' && r.estado === 'tardanza').length;
+    const ausente  = todosRegistros.filter(r => r.estado === 'ausente').length;
+    document.getElementById('kpi-puntual').textContent  = puntual;
+    document.getElementById('kpi-tardanza').textContent = tardanza;
+    document.getElementById('kpi-ausente').textContent  = ausente;
+
+    // Llenar filtro de meses
+    const meses = [...new Set(todosRegistros.map(r => {
+      const f = r.fecha || '';
+      return f.substring(0, 7); // YYYY-MM
+    }))].sort().reverse();
+    const selectMes = document.getElementById('filtro-mes');
+    selectMes.innerHTML = '<option value="">Todos los meses</option>';
+    meses.forEach(m => {
+      const [anio, mes] = m.split('-');
+      const nombres = ['','Enero','Febrero','Marzo','Abril','Mayo','Junio',
+                       'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+      const opt = document.createElement('option');
+      opt.value = m;
+      opt.textContent = `${nombres[parseInt(mes)]} ${anio}`;
+      selectMes.appendChild(opt);
+    });
+
+    // Reset filtro y mostrar
+    filtroEstado = 'todos';
+    document.querySelectorAll('.filtro-btn').forEach(b => b.classList.remove('active'));
+    document.querySelector('.filtro-btn').classList.add('active');
+
+    document.getElementById('estado-inicial').style.display = 'none';
+    document.getElementById('resultado').style.display = 'block';
+    renderRegistros();
+
+  } catch(err) {
+    console.error(err);
+    errEl.textContent = 'Error al consultar. Verifica tu conexión.';
+    errEl.style.display = 'block';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '🔍 Buscar';
+  }
+}
+
+function setFiltro(estado, btnEl) {
+  filtroEstado = estado;
+  document.querySelectorAll('.filtro-btn').forEach(b => b.classList.remove('active'));
+  btnEl.classList.add('active');
+  renderRegistros();
+}
+
+function renderRegistros() {
+  const mesFiltro = document.getElementById('filtro-mes').value;
+  let registros = [...todosRegistros];
+
+  // Filtrar por estado
+  if(filtroEstado === 'puntual')  registros = registros.filter(r => r.tipo === 'entrada' && r.estado === 'puntual');
+  if(filtroEstado === 'tardanza') registros = registros.filter(r => r.tipo === 'entrada' && r.estado === 'tardanza');
+  if(filtroEstado === 'ausente')  registros = registros.filter(r => r.estado === 'ausente');
+  // Solo mostrar entradas y ausentes (no duplicar con salidas)
+  if(filtroEstado === 'todos') registros = registros.filter(r => r.tipo === 'entrada' || r.estado === 'ausente');
+
+  // Filtrar por mes
+  if(mesFiltro) registros = registros.filter(r => (r.fecha||'').startsWith(mesFiltro));
+
+  const lista = document.getElementById('lista-registros');
+
+  if(!registros.length) {
+    lista.innerHTML = '<div class="no-results">No hay registros para los filtros seleccionados.</div>';
+    return;
+  }
+
+  // Agrupar por fecha para mostrar entrada + salida juntos
+  const porFecha = {};
+  todosRegistros.forEach(r => {
+    const f = r.fecha || 'sin-fecha';
+    if(!porFecha[f]) porFecha[f] = {};
+    if(r.tipo === 'entrada' || r.estado === 'ausente') porFecha[f].entrada = r;
+    if(r.tipo === 'salida') porFecha[f].salida = r;
+  });
+
+  lista.innerHTML = registros.map(r => {
+    const fecha = r.fecha || '';
+    const salida = porFecha[fecha]?.salida;
+    const horaEntrada = r.hora || r.timestamp?.toDate?.()?.toLocaleTimeString('es-PE', {hour:'2-digit',minute:'2-digit'}) || '—';
+    const horaSalida  = salida ? (salida.hora || salida.timestamp?.toDate?.()?.toLocaleTimeString('es-PE', {hour:'2-digit',minute:'2-digit'}) || '—') : '—';
+
+    let dotClass, estadoClass, estadoText;
+    if(r.estado === 'ausente') {
+      dotClass = 'dot-ausente'; estadoClass = 'estado-ausente'; estadoText = '❌ Ausente';
+    } else if(r.estado === 'tardanza') {
+      dotClass = 'dot-tardanza'; estadoClass = 'estado-tardanza'; estadoText = '⚠️ Tardanza';
+    } else {
+      dotClass = 'dot-puntual'; estadoClass = 'estado-puntual'; estadoText = '✅ Puntual';
+    }
+
+    // Formatear fecha legible
+    let fechaLeg = fecha;
+    try {
+      const [y,m,d] = fecha.split('-');
+      const dias = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+      const dia = dias[new Date(y,m-1,d).getDay()];
+      fechaLeg = `${dia} ${d}/${m}/${y}`;
+    } catch(e) {}
+
+    const horas = r.estado === 'ausente'
+      ? '— sin registro —'
+      : `🕐 ${horaEntrada}${horaSalida !== '—' ? ' — '+horaSalida : ''}`;
+
+    return `<div class="registro-item">
+      <div class="estado-dot ${dotClass}"></div>
+      <div class="reg-fecha">${fechaLeg}</div>
+      <div class="reg-estado ${estadoClass}">${estadoText}</div>
+      <div class="reg-horas">${horas}</div>
+    </div>`;
+  }).join('');
+}
+
+cargarConfig();
+</script>
+</body>
+</html>
