@@ -967,6 +967,7 @@
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
         <button class="btn btn-primary" id="btn-nuevo-alumno" onclick="openModalAlumno()">+ Nuevo Alumno</button>
         <button class="btn btn-ghost" id="btn-importar-csv" onclick="importCSV()">📥 Importar CSV</button>
+        <button class="btn btn-ghost" id="btn-importar-excel" onclick="importExcel()">📊 Importar Excel</button>
         <!-- Toggle modo carnets -->
         <label style="display:flex;align-items:center;gap:6px;cursor:pointer;padding:6px 12px;border-radius:8px;border:1.5px solid var(--border);background:var(--card);font-size:0.82rem;color:var(--text);user-select:none;" title="Activar modo impresión de carnets">
           <input type="checkbox" id="toggle-modo-carnets" onchange="toggleModoCarnets(this.checked)" style="width:15px;height:15px;cursor:pointer;">
@@ -1590,6 +1591,7 @@
 
 <!-- INPUT CSV oculto -->
 <input type="file" id="csv-input" accept=".csv" style="display:none" onchange="handleCSV(event)">
+<input type="file" id="excel-input" accept=".xlsx,.xls" style="display:none" onchange="handleExcel(event)">
 
 <script>
 // ============================================================
@@ -2695,6 +2697,89 @@ function handleCSV(e) {
 
 
 
+function importExcel() {
+  document.getElementById('excel-input').click();
+}
+
+async function handleExcel(e) {
+  const file = e.target.files[0];
+  if(!file) return;
+  e.target.value = '';
+
+  // Cargar SheetJS dinámicamente
+  if(!window.XLSX) {
+    toast('Cargando librería Excel...', 'info');
+    await new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+      s.onload = resolve;
+      s.onerror = () => reject(new Error('No se pudo cargar SheetJS'));
+      document.head.appendChild(s);
+    });
+  }
+
+  const reader = new FileReader();
+  reader.onload = async function(ev) {
+    try {
+      const data = new Uint8Array(ev.target.result);
+      const wb   = XLSX.read(data, { type: 'array' });
+      const ws   = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+
+      const alumnosExistentes = await DB.getAlumnos();
+      const existingIds = new Set(alumnosExistentes.map(a => a.id));
+      let added = 0, updated = 0, skipped = 0;
+
+      // Detectar fila de encabezado
+      let startRow = 0;
+      for(let i = 0; i < Math.min(5, rows.length); i++) {
+        const row = rows[i].map(c => String(c).toLowerCase());
+        if(row.some(c => c.includes('dni') || c.includes('nombres'))) {
+          startRow = i + 1;
+          break;
+        }
+      }
+
+      for(let i = startRow; i < rows.length; i++) {
+        const cols = rows[i].map(c => String(c).trim());
+        const [id, nombres, apellidos, turno, grado, seccion, foto, apoderadoNombres, apoderadoApellidos, telefono] = cols;
+        if(!id || !/^\d{8}$/.test(id)) { skipped++; continue; }
+        if(!nombres && !apellidos) { skipped++; continue; }
+        const limite = await getLimiteByNivel(turno || 'Primaria');
+        const alumno = {
+          id,
+          nombres:            nombres || '',
+          apellidos:          apellidos || '',
+          grado:              grado || '',
+          seccion:            seccion || 'A',
+          turno:              turno || 'Primaria',
+          limite,
+          foto:               foto || '',
+          apoderadoNombres:   apoderadoNombres || '',
+          apoderadoApellidos: apoderadoApellidos || '',
+          telefono:           telefono || ''
+        };
+        if(existingIds.has(id)) {
+          const existente = alumnosExistentes.find(a => a.id === id);
+          if(!alumno.foto && existente?.foto) alumno.foto = existente.foto;
+          await DB.saveAlumno(alumno);
+          updated++;
+        } else {
+          await DB.saveAlumno(alumno);
+          added++;
+        }
+      }
+      renderAlumnos();
+      updateStats();
+      toast(`✅ ${added} nuevos, ${updated} actualizados${skipped ? ', '+skipped+' omitidos' : ''}`, 'success');
+    } catch(err) {
+      console.error('Excel import error:', err);
+      toast('Error al leer el archivo Excel: ' + err.message, 'error');
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
 async function guardarFactiliza() {
   const token    = document.getElementById('factiliza-token').value.trim();
   const instancia = document.getElementById('factiliza-instancia').value.trim();
@@ -2800,7 +2885,9 @@ function toggleModoCarnets(activo) {
   });
   // Deshabilitar/habilitar Nuevo Alumno e Importar CSV
   const btnNuevo = document.getElementById('btn-nuevo-alumno');
-  const btnImportar = document.getElementById('btn-importar-csv');
+  const btnImportar  = document.getElementById('btn-importar-csv');
+  const btnImportarXL = document.getElementById('btn-importar-excel');
+  if(btnImportarXL) { btnImportarXL.disabled = activo; btnImportarXL.style.opacity = activo ? '0.35' : '1'; btnImportarXL.style.pointerEvents = activo ? 'none' : ''; }
   if(btnNuevo) { btnNuevo.disabled = activo; btnNuevo.style.opacity = activo ? '0.35' : ''; }
   if(btnImportar) { btnImportar.disabled = activo; btnImportar.style.opacity = activo ? '0.35' : ''; }
   // Desmarcar todos al desactivar
