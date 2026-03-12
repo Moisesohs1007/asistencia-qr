@@ -3027,8 +3027,8 @@ async function imprimirCarnetsMasivo() {
     doc.saveGraphicsState();
     doc.setTextColor(20, 20, 20);
     doc.setFontSize(3.8); doc.setFont('helvetica','bold');
-    doc.setFontSize(5.5); doc.setFont('helvetica','bold');
-    doc.text(`VIGENCIA 31 DE DICIEMBRE DEL ${anio}`, x + BORDER + 13.5, bodyTop + bodyH / 2, {angle: -90, align:'center'});
+    doc.setFontSize(6.5); doc.setFont('helvetica','bold');
+    doc.text(`VIGENCIA 31 DE DICIEMBRE DEL ${anio}`, x + BORDER + 11, bodyTop + bodyH / 2 - 8, {angle: -90, align:'center'});
     doc.restoreGraphicsState();
 
     // Footer azul
