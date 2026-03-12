@@ -3115,9 +3115,8 @@ async function sendWhatsApp(telefono, mensaje) {
     });
     const data = await res.json();
     console.log('📱 Respuesta Factiliza:', JSON.stringify(data));
-    if(data.success) toast('✅ WhatsApp enviado','success');
-    else toast('❌ WhatsApp error: ' + (data.message||'sin detalle'), 'error');
-    return data.success === true;
+    const ok = data.success === true || data.success === 'true' || data.status === 'success' || res.ok;
+    return ok;
   } catch(e) {
     console.error('❌ Error WhatsApp fetch:', e);
     toast('❌ Error conexión WhatsApp: ' + e.message, 'error');
@@ -4447,8 +4446,12 @@ async function guardarIncidente() {
         : '';
       const msg = `🚨 *REPORTE DE INCIDENCIA*\n${nomColegio}\n\n👤 *Alumno:* ${incidente.alumnoNombre}\n🏫 *Grado:* ${incidente.grado} ${incidente.seccion} — ${incidente.turno}\n📋 *Tipo:* ${incidente.tipo}\n${sevEmoji} *Severidad:* ${incidente.severidad}\n📅 *Fecha:* ${incidente.fecha} ${incidente.hora}\n\n📝 El colegio ha registrado un incidente con su hijo/a. Por favor comuníquese con la institución a la brevedad.${linkText}\n\n📞 Para más información contacte a la dirección del colegio.`;
       const enviado = await sendWhatsApp(alumnoData.telefono, msg);
-      if(enviado) toast('✅ WhatsApp enviado al apoderado' + (pdfLink ? ' con link PDF' : ''),'success');
-      else toast('⚠️ PDF generado (WhatsApp no configurado o número inválido)','warning');
+      if(enviado) toast('✅ WhatsApp enviado al apoderado' + (pdfLink ? ' con link PDF ✅' : ''),'success');
+      else {
+        // Mostrar detalle útil según la causa
+        if(!alumnoData.telefono) toast('⚠️ El apoderado no tiene número registrado','warning');
+        else toast('⚠️ WhatsApp no pudo enviarse — revisa la configuración de Factiliza','warning');
+      }
     }
   } catch(e) { toast('Error al guardar: ' + e.message, 'error'); }
 }
