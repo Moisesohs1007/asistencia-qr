@@ -2650,7 +2650,7 @@ async function clearToday() {
   } catch(e) { toast('Error al eliminar','error'); }
 }
 
-// Helper: obtener registros respetando los filtros activos del tab Registro
+// Helper: obtener registros agrupados (igual que la tabla) respetando filtros activos
 async function getRegistrosFiltrados() {
   const desde   = document.getElementById('filter-desde').value;
   const hasta   = document.getElementById('filter-hasta').value;
@@ -2661,6 +2661,7 @@ async function getRegistrosFiltrados() {
 
   let regs = await DB.getRegistros({});
 
+  // Aplicar filtros
   if(desde || hasta) {
     regs = regs.filter(r => {
       if(!r.fecha) return false;
@@ -2674,14 +2675,45 @@ async function getRegistrosFiltrados() {
   if(nivel   && nivel   !== 'TODOS') regs = regs.filter(r => r.turno === nivel);
   if(q) regs = regs.filter(r => (r.nombre||'').toLowerCase().includes(q) || (r.alumnoId||'').includes(q));
 
-  return regs;
+  // Agrupar por alumnoId + fecha → una fila por alumno por día (igual que la tabla)
+  const grupos = {};
+  regs.forEach(r => {
+    const key = r.alumnoId + '_' + r.fecha;
+    if(!grupos[key]) {
+      grupos[key] = {
+        fecha:    r.fecha,
+        dni:      r.alumnoId,
+        nombre:   r.nombre,
+        nivel:    r.turno || '-',
+        grado:    r.grado,
+        seccion:  r.seccion,
+        ingreso:  null,
+        salida:   null,
+        estado:   'Sin registro'
+      };
+    }
+    if(r.tipo === 'INGRESO') {
+      grupos[key].ingreso = r.hora;
+      grupos[key].estado  = r.estado;
+    }
+    if(r.tipo === 'SALIDA') {
+      grupos[key].salida = r.hora;
+    }
+  });
+
+  // Ordenar por fecha desc luego nombre
+  return Object.values(grupos).sort((a,b) =>
+    b.fecha.localeCompare(a.fecha) || a.nombre.localeCompare(b.nombre)
+  );
 }
 
 async function exportCSV() {
   const regs = await getRegistrosFiltrados();
   if(!regs.length){ toast('No hay registros','warning'); return; }
-  const header = 'Fecha,Hora,ID,Nombre,Grado,Seccion,Tipo,Estado';
-  const rows = regs.map(r => `${r.fecha},${r.hora},${r.alumnoId},"${r.nombre}",${r.grado},${r.seccion},${r.tipo},${r.estado}`);
+  const header = 'Fecha,DNI,Nombre,Nivel,Grado,Seccion,Hora Ingreso,Hora Salida,Estado';
+  const rows = regs.map(r =>
+    `${r.fecha},${r.dni},"${r.nombre}",${r.nivel},${r.grado},${r.seccion},${r.ingreso||'-'},${r.salida||'-'},${r.estado}`
+  );
   const csv = [header, ...rows].join('\n');
   const a = document.createElement('a');
   a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
@@ -2709,19 +2741,19 @@ async function exportXLSX() {
     });
   }
 
-  // Construir datos
-  const header = ['Fecha','Hora','DNI','Nombre','Grado','Sección','Tipo','Estado'];
+  // Construir datos agrupados con nivel
+  const header = ['Fecha','DNI','Nombre','Nivel','Grado','Sección','Hora Ingreso','Hora Salida','Estado'];
   const rows = regs.map(r => [
-    r.fecha, r.hora, r.alumnoId, r.nombre,
-    r.grado, r.seccion, r.tipo, r.estado
+    r.fecha, r.dni, r.nombre, r.nivel,
+    r.grado, r.seccion, r.ingreso||'-', r.salida||'-', r.estado
   ]);
 
   const ws = XLSX.utils.aoa_to_sheet([header, ...rows]);
 
   // Ancho de columnas
   ws['!cols'] = [
-    {wch:12}, {wch:8}, {wch:12}, {wch:28},
-    {wch:10}, {wch:10}, {wch:10}, {wch:12}
+    {wch:12}, {wch:12}, {wch:28}, {wch:12},
+    {wch:10}, {wch:10}, {wch:14}, {wch:12}, {wch:14}
   ];
 
   const wb = XLSX.utils.book_new();
