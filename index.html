@@ -4398,17 +4398,20 @@ async function guardarIncidente() {
     toast('Reporte guardado','success');
     closeModal('modal-incidente');
     renderIncidentes();
-    // Generar PDF
-    await generarPDFIncidente({ ...incidente, fotoData });
+    // Generar PDF y obtener link
+    const pdfLink = await generarPDFIncidente({ ...incidente, fotoData });
     // Enviar WhatsApp al apoderado
     const alumnoData = incAlumnoSeleccionado;
     if(alumnoData?.telefono) {
       const cfg2 = await getConfig();
       const nomColegio = cfg2?.nombreColegio || 'Institución Educativa';
       const sevEmoji = incidente.severidad === 'Grave' ? '🔴' : incidente.severidad === 'Moderado' ? '🟡' : '🟢';
-      const msg = `🚨 *REPORTE DE INCIDENCIA*\n${nomColegio}\n\n👤 *Alumno:* ${incidente.alumnoNombre}\n🏫 *Grado:* ${incidente.grado} ${incidente.seccion} — ${incidente.turno}\n📋 *Tipo:* ${incidente.tipo}\n${sevEmoji} *Severidad:* ${incidente.severidad}\n📅 *Fecha:* ${incidente.fecha} ${incidente.hora}\n\n📝 El colegio ha registrado un incidente con su hijo/a. Por favor comuníquese con la institución a la brevedad.\n\n📞 Para más información contacte a la dirección del colegio.`;
+      const linkText = pdfLink
+        ? `\n\n📎 *Reporte PDF:* ${pdfLink}\n_(disponible por 7 días)_`
+        : '';
+      const msg = `🚨 *REPORTE DE INCIDENCIA*\n${nomColegio}\n\n👤 *Alumno:* ${incidente.alumnoNombre}\n🏫 *Grado:* ${incidente.grado} ${incidente.seccion} — ${incidente.turno}\n📋 *Tipo:* ${incidente.tipo}\n${sevEmoji} *Severidad:* ${incidente.severidad}\n📅 *Fecha:* ${incidente.fecha} ${incidente.hora}\n\n📝 El colegio ha registrado un incidente con su hijo/a. Por favor comuníquese con la institución a la brevedad.${linkText}\n\n📞 Para más información contacte a la dirección del colegio.`;
       const enviado = await sendWhatsApp(alumnoData.telefono, msg);
-      if(enviado) toast('✅ WhatsApp enviado al apoderado','success');
+      if(enviado) toast('✅ WhatsApp enviado al apoderado' + (pdfLink ? ' con link PDF' : ''),'success');
       else toast('⚠️ PDF generado (WhatsApp no configurado o número inválido)','warning');
     }
   } catch(e) { toast('Error al guardar: ' + e.message, 'error'); }
@@ -4603,6 +4606,18 @@ async function generarPDFIncidente(inc) {
 
   const filename = 'incidente_' + (inc.alumnoNombre||'').replace(/\s+/g,'_') + '_' + (inc.fecha||'') + '.pdf';
   doc.save(filename);
+
+  // Subir a file.io para obtener link compartible
+  try {
+    const pdfBlob = doc.output('blob');
+    const formData = new FormData();
+    formData.append('file', new File([pdfBlob], filename, { type: 'application/pdf' }));
+    formData.append('expires', '7d'); // expira en 7 días
+    const res = await fetch('https://file.io', { method: 'POST', body: formData });
+    const json = await res.json();
+    if(json.success && json.link) return json.link;
+  } catch(e) { console.warn('No se pudo subir PDF a file.io:', e); }
+  return null;
 }
 
 
