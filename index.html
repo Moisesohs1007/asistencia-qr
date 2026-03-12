@@ -1057,6 +1057,7 @@
       <span id="registro-count" style="color:var(--muted);font-size:0.85rem;"></span>
       <div style="display:flex;gap:8px;">
         <button class="btn btn-ghost" onclick="exportCSV()">📤 Exportar CSV</button>
+        <button class="btn btn-ghost" onclick="exportXLSX()">📊 Exportar Excel</button>
         <button class="btn btn-danger" onclick="clearToday()">🗑 Limpiar hoy</button>
       </div>
     </div>
@@ -2660,6 +2661,46 @@ async function exportCSV() {
   a.download = `asistencia_${hoy()}.csv`;
   a.click();
   toast('CSV exportado','success');
+}
+
+// ============================================================
+// EXPORT XLSX
+// ============================================================
+async function exportXLSX() {
+  const regs = await DB.getRegistros({});
+  if(!regs.length){ toast('No hay registros','warning'); return; }
+
+  // Cargar SheetJS dinámicamente
+  if(!window.XLSX) {
+    toast('Cargando librería Excel...','info');
+    await new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+      s.onload = resolve;
+      s.onerror = () => reject(new Error('No se pudo cargar SheetJS'));
+      document.head.appendChild(s);
+    });
+  }
+
+  // Construir datos
+  const header = ['Fecha','Hora','DNI','Nombre','Grado','Sección','Tipo','Estado'];
+  const rows = regs.map(r => [
+    r.fecha, r.hora, r.alumnoId, r.nombre,
+    r.grado, r.seccion, r.tipo, r.estado
+  ]);
+
+  const ws = XLSX.utils.aoa_to_sheet([header, ...rows]);
+
+  // Ancho de columnas
+  ws['!cols'] = [
+    {wch:12}, {wch:8}, {wch:12}, {wch:28},
+    {wch:10}, {wch:10}, {wch:10}, {wch:12}
+  ];
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Asistencia');
+  XLSX.writeFile(wb, `asistencia_${hoy()}.xlsx`);
+  toast('✅ Excel exportado','success');
 }
 
 // ============================================================
