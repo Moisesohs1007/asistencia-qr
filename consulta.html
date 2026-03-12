@@ -255,10 +255,10 @@ async function buscar() {
     // Buscar registros de asistencia
     const regSnap = await db.collection('registros')
       .where('alumnoId', '==', dni)
-      .orderBy('fecha', 'desc')
       .get();
 
-    todosRegistros = regSnap.docs.map(d => d.data());
+    todosRegistros = regSnap.docs.map(d => d.data())
+      .sort((a, b) => (b.fecha || '').localeCompare(a.fecha || ''));
 
     // Mostrar info alumno
     const nombreCompleto = `${alumno.nombres} ${alumno.apellidos}`;
