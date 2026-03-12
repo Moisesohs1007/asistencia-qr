@@ -1376,10 +1376,11 @@
       </div>
 
       <div class="form-group" style="margin-top:12px;">
-        <label>Evidencia fotográfica (opcional)</label>
-        <input type="file" id="inc-foto" accept="image/*" onchange="previewIncFoto(this)" style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:8px;color:var(--text);font-size:0.85rem;">
-        <div id="inc-foto-preview" style="display:none;margin-top:8px;">
-          <img id="inc-foto-img" style="width:100%;max-height:160px;object-fit:cover;border-radius:8px;border:1px solid var(--border);">
+        <label>Evidencia fotográfica <span style="color:var(--muted);font-weight:400;">(opcional — máx. 4 fotos)</span></label>
+        <input type="file" id="inc-foto" accept="image/*" multiple onchange="previewIncFotos(this)" style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:8px;color:var(--text);font-size:0.85rem;">
+        <div id="inc-foto-preview" style="display:none;margin-top:10px;">
+          <div id="inc-foto-grid" style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;"></div>
+          <div style="margin-top:6px;font-size:0.78rem;color:var(--muted);" id="inc-foto-count"></div>
         </div>
         <input type="hidden" id="inc-foto-data">
       </div>
@@ -4306,6 +4307,8 @@ function abrirModalIncidente() {
   document.getElementById('inc-medidas').value = '';
   document.getElementById('inc-foto-data').value = '';
   document.getElementById('inc-foto-preview').style.display = 'none';
+  document.getElementById('inc-foto-grid').innerHTML = '';
+  document.getElementById('inc-foto').value = '';
   document.querySelector('input[name="inc-sev"][value="Moderado"]').checked = true;
   document.getElementById('modal-incidente').classList.add('open');
 }
@@ -4354,16 +4357,44 @@ async function seleccionarAlumnoIncidente(id) {
   `;
 }
 
-function previewIncFoto(input) {
-  const file = input.files[0];
-  if(!file) return;
-  const reader = new FileReader();
-  reader.onload = e => {
-    document.getElementById('inc-foto-data').value = e.target.result;
-    document.getElementById('inc-foto-img').src = e.target.result;
-    document.getElementById('inc-foto-preview').style.display = 'block';
-  };
-  reader.readAsDataURL(file);
+function previewIncFotos(input) {
+  const files = Array.from(input.files).slice(0, 4); // máx 4 fotos
+  if(!files.length) return;
+
+  const grid    = document.getElementById('inc-foto-grid');
+  const preview = document.getElementById('inc-foto-preview');
+  const count   = document.getElementById('inc-foto-count');
+  grid.innerHTML = '';
+  preview.style.display = 'block';
+  count.textContent = `${files.length} foto${files.length>1?'s':''} seleccionada${files.length>1?'s':''}`;
+
+  const fotosData = [];
+  let loaded = 0;
+
+  files.forEach((file, i) => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      fotosData[i] = e.target.result;
+      loaded++;
+      // Agregar preview
+      const wrap = document.createElement('div');
+      wrap.style.cssText = 'position:relative;';
+      const img = document.createElement('img');
+      img.src = e.target.result;
+      img.style.cssText = 'width:100%;height:110px;object-fit:cover;border-radius:8px;border:1px solid var(--border);';
+      const badge = document.createElement('span');
+      badge.textContent = `Foto ${i+1}`;
+      badge.style.cssText = 'position:absolute;bottom:4px;left:4px;background:rgba(0,0,0,0.55);color:#fff;font-size:0.7rem;padding:2px 6px;border-radius:4px;';
+      wrap.appendChild(img);
+      wrap.appendChild(badge);
+      grid.appendChild(wrap);
+      // Guardar array JSON cuando todas estén listas
+      if(loaded === files.length) {
+        document.getElementById('inc-foto-data').value = JSON.stringify(fotosData);
+      }
+    };
+    reader.readAsDataURL(file);
+  });
 }
 
 async function guardarIncidente() {
@@ -4378,7 +4409,12 @@ async function guardarIncidente() {
   const fecha = document.getElementById('inc-fecha').value;
   const hora = document.getElementById('inc-hora').value;
   const medidas = document.getElementById('inc-medidas').value.trim();
-  const fotoData = document.getElementById('inc-foto-data').value;
+  const fotoDataRaw = document.getElementById('inc-foto-data').value;
+  let fotoData = null;
+  if(fotoDataRaw) {
+    try { fotoData = JSON.parse(fotoDataRaw); } // array de fotos
+    catch(e) { fotoData = [fotoDataRaw]; }       // legacy: una sola foto
+  }
   const a = incAlumnoSeleccionado;
 
   const incidente = {
@@ -4386,7 +4422,7 @@ async function guardarIncidente() {
     alumnoNombre: a.nombres + ' ' + a.apellidos,
     grado: a.grado, seccion: a.seccion, turno: a.turno,
     tipo, severidad, fecha, hora, descripcion, medidas,
-    fotoData: fotoData ? 'si' : 'no', // no guardamos imagen en Firestore por tamaño
+    fotoData: fotoData ? `${Array.isArray(fotoData)?fotoData.length:1} foto(s)` : 'no', // no guardamos imagen en Firestore por tamaño
     responsableId: currentUser.uid,
     responsableNombre: document.getElementById('user-name-display').textContent,
     responsableCargo: await getCargoUsuario(currentUser.uid),
@@ -4572,17 +4608,42 @@ async function generarPDFIncidente(inc) {
     y += medH + 6;
   }
 
-  // Foto
-  if(inc.fotoData && inc.fotoData.startsWith('data:image')) {
-    try {
-      doc.setTextColor(100,116,139); doc.setFont('helvetica','bold'); doc.setFontSize(7);
-      doc.text('EVIDENCIA FOTOGRÁFICA', margin, y);
-      y += 4;
-      const imgW = W - margin*2;
-      const imgH = 60;
-      doc.addImage(inc.fotoData, 'JPEG', margin, y, imgW, imgH);
-      y += imgH + 8;
-    } catch(e) { console.warn('No se pudo agregar imagen al PDF'); }
+  // Fotos (array de hasta 4)
+  let fotosArray = [];
+  if(Array.isArray(inc.fotoData)) fotosArray = inc.fotoData.filter(f => f && f.startsWith('data:image'));
+  else if(inc.fotoData && inc.fotoData.startsWith && inc.fotoData.startsWith('data:image')) fotosArray = [inc.fotoData];
+
+  if(fotosArray.length > 0) {
+    // Verificar espacio — nueva página si no alcanza
+    const fotoSecH = 10 + (fotosArray.length <= 2 ? 65 : 130);
+    if(y + fotoSecH > 270) { doc.addPage(); y = 20; }
+
+    doc.setTextColor(100,116,139); doc.setFont('helvetica','bold'); doc.setFontSize(7);
+    doc.text(`EVIDENCIA FOTOGRÁFICA (${fotosArray.length} foto${fotosArray.length>1?'s':''})`, margin, y);
+    y += 5;
+
+    const gap   = 4;
+    const cols  = fotosArray.length <= 2 ? fotosArray.length : 2;
+    const imgW  = (W - margin*2 - gap*(cols-1)) / cols;
+    const imgH  = 58;
+
+    fotosArray.forEach((foto, i) => {
+      try {
+        const col = i % 2;
+        const row = Math.floor(i / 2);
+        const fx  = margin + col*(imgW + gap);
+        const fy  = y + row*(imgH + gap);
+        doc.addImage(foto, 'JPEG', fx, fy, imgW, imgH);
+        // Número de foto
+        doc.setFillColor(0,0,0);
+        doc.rect(fx, fy, 10, 6, 'F');
+        doc.setTextColor(255,255,255); doc.setFontSize(5.5);
+        doc.text(`Foto ${i+1}`, fx+5, fy+4, {align:'center'});
+      } catch(e) { console.warn('No se pudo agregar foto ' + (i+1)); }
+    });
+
+    const rows = Math.ceil(fotosArray.length / 2);
+    y += rows*(imgH + gap) + 4;
   }
 
   // Firmas
