@@ -3284,22 +3284,32 @@ async function renderReportes() {
   });
   document.getElementById('rep-faltas').textContent = faltas;
 
-  // Chart grados hoy
-  const grados = [...new Set(alumnos.map(a=>a.grado))].sort();
+  // Chart grados hoy — agrupado por nivel
+  const niveles = [...new Set(alumnos.map(a=>a.turno||'Sin nivel'))].sort();
   const chartGrados = document.getElementById('chart-grados');
-  if(!grados.length){ chartGrados.innerHTML = '<p style="color:var(--muted);font-size:.85rem;">Sin datos</p>'; }
+  if(!alumnos.length){ chartGrados.innerHTML = '<p style="color:var(--muted);font-size:.85rem;">Sin datos</p>'; }
   else {
-    chartGrados.innerHTML = grados.map(g => {
-      const total = alumnos.filter(a=>a.grado===g).length;
-      const pres  = new Set(registros.filter(r=>r.fecha===today&&r.tipo==='INGRESO'&&r.grado===g).map(r=>r.alumnoId)).size;
-      const pctG  = total ? Math.round(pres/total*100) : 0;
-      return `<div style="margin-bottom:10px;">
-        <div style="display:flex;justify-content:space-between;font-size:.8rem;margin-bottom:4px;">
-          <span>${g}</span><span style="color:var(--muted);">${pres}/${total}</span>
+    chartGrados.innerHTML = niveles.map(niv => {
+      const alumnosNivel = alumnos.filter(a=>(a.turno||'Sin nivel')===niv);
+      const grados = [...new Set(alumnosNivel.map(a=>a.grado))].sort();
+      const filas = grados.map(g => {
+        const total = alumnosNivel.filter(a=>a.grado===g).length;
+        const pres  = new Set(registros.filter(r=>r.fecha===today&&r.tipo==='INGRESO'&&r.grado===g&&(r.turno||r.nivel||'')===niv).map(r=>r.alumnoId)).size;
+        const pctG  = total ? Math.round(pres/total*100) : 0;
+        return `<div style="margin-bottom:8px;padding-left:8px;">
+          <div style="display:flex;justify-content:space-between;font-size:.8rem;margin-bottom:3px;">
+            <span>${g}</span><span style="color:var(--muted);">${pres}/${total}</span>
+          </div>
+          <div style="background:var(--surface2);border-radius:6px;height:7px;overflow:hidden;">
+            <div style="background:var(--accent);width:${pctG}%;height:100%;border-radius:6px;transition:width .4s;"></div>
+          </div>
+        </div>`;
+      }).join('');
+      return `<div style="margin-bottom:14px;">
+        <div style="font-size:.75rem;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;padding-bottom:4px;border-bottom:1px solid var(--border);">
+          ${niv} (${alumnosNivel.length} alumnos)
         </div>
-        <div style="background:var(--surface2);border-radius:6px;height:8px;overflow:hidden;">
-          <div style="background:var(--accent);width:${pctG}%;height:100%;border-radius:6px;transition:width .4s;"></div>
-        </div>
+        ${filas}
       </div>`;
     }).join('');
   }
@@ -3336,8 +3346,13 @@ async function renderReportes() {
   topEl.innerHTML = sorted.map(([id,cnt]) => {
     const a = alumnos.find(x=>x.id===id);
     const name = a ? a.nombres+' '+a.apellidos : id;
+    const nivel = a ? (a.turno||'-') : '-';
+    const grado = a ? `${a.grado} ${a.seccion}` : '-';
     return `<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);">
-      <span style="font-weight:500;">${name}</span>
+      <div>
+        <div style="font-weight:500;">${name}</div>
+        <div style="font-size:.75rem;color:var(--muted);">${grado} · ${nivel}</div>
+      </div>
       <span class="badge yellow">${cnt} tardanza${cnt>1?'s':''}</span>
     </div>`;
   }).join('');
