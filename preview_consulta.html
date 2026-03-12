@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Consulta de Asistencia — Preview</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', Arial, sans-serif;
+    background: #0d1a3a;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 24px 16px;
+  }
+
+  /* HEADER */
+  .header {
+    width: 100%; max-width: 480px;
+    display: flex; flex-direction: column; align-items: center;
+    gap: 6px; margin-bottom: 24px;
+  }
+  .header .logo {
+    width: 56px; height: 56px;
+    background: #1e3264; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 28px; border: 3px solid #c9a84c;
+  }
+  .header h1 { color: #fff; font-size: 1.1rem; font-weight: 700; text-align: center; }
+  .header p  { color: #b0c4e8; font-size: 0.78rem; text-align: center; }
+  .gold-line { width: 60px; height: 3px; background: #c9a84c; border-radius: 2px; margin: 4px 0; }
+
+  /* CARD */
+  .card {
+    width: 100%; max-width: 480px;
+    background: #1a2b5e; border-radius: 16px;
+    padding: 20px; margin-bottom: 16px;
+    border: 1px solid #2a3f7e;
+  }
+
+  /* BÚSQUEDA */
+  .search-label { color: #b0c4e8; font-size: 0.8rem; margin-bottom: 8px; display: block; }
+  .search-row { display: flex; gap: 8px; }
+  .search-row input {
+    flex: 1; padding: 12px 16px;
+    background: #0d1a3a; border: 1.5px solid #2a3f7e;
+    border-radius: 10px; color: #fff; font-size: 1rem;
+    letter-spacing: 2px;
+  }
+  .search-row input::placeholder { color: #4a5f8e; letter-spacing: 1px; }
+  .btn-buscar {
+    padding: 12px 20px; background: #c9a84c;
+    border: none; border-radius: 10px;
+    color: #0d1a3a; font-weight: 700; font-size: 0.9rem; cursor: pointer;
+  }
+
+  /* ALUMNO INFO */
+  .alumno-card {
+    display: flex; align-items: center; gap: 14px;
+    padding: 14px; background: #0d1a3a;
+    border-radius: 12px; border: 1px solid #c9a84c33;
+    margin-bottom: 16px;
+  }
+  .alumno-avatar {
+    width: 52px; height: 52px; border-radius: 50%;
+    background: #1e3264; border: 2.5px solid #c9a84c;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px; font-weight: 700; color: #fff; flex-shrink: 0;
+  }
+  .alumno-info h2 { color: #fff; font-size: 0.95rem; font-weight: 700; }
+  .alumno-info p  { color: #b0c4e8; font-size: 0.78rem; margin-top: 2px; }
+
+  /* RESUMEN KPIs */
+  .kpi-row { display: flex; gap: 10px; margin-bottom: 16px; }
+  .kpi {
+    flex: 1; padding: 12px 8px; border-radius: 12px;
+    text-align: center;
+  }
+  .kpi.puntual  { background: #0d3320; border: 1px solid #22c55e44; }
+  .kpi.tardanza { background: #2d1f00; border: 1px solid #f59e0b44; }
+  .kpi.ausente  { background: #2d0f0f; border: 1px solid #ef444444; }
+  .kpi .num  { font-size: 1.6rem; font-weight: 800; line-height: 1; }
+  .kpi .lbl  { font-size: 0.68rem; margin-top: 3px; font-weight: 600; letter-spacing: 0.5px; }
+  .kpi.puntual  .num { color: #22c55e; } .kpi.puntual  .lbl { color: #22c55e99; }
+  .kpi.tardanza .num { color: #f59e0b; } .kpi.tardanza .lbl { color: #f59e0b99; }
+  .kpi.ausente  .num { color: #ef4444; } .kpi.ausente  .lbl { color: #ef444499; }
+
+  /* FILTROS */
+  .filtros { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
+  .filtro-btn {
+    padding: 6px 14px; border-radius: 20px; font-size: 0.75rem;
+    font-weight: 600; cursor: pointer; border: 1.5px solid #2a3f7e;
+    background: transparent; color: #b0c4e8;
+  }
+  .filtro-btn.active { background: #c9a84c; color: #0d1a3a; border-color: #c9a84c; }
+  select.filtro-mes {
+    padding: 6px 12px; border-radius: 20px; font-size: 0.75rem;
+    background: #0d1a3a; border: 1.5px solid #2a3f7e; color: #b0c4e8;
+  }
+
+  /* REGISTROS */
+  .registro-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 12px; border-radius: 10px;
+    margin-bottom: 8px; background: #0d1a3a;
+  }
+  .estado-dot {
+    width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0;
+  }
+  .dot-puntual  { background: #22c55e; }
+  .dot-tardanza { background: #f59e0b; }
+  .dot-ausente  { background: #ef4444; }
+  .reg-fecha { color: #b0c4e8; font-size: 0.75rem; min-width: 90px; }
+  .reg-estado { font-size: 0.78rem; font-weight: 600; flex: 1; }
+  .estado-puntual  { color: #22c55e; }
+  .estado-tardanza { color: #f59e0b; }
+  .estado-ausente  { color: #ef4444; }
+  .reg-horas { color: #6b7fa0; font-size: 0.72rem; text-align: right; }
+
+  /* FOOTER */
+  .footer { color: #2a3f7e; font-size: 0.7rem; text-align: center; margin-top: 8px; }
+
+  /* ESTADO INICIAL (sin búsqueda) */
+  .empty-state {
+    text-align: center; padding: 30px 20px;
+    color: #4a5f8e;
+  }
+  .empty-state .icon { font-size: 3rem; margin-bottom: 12px; }
+  .empty-state p { font-size: 0.85rem; line-height: 1.5; }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="logo">🏫</div>
+  <div class="gold-line"></div>
+  <h1>I.E.P. San José Marello</h1>
+  <p>Consulta de Asistencia — Apoderados</p>
+</div>
+
+<!-- BÚSQUEDA -->
+<div class="card">
+  <span class="search-label">Ingresa el DNI del alumno</span>
+  <div class="search-row">
+    <input type="text" placeholder="Ej: 12345678" maxlength="8" value="33348249">
+    <button class="btn-buscar">🔍 Buscar</button>
+  </div>
+</div>
+
+<!-- RESULTADO (simulado) -->
+
+<!-- INFO ALUMNO -->
+<div class="card">
+  <div class="alumno-card">
+    <div class="alumno-avatar">JG</div>
+    <div class="alumno-info">
+      <h2>JUAN CARLOS GARCIA LOPEZ</h2>
+      <p>3° A &nbsp;·&nbsp; Sección A &nbsp;·&nbsp; Primaria</p>
+    </div>
+  </div>
+
+  <!-- KPIs -->
+  <div class="kpi-row">
+    <div class="kpi puntual">
+      <div class="num">45</div>
+      <div class="lbl">PUNTUALES</div>
+    </div>
+    <div class="kpi tardanza">
+      <div class="num">8</div>
+      <div class="lbl">TARDANZAS</div>
+    </div>
+    <div class="kpi ausente">
+      <div class="num">3</div>
+      <div class="lbl">AUSENCIAS</div>
+    </div>
+  </div>
+
+  <!-- FILTROS -->
+  <div class="filtros">
+    <button class="filtro-btn active">Todos</button>
+    <button class="filtro-btn">✅ Puntuales</button>
+    <button class="filtro-btn">⚠️ Tardanzas</button>
+    <button class="filtro-btn">❌ Ausencias</button>
+    <select class="filtro-mes">
+      <option>Todos los meses</option>
+      <option>Marzo 2025</option>
+      <option>Febrero 2025</option>
+    </select>
+  </div>
+
+  <!-- REGISTROS -->
+  <div class="registro-item">
+    <div class="estado-dot dot-puntual"></div>
+    <div class="reg-fecha">Mié 12/03/2025</div>
+    <div class="reg-estado estado-puntual">✅ Puntual</div>
+    <div class="reg-horas">🕐 7:42 — 13:05</div>
+  </div>
+  <div class="registro-item">
+    <div class="estado-dot dot-tardanza"></div>
+    <div class="reg-fecha">Mar 11/03/2025</div>
+    <div class="reg-estado estado-tardanza">⚠️ Tardanza</div>
+    <div class="reg-horas">🕐 8:15 — 13:00</div>
+  </div>
+  <div class="registro-item">
+    <div class="estado-dot dot-ausente"></div>
+    <div class="reg-fecha">Lun 10/03/2025</div>
+    <div class="reg-estado estado-ausente">❌ Ausente</div>
+    <div class="reg-horas">— sin registro —</div>
+  </div>
+  <div class="registro-item">
+    <div class="estado-dot dot-puntual"></div>
+    <div class="reg-fecha">Vie 07/03/2025</div>
+    <div class="reg-estado estado-puntual">✅ Puntual</div>
+    <div class="reg-horas">🕐 7:38 — 12:58</div>
+  </div>
+  <div class="registro-item">
+    <div class="estado-dot dot-puntual"></div>
+    <div class="reg-fecha">Jue 06/03/2025</div>
+    <div class="reg-estado estado-puntual">✅ Puntual</div>
+    <div class="reg-horas">🕐 7:50 — 13:02</div>
+  </div>
+  <div class="registro-item">
+    <div class="estado-dot dot-tardanza"></div>
+    <div class="reg-fecha">Mié 05/03/2025</div>
+    <div class="reg-estado estado-tardanza">⚠️ Tardanza</div>
+    <div class="reg-horas">🕐 8:22 — 13:00</div>
+  </div>
+
+</div>
+
+<div class="footer">AsistenciaQR · I.E.P. San José Marello · 2025</div>
+
+</body>
+</html>
