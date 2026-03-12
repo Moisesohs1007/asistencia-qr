@@ -4671,16 +4671,36 @@ async function generarPDFIncidente(inc) {
   const filename = 'incidente_' + (inc.alumnoNombre||'').replace(/\s+/g,'_') + '_' + (inc.fecha||'') + '.pdf';
   doc.save(filename);
 
-  // Subir a file.io para obtener link compartible
+  // Subir PDF y obtener link compartible — intenta varios servicios
+  const pdfBlob = doc.output('blob');
+  const pdfFile = new File([pdfBlob], filename, { type: 'application/pdf' });
+
+  // Intento 1: tmpfiles.org (permite CORS desde navegador)
   try {
-    const pdfBlob = doc.output('blob');
-    const formData = new FormData();
-    formData.append('file', new File([pdfBlob], filename, { type: 'application/pdf' }));
-    formData.append('expires', '7d'); // expira en 7 días
-    const res = await fetch('https://file.io', { method: 'POST', body: formData });
-    const json = await res.json();
-    if(json.success && json.link) return json.link;
-  } catch(e) { console.warn('No se pudo subir PDF a file.io:', e); }
+    const fd1 = new FormData();
+    fd1.append('file', pdfFile);
+    const r1 = await fetch('https://tmpfiles.org/api/v1/upload', { method: 'POST', body: fd1 });
+    const j1 = await r1.json();
+    if(j1.status === 'success' && j1.data?.url) {
+      // tmpfiles.org retorna URL de vista — convertir a descarga directa
+      const directUrl = j1.data.url.replace('tmpfiles.org/', 'tmpfiles.org/dl/');
+      return directUrl;
+    }
+  } catch(e) { console.warn('tmpfiles.org falló:', e); }
+
+  // Intento 2: gofile.io (permite CORS, sin límite de tamaño)
+  try {
+    // Primero obtener servidor disponible
+    const srv = await fetch('https://api.gofile.io/servers');
+    const srvJson = await srv.json();
+    const server = srvJson?.data?.servers?.[0]?.name || 'store1';
+    const fd2 = new FormData();
+    fd2.append('file', pdfFile);
+    const r2 = await fetch(`https://${server}.gofile.io/contents/uploadfile`, { method: 'POST', body: fd2 });
+    const j2 = await r2.json();
+    if(j2.status === 'ok' && j2.data?.downloadPage) return j2.data.downloadPage;
+  } catch(e) { console.warn('gofile.io falló:', e); }
+
   return null;
 }
 
