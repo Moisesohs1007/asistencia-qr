@@ -1528,7 +1528,6 @@
     <!-- CARNET VISUAL — 56x86mm proporcional en pantalla -->
     <div style="display:flex;justify-content:center;padding:8px 0 4px;">
     <div id="carnet-print" style="
-      position:relative;
       width:224px; height:344px;
       border-radius:10px; overflow:hidden;
       display:flex; flex-direction:column;
@@ -3024,16 +3023,11 @@ async function imprimirCarnetsMasivo() {
     doc.setFontSize(3); doc.setFont('helvetica','normal');
     doc.text('ESCANEA PARA REGISTRAR ASISTENCIA', contCX, qrTop+QR_S+2.5, {align:'center'});
 
-    // VIGENCIA vertical — dentro del cuerpo blanco, a la izquierda del círculo de foto
+    // VIGENCIA vertical — pegada al borde izquierdo interior del body
     doc.saveGraphicsState();
     doc.setTextColor(20, 20, 20);
     doc.setFontSize(3.8); doc.setFont('helvetica','bold');
-    const vigenciaText = `VIGENCIA 31 DE DICIEMBRE DEL ${anio}`;
-    // Posición: bien dentro del rectángulo blanco (body empieza en x+BORDER). En jsPDF
-    // con angle 90 el texto puede anclarse y extenderse; usamos 14mm desde el borde izq del carnet.
-    const vigX = x + BORDER + 14;
-    const vigY = bodyTop + bodyH / 2;
-    doc.text(vigenciaText, vigX, vigY, {angle: 90, align:'center'});
+    doc.text(`VIGENCIA 31 DE DICIEMBRE DEL ${anio}`, x + BORDER + 0.8, bodyTop + bodyH / 2, {angle: 90, align:'center'});
     doc.restoreGraphicsState();
 
     // Footer azul
