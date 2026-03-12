@@ -13,12 +13,12 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    padding: 24px 16px;
+    padding: 16px 12px;
   }
   .header {
     width: 100%; max-width: 480px;
     display: flex; flex-direction: column; align-items: center;
-    gap: 6px; margin-bottom: 24px;
+    gap: 5px; margin-bottom: 16px;
   }
   .header .logo {
     width: 56px; height: 56px;
@@ -33,27 +33,31 @@
   .card {
     width: 100%; max-width: 480px;
     background: #1a2b5e; border-radius: 16px;
-    padding: 20px; margin-bottom: 16px;
+    padding: 16px; margin-bottom: 12px;
     border: 1px solid #2a3f7e;
   }
   .search-label { color: #b0c4e8; font-size: 0.8rem; margin-bottom: 8px; display: block; }
   .search-row { display: flex; gap: 8px; }
   .search-row input {
-    flex: 1; padding: 12px 16px;
+    flex: 1; padding: 14px 16px;
     background: #0d1a3a; border: 1.5px solid #2a3f7e;
-    border-radius: 10px; color: #fff; font-size: 1rem;
-    letter-spacing: 2px; outline: none;
+    border-radius: 10px; color: #fff; font-size: 1.1rem;
+    letter-spacing: 2px; outline: none; min-width: 0;
   }
   .search-row input:focus { border-color: #c9a84c; }
   .search-row input::placeholder { color: #4a5f8e; letter-spacing: 1px; font-size: 0.9rem; }
+  /* Quitar flechas en inputs numéricos */
+  input[type=number]::-webkit-inner-spin-button,
+  input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+  input[type=number] { -moz-appearance: textfield; }
   .btn-buscar {
-    padding: 12px 20px; background: #c9a84c;
+    padding: 14px 18px; background: #c9a84c;
     border: none; border-radius: 10px;
-    color: #0d1a3a; font-weight: 700; font-size: 0.9rem; cursor: pointer;
-    transition: opacity 0.2s;
+    color: #0d1a3a; font-weight: 700; font-size: 0.95rem; cursor: pointer;
+    transition: opacity 0.2s; white-space: nowrap; flex-shrink: 0;
   }
   .btn-buscar:disabled { opacity: 0.5; cursor: not-allowed; }
-  .btn-buscar:hover:not(:disabled) { opacity: 0.85; }
+  .btn-buscar:active { opacity: 0.75; }
   .alumno-card {
     display: flex; align-items: center; gap: 14px;
     padding: 14px; background: #0d1a3a;
@@ -70,13 +74,13 @@
   .alumno-avatar img { width: 100%; height: 100%; object-fit: cover; }
   .alumno-info h2 { color: #fff; font-size: 0.95rem; font-weight: 700; }
   .alumno-info p  { color: #b0c4e8; font-size: 0.78rem; margin-top: 2px; }
-  .kpi-row { display: flex; gap: 10px; margin-bottom: 16px; }
-  .kpi { flex: 1; padding: 12px 8px; border-radius: 12px; text-align: center; }
+  .kpi-row { display: flex; gap: 8px; margin-bottom: 14px; }
+  .kpi { flex: 1; padding: 10px 4px; border-radius: 12px; text-align: center; }
   .kpi.puntual  { background: #0d3320; border: 1px solid #22c55e44; }
   .kpi.tardanza { background: #2d1f00; border: 1px solid #f59e0b44; }
   .kpi.ausente  { background: #2d0f0f; border: 1px solid #ef444444; }
-  .kpi .num { font-size: 1.6rem; font-weight: 800; line-height: 1; }
-  .kpi .lbl { font-size: 0.68rem; margin-top: 3px; font-weight: 600; letter-spacing: 0.5px; }
+  .kpi .num { font-size: 1.5rem; font-weight: 800; line-height: 1; }
+  .kpi .lbl { font-size: 0.62rem; margin-top: 3px; font-weight: 600; letter-spacing: 0.3px; }
   .kpi.puntual  .num { color: #22c55e; } .kpi.puntual  .lbl { color: #22c55e99; }
   .kpi.tardanza .num { color: #f59e0b; } .kpi.tardanza .lbl { color: #f59e0b99; }
   .kpi.ausente  .num { color: #ef4444; } .kpi.ausente  .lbl { color: #ef444499; }
@@ -93,20 +97,26 @@
     cursor: pointer; outline: none;
   }
   .registro-item {
-    display: flex; align-items: center; gap: 12px;
+    display: flex; align-items: center; gap: 10px;
     padding: 10px 12px; border-radius: 10px;
     margin-bottom: 8px; background: #0d1a3a;
+    flex-wrap: wrap;
   }
-  .estado-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .estado-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
   .dot-puntual  { background: #22c55e; }
   .dot-tardanza { background: #f59e0b; }
   .dot-ausente  { background: #ef4444; }
-  .reg-fecha { color: #b0c4e8; font-size: 0.75rem; min-width: 100px; }
-  .reg-estado { font-size: 0.78rem; font-weight: 600; flex: 1; }
+  .reg-fecha { color: #b0c4e8; font-size: 0.74rem; min-width: 90px; }
+  .reg-estado { font-size: 0.78rem; font-weight: 600; flex: 1; min-width: 80px; }
   .estado-puntual  { color: #22c55e; }
   .estado-tardanza { color: #f59e0b; }
   .estado-ausente  { color: #ef4444; }
-  .reg-horas { color: #6b7fa0; font-size: 0.72rem; text-align: right; white-space: nowrap; }
+  .reg-horas { color: #6b7fa0; font-size: 0.72rem; text-align: right; white-space: nowrap; margin-left: auto; }
+  @media (max-width: 360px) {
+    .reg-horas { width: 100%; text-align: left; padding-left: 19px; margin-top: 2px; }
+    .filtros { gap: 6px; }
+    .filtro-btn { padding: 5px 10px; font-size: 0.7rem; }
+  }
   .empty-state { text-align: center; padding: 30px 20px; color: #4a5f8e; }
   .empty-state .icon { font-size: 3rem; margin-bottom: 12px; }
   .empty-state p { font-size: 0.85rem; line-height: 1.6; }
@@ -133,7 +143,8 @@
 <div class="card">
   <span class="search-label">Ingresa el DNI del alumno</span>
   <div class="search-row">
-    <input type="number" id="dni-input" placeholder="Ej: 12345678" maxlength="8"
+    <input type="tel" id="dni-input" placeholder="Ej: 12345678" maxlength="8"
+      pattern="[0-9]*" inputmode="numeric"
       onkeydown="if(event.key==='Enter') buscar()">
     <button class="btn-buscar" id="btn-buscar" onclick="buscar()">🔍 Buscar</button>
   </div>
