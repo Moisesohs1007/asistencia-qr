@@ -1545,9 +1545,11 @@
         </div>
       </div>
       <!-- BODY -->
-      <div style="flex:1;background:#fff;display:flex;flex-direction:column;align-items:center;padding:8px 6px 4px;gap:4px;position:relative;overflow:hidden;">
+      <div style="flex:1;background:#fff;display:flex;flex-direction:column;align-items:center;padding:8px 6px 4px 6px;gap:4px;position:relative;overflow:hidden;">
         <!-- marca de agua -->
         <div style="position:absolute;inset:0;background-image:var(--wm);background-size:52%;background-repeat:no-repeat;background-position:center;opacity:0.06;pointer-events:none;"></div>
+        <!-- VIGENCIA vertical borde izquierdo -->
+        <div id="carnet-vigencia" style="position:absolute;left:5px;top:50%;transform:translateX(-50%) translateY(-50%) rotate(-90deg);color:#111;font-size:8px;font-weight:bold;letter-spacing:0.8px;white-space:nowrap;z-index:2;"></div>
         <!-- foto anillo dorado -->
         <div style="width:64px;height:64px;border-radius:50%;background:#c9a84c;display:flex;align-items:center;justify-content:center;flex-shrink:0;z-index:1;">
           <div style="width:55px;height:55px;border-radius:50%;background:#1e3264;display:flex;align-items:center;justify-content:center;overflow:hidden;">
@@ -1555,24 +1557,14 @@
             <span id="carnet-initials" style="color:#fff;font-weight:bold;font-size:18px;"></span>
           </div>
         </div>
-        <!-- nombre -->
-        <div id="carnet-name" style="color:#0d1a3a;font-weight:bold;font-size:10px;text-align:center;line-height:1.4;z-index:1;"></div>
+        <!-- nombre más grande -->
+        <div id="carnet-name" style="color:#0d1a3a;font-weight:bold;font-size:12px;text-align:center;line-height:1.4;z-index:1;"></div>
         <!-- separador dorado -->
         <div style="width:78%;height:2px;background:#c9a84c;flex-shrink:0;z-index:1;"></div>
-        <!-- datos -->
-        <div style="display:flex;justify-content:space-around;width:100%;z-index:1;flex-shrink:0;">
-          <div style="text-align:center;">
-            <div style="color:#c9a84c;font-size:6px;font-weight:bold;">DNI</div>
-            <div id="carnet-dni" style="color:#0d1a3a;font-size:8px;font-weight:bold;margin-top:1px;"></div>
-          </div>
-          <div style="text-align:center;">
-            <div style="color:#c9a84c;font-size:6px;font-weight:bold;">NIVEL</div>
-            <div id="carnet-turno" style="color:#0d1a3a;font-size:8px;font-weight:bold;margin-top:1px;"></div>
-          </div>
-          <div style="text-align:center;">
-            <div style="color:#c9a84c;font-size:6px;font-weight:bold;">AÑO</div>
-            <div id="carnet-year" style="color:#0d1a3a;font-size:8px;font-weight:bold;margin-top:1px;"></div>
-          </div>
+        <!-- DNI centrado grande -->
+        <div style="display:flex;flex-direction:column;align-items:center;z-index:1;">
+          <div style="color:#111;font-size:9.5px;font-weight:bold;letter-spacing:1px;">DNI</div>
+          <div id="carnet-dni" style="color:#0d1a3a;font-size:13px;font-weight:bold;letter-spacing:2px;margin-top:1px;"></div>
         </div>
         <!-- QR -->
         <div style="background:#fff;border:1.5px solid #ccc;border-radius:5px;padding:3px;z-index:1;flex-shrink:0;">
@@ -1580,10 +1572,9 @@
         </div>
         <div style="color:#999;font-size:5px;text-align:center;z-index:1;letter-spacing:0.3px;">ESCANEA PARA REGISTRAR ASISTENCIA</div>
       </div>
-      <!-- FOOTER -->
-      <div style="background:#0d1a3a;border-top:3px solid #c9a84c;height:28px;display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0;">
-        <div id="carnet-grade" style="color:#c9a84c;font-size:9px;font-weight:bold;"></div>
-        <div id="carnet-nivel-footer" style="color:#b0c4e8;font-size:8px;margin-top:1px;"></div>
+      <!-- FOOTER una sola línea -->
+      <div style="background:#0d1a3a;border-top:3px solid #c9a84c;height:32px;display:flex;align-items:center;justify-content:center;flex-shrink:0;padding:0 4px;">
+        <div id="carnet-grade" style="color:#c9a84c;font-size:10px;font-weight:bold;white-space:nowrap;"></div>
       </div>
     </div>
     </div>
@@ -2365,11 +2356,9 @@ async function showQR(id) {
   const l2 = words.slice(mid).join(' ');
   document.getElementById('carnet-name').innerHTML = l2 ? `${l1}<br>${l2}` : l1;
 
-  document.getElementById('carnet-grade').textContent = `${a.grado}  ·  Sección ${a.seccion}`;
-  document.getElementById('carnet-nivel-footer').textContent = a.turno;
+  document.getElementById('carnet-grade').textContent = `${a.grado}  ·  Sección ${a.seccion}  ·  ${a.turno}`;
   document.getElementById('carnet-dni').textContent = a.id;
-  document.getElementById('carnet-turno').textContent = a.turno;
-  document.getElementById('carnet-year').textContent = anio;
+  document.getElementById('carnet-vigencia').textContent = `VIGENCIA 31 DE DICIEMBRE DEL ${anio}`;
 
   // QR
   const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(a.id)}&bgcolor=ffffff&color=000000&margin=6&ecc=H`;
@@ -2996,9 +2985,9 @@ async function imprimirCarnetsMasivo() {
     const l1 = words.slice(0,mid).join(' ');
     const l2 = words.slice(mid).join(' ');
     doc.setTextColor(...NAVY_DARK);
-    doc.setFontSize(6.5); doc.setFont('helvetica','bold');
-    doc.text(l1, contCX, afterFoto + 1, {align:'center'});
-    if(l2) doc.text(l2, contCX, afterFoto + 5, {align:'center'});
+    doc.setFontSize(7.5); doc.setFont('helvetica','bold');
+    doc.text(l1, contCX, afterFoto + 1, {align:'center', maxWidth: W - BORDER*2 - 12});
+    if(l2) doc.text(l2, contCX, afterFoto + 5.5, {align:'center', maxWidth: W - BORDER*2 - 12});
 
     // Línea dorada
     const lineY = afterFoto + (l2 ? 7 : 4);
@@ -3006,19 +2995,14 @@ async function imprimirCarnetsMasivo() {
     doc.setLineWidth(0.5);
     doc.line(x+BORDER+5, lineY, x+W-BORDER-5, lineY);
 
-    // DNI / NIVEL / AÑO
+    // DNI centrado grande
     const dataY = lineY + 4;
-    const col1 = x + W*0.2, col2 = x + W*0.5, col3 = x + W*0.8;
-    doc.setFontSize(3.5); doc.setFont('helvetica','bold');
-    doc.setTextColor(...GOLD);
-    doc.text('DNI',   col1, dataY-2, {align:'center'});
-    doc.text('NIVEL', col2, dataY-2, {align:'center'});
-    doc.text('AÑO',   col3, dataY-2, {align:'center'});
+    doc.setFontSize(6); doc.setFont('helvetica','bold');
+    doc.setTextColor(20, 20, 20);
+    doc.text('DNI', contCX, dataY-1.5, {align:'center'});
     doc.setTextColor(...NAVY_DARK);
-    doc.setFontSize(5); doc.setFont('helvetica','bold');
-    doc.text(alumno.id,      col1, dataY+1.5, {align:'center'});
-    doc.text(alumno.turno,   col2, dataY+1.5, {align:'center'});
-    doc.text(String(anio),   col3, dataY+1.5, {align:'center'});
+    doc.setFontSize(8); doc.setFont('helvetica','bold');
+    doc.text(alumno.id, contCX, dataY+3, {align:'center', charSpace:1});
 
     // QR — ocupa el resto del body
     const qrTop  = dataY + 3;
@@ -3039,6 +3023,16 @@ async function imprimirCarnetsMasivo() {
     doc.setFontSize(3); doc.setFont('helvetica','normal');
     doc.text('ESCANEA PARA REGISTRAR ASISTENCIA', contCX, qrTop+QR_S+2.5, {align:'center'});
 
+    // VIGENCIA vertical — borde izquierdo
+    doc.saveGraphicsState();
+    doc.setTextColor(20, 20, 20);
+    doc.setFontSize(3.8); doc.setFont('helvetica','bold');
+    const vigenciaText = `VIGENCIA 31 DE DICIEMBRE DEL ${anio}`;
+    const vigX = x + BORDER + 2.5;
+    const vigY = bodyTop + bodyH / 2;
+    doc.text(vigenciaText, vigX, vigY, {angle: 90, align:'center'});
+    doc.restoreGraphicsState();
+
     // Footer azul
     const footerY = y + H - FOOTER_H - BORDER;
     doc.setFillColor(...NAVY_DARK);
@@ -3050,11 +3044,8 @@ async function imprimirCarnetsMasivo() {
     doc.rect(x+BORDER, footerY, W-BORDER*2, 0.7, 'F');
 
     doc.setTextColor(...GOLD);
-    doc.setFontSize(5.8); doc.setFont('helvetica','bold');
-    doc.text(`${alumno.grado}  ·  Sección ${alumno.seccion}`, contCX, footerY+3.5, {align:'center'});
-    doc.setTextColor(176,196,232);
-    doc.setFontSize(5); doc.setFont('helvetica','normal');
-    doc.text(alumno.turno, contCX, footerY+6, {align:'center'});
+    doc.setFontSize(6.2); doc.setFont('helvetica','bold');
+    doc.text(`${alumno.grado}  ·  Sección ${alumno.seccion}  ·  ${alumno.turno}`, contCX, footerY+4.5, {align:'center', maxWidth: W - BORDER*2 - 4});
   }
 
   // Dibujar carnets paginados
