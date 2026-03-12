@@ -3002,7 +3002,7 @@ async function imprimirCarnetsMasivo() {
     doc.text('DNI', contCX, dataY-1.5, {align:'center'});
     doc.setTextColor(...NAVY_DARK);
     doc.setFontSize(8); doc.setFont('helvetica','bold');
-    doc.text(alumno.id, contCX, dataY+1, {align:'center', charSpace:1});
+    doc.text(alumno.id, contCX - 2, dataY+1, {align:'center', charSpace:1});
 
     // QR — ocupa el resto del body
     const qrTop  = dataY + 3;
