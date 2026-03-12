@@ -1528,7 +1528,6 @@
     <!-- CARNET VISUAL — 56x86mm proporcional en pantalla -->
     <div style="display:flex;justify-content:center;padding:8px 0 4px;">
     <div id="carnet-print" style="
-      position:relative;
       width:224px; height:344px;
       border-radius:10px; overflow:hidden;
       display:flex; flex-direction:column;
@@ -3024,14 +3023,15 @@ async function imprimirCarnetsMasivo() {
     doc.setFontSize(3); doc.setFont('helvetica','normal');
     doc.text('ESCANEA PARA REGISTRAR ASISTENCIA', contCX, qrTop+QR_S+2.5, {align:'center'});
 
-    // VIGENCIA vertical — borde izquierdo, bien dentro del marco
+    // VIGENCIA vertical — pegada al borde izquierdo interior del body
     doc.saveGraphicsState();
     doc.setTextColor(20, 20, 20);
-    // Letra grande (legible) y claramente dentro del carnet
     doc.setFontSize(3.8); doc.setFont('helvetica','bold');
     const vigenciaText = `VIGENCIA 31 DE DICIEMBRE DEL ${anio}`;
-    // Mover más hacia adentro (derecha) para que no quede en el área de corte
-    const vigX = x + 10; 
+    // angle:90 = anticlockwise en jsPDF → texto sube verticalmente
+    // vigX = x + BORDER (borde del body) + mitad del alto del font para que no se corte
+    // font 3.8pt ≈ 1.34mm → necesitamos ~0.8mm de margen desde el borde interior
+    const vigX = x + BORDER + 0.8;
     const vigY = bodyTop + bodyH / 2;
     doc.text(vigenciaText, vigX, vigY, {angle: 90, align:'center'});
     doc.restoreGraphicsState();
