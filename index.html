@@ -2830,7 +2830,7 @@ async function exportPDFRegistro() {
     doc.setFillColor(...NAVY);
     doc.rect(TABLE_X, curY, TABLE_W, HEAD_H, 'F');
     doc.setTextColor(...WHITE);
-    doc.setFontSize(6.5); doc.setFont('helvetica','bold');
+    doc.setFontSize(8); doc.setFont('helvetica','bold');
     let cx = TABLE_X;
     COLS.forEach(col => {
       doc.text(col.label, cx + col.w/2, curY + HEAD_H/2 + 2, {align:'center'});
@@ -2873,7 +2873,7 @@ async function exportPDFRegistro() {
     doc.setLineWidth(0.2);
     doc.line(TABLE_X, curY + ROW_H, TABLE_X + TABLE_W, curY + ROW_H);
 
-    doc.setFontSize(6); doc.setFont('helvetica','normal');
+    doc.setFontSize(8); doc.setFont('helvetica','normal');
     let cx = TABLE_X;
     COLS.forEach(col => {
       let val = r[col.key] || '-';
@@ -2901,7 +2901,7 @@ async function exportPDFRegistro() {
   // Total registros
   curY += 4;
   doc.setTextColor(...MUTED);
-  doc.setFontSize(7); doc.setFont('helvetica','italic');
+  doc.setFontSize(8.5); doc.setFont('helvetica','italic');
   doc.text(`Total: ${regs.length} registro${regs.length!==1?'s':''}`, TABLE_X, curY);
 
   doc.save(`registro_asistencia_${hoy()}.pdf`);
