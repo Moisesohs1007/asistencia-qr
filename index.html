@@ -2923,6 +2923,8 @@ function updateSeleccionados() {
   const sel = document.querySelectorAll('.chk-alumno:checked').length;
   const btn = document.getElementById('btn-imprimir-carnets');
   btn.textContent = sel > 0 ? `🖨 Imprimir Carnets (${sel})` : '🖨 Imprimir Carnets';
+  btn.disabled = sel === 0;
+  btn.style.opacity = sel === 0 ? '0.5' : '1';
   const chkAll = document.getElementById('chk-all');
   if(chkAll) chkAll.indeterminate = sel > 0 && sel < total;
   if(chkAll) chkAll.checked = sel === total && total > 0;
