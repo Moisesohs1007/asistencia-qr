@@ -3027,9 +3027,10 @@ async function imprimirCarnetsMasivo() {
     // VIGENCIA vertical — borde izquierdo, bien dentro del marco
     doc.saveGraphicsState();
     doc.setTextColor(20, 20, 20);
-    doc.setFontSize(3.3); doc.setFont('helvetica','bold');
+    // Letra más grande (legible) pero bien posicionada dentro del carnet
+    doc.setFontSize(3.8); doc.setFont('helvetica','bold');
     const vigenciaText = `VIGENCIA 31 DE DICIEMBRE DEL ${anio}`;
-    const vigX = x + BORDER + 3.5; // un poco más hacia adentro
+    const vigX = x + BORDER + 7; // más hacia adentro del marco dorado
     const vigY = bodyTop + bodyH / 2;
     doc.text(vigenciaText, vigX, vigY, {angle: 90, align:'center'});
     doc.restoreGraphicsState();
