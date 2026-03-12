@@ -1723,6 +1723,18 @@ auth.onAuthStateChanged(async user => {
       const el = document.getElementById('tab-'+t);
       if(el) el.style.display = 'none';
     });
+    // Resetear modo carnets completamente
+    const toggleCarnets = document.getElementById('toggle-modo-carnets');
+    if(toggleCarnets) toggleCarnets.checked = false;
+    toggleModoCarnets(false);
+    // Desmarcar todos los checkboxes de alumnos
+    document.querySelectorAll('.chk-alumno').forEach(c => c.checked = false);
+    // Resetear botón imprimir carnets
+    const btnImprimir = document.getElementById('btn-imprimir-carnets');
+    if(btnImprimir) { btnImprimir.style.display = 'none'; btnImprimir.disabled = true; btnImprimir.textContent = '🖨 Imprimir Carnets'; }
+    // Limpiar tabla alumnos
+    const tbody = document.querySelector('#tabla-alumnos tbody');
+    if(tbody) tbody.innerHTML = '';
     // Resetear pantalla de login completamente
     document.getElementById('login-screen').style.display = 'flex';
     document.getElementById('login-loading').style.display = 'none';
@@ -2872,31 +2884,33 @@ async function sendWhatsApp(telefono, mensaje) {
 function toggleModoCarnets(activo) {
   // Mostrar/ocultar columna checkbox thead
   document.getElementById('th-chk-all').style.display = activo ? '' : 'none';
-  // Mostrar/ocultar checkboxes de cada fila
-  document.querySelectorAll('.td-chk-alumno').forEach(td => td.style.display = activo ? '' : 'none');
-  // Mostrar/ocultar botón imprimir
+  // Mostrar/ocultar checkboxes de cada fila y DESMARCARLOS siempre
+  document.querySelectorAll('.td-chk-alumno').forEach(td => {
+    td.style.display = activo ? '' : 'none';
+    const chk = td.querySelector('.chk-alumno');
+    if(chk) chk.checked = false;
+  });
+  // Reset chk-all
+  const chkAll = document.getElementById('chk-all');
+  if(chkAll) { chkAll.checked = false; chkAll.indeterminate = false; }
+  // Mostrar/ocultar botón imprimir — siempre deshabilitado al activar
   const btnImprimir = document.getElementById('btn-imprimir-carnets');
   btnImprimir.style.display = activo ? '' : 'none';
+  btnImprimir.disabled = true;
+  btnImprimir.textContent = '🖨 Imprimir Carnets';
   // Deshabilitar/habilitar botones de acción
   document.querySelectorAll('.btn-accion-alumno').forEach(btn => {
     btn.disabled = activo;
     btn.style.opacity = activo ? '0.35' : '';
     btn.style.pointerEvents = activo ? 'none' : '';
   });
-  // Deshabilitar/habilitar Nuevo Alumno e Importar CSV
+  // Deshabilitar/habilitar Nuevo Alumno e Importar CSV/Excel
   const btnNuevo = document.getElementById('btn-nuevo-alumno');
-  const btnImportar  = document.getElementById('btn-importar-csv');
+  const btnImportar   = document.getElementById('btn-importar-csv');
   const btnImportarXL = document.getElementById('btn-importar-excel');
+  if(btnNuevo)      { btnNuevo.disabled = activo;      btnNuevo.style.opacity = activo ? '0.35' : '';  btnNuevo.style.pointerEvents = activo ? 'none' : ''; }
+  if(btnImportar)   { btnImportar.disabled = activo;   btnImportar.style.opacity = activo ? '0.35' : '';   btnImportar.style.pointerEvents = activo ? 'none' : ''; }
   if(btnImportarXL) { btnImportarXL.disabled = activo; btnImportarXL.style.opacity = activo ? '0.35' : '1'; btnImportarXL.style.pointerEvents = activo ? 'none' : ''; }
-  if(btnNuevo) { btnNuevo.disabled = activo; btnNuevo.style.opacity = activo ? '0.35' : ''; }
-  if(btnImportar) { btnImportar.disabled = activo; btnImportar.style.opacity = activo ? '0.35' : ''; }
-  // Desmarcar todos al desactivar
-  if(!activo) {
-    document.querySelectorAll('.chk-alumno').forEach(c => c.checked = false);
-    document.getElementById('chk-all').checked = false;
-    btnImprimir.textContent = '🖨 Imprimir Carnets';
-    btnImprimir.disabled = false;
-  }
 }
 
 function toggleSelectAll(chk) {
