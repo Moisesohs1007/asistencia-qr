@@ -2650,8 +2650,35 @@ async function clearToday() {
   } catch(e) { toast('Error al eliminar','error'); }
 }
 
+// Helper: obtener registros respetando los filtros activos del tab Registro
+async function getRegistrosFiltrados() {
+  const desde   = document.getElementById('filter-desde').value;
+  const hasta   = document.getElementById('filter-hasta').value;
+  const grado   = document.getElementById('filter-grado').value;
+  const seccion = document.getElementById('filter-seccion').value;
+  const nivel   = document.getElementById('filter-nivel').value;
+  const q       = (document.getElementById('filter-search').value||'').toLowerCase();
+
+  let regs = await DB.getRegistros({});
+
+  if(desde || hasta) {
+    regs = regs.filter(r => {
+      if(!r.fecha) return false;
+      if(desde && r.fecha < desde) return false;
+      if(hasta && r.fecha > hasta) return false;
+      return true;
+    });
+  }
+  if(grado   && grado   !== 'TODOS') regs = regs.filter(r => r.grado === grado);
+  if(seccion && seccion !== 'TODOS') regs = regs.filter(r => r.seccion === seccion);
+  if(nivel   && nivel   !== 'TODOS') regs = regs.filter(r => r.turno === nivel);
+  if(q) regs = regs.filter(r => (r.nombre||'').toLowerCase().includes(q) || (r.alumnoId||'').includes(q));
+
+  return regs;
+}
+
 async function exportCSV() {
-  const regs = await DB.getRegistros({});
+  const regs = await getRegistrosFiltrados();
   if(!regs.length){ toast('No hay registros','warning'); return; }
   const header = 'Fecha,Hora,ID,Nombre,Grado,Seccion,Tipo,Estado';
   const rows = regs.map(r => `${r.fecha},${r.hora},${r.alumnoId},"${r.nombre}",${r.grado},${r.seccion},${r.tipo},${r.estado}`);
@@ -2667,8 +2694,8 @@ async function exportCSV() {
 // EXPORT XLSX
 // ============================================================
 async function exportXLSX() {
-  const regs = await DB.getRegistros({});
-  if(!regs.length){ toast('No hay registros','warning'); return; }
+  const regs = await getRegistrosFiltrados();
+  if(!regs.length){ toast('No hay registros para los filtros seleccionados','warning'); return; }
 
   // Cargar SheetJS dinámicamente
   if(!window.XLSX) {
