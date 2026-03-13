@@ -1800,7 +1800,10 @@ const DB = {
     return snap.docs.map(d => ({id: d.id, ...d.data()}));
   },
   async saveAlumno(alumno) {
-    await db.collection('alumnos').doc(alumno.id).set(alumno);
+    // Siempre guardar el ID limpio sin espacios
+    const cleanId = (alumno.id||'').trim().replace(/\s+/g,'');
+    const cleanAlumno = { ...alumno, id: cleanId };
+    await db.collection('alumnos').doc(cleanId).set(cleanAlumno);
   },
   async deleteAlumno(id) {
     await db.collection('alumnos').doc(id).delete();
@@ -2024,11 +2027,17 @@ function flashGreenFrame() {
   setTimeout(() => frame.classList.remove('detected'), 1000);
 }
 
-async function processQR(id) {
+async function processQR(rawId) {
+  // Limpiar espacios, saltos de línea y caracteres invisibles del QR escaneado
+  const id = (rawId||'').trim().replace(/\s+/g, '');
+  if(!id) return;
   flashGreenFrame();
   try {
     const alumnos = await DB.getAlumnos();
-    const alumno = alumnos.find(a => a.id === id);
+    // Buscar con coincidencia exacta primero, luego insensible a mayúsculas
+    const alumno = alumnos.find(a => a.id === id) ||
+                   alumnos.find(a => a.id.trim() === id) ||
+                   alumnos.find(a => a.id.toLowerCase() === id.toLowerCase());
     if(!alumno) { toast(`DNI "${id}" no encontrado`, 'error'); return; }
     showStudentResult(alumno);
   } catch(e) { toast('Error al buscar alumno','error'); }
@@ -2293,11 +2302,14 @@ async function renderAlumnos() {
     if(grado   && grado   !== 'TODOS') alumnos = alumnos.filter(a => a.grado === grado);
     if(seccion && seccion !== 'TODOS') alumnos = alumnos.filter(a => a.seccion === seccion);
     if(nivel   && nivel   !== 'TODOS') alumnos = alumnos.filter(a => a.turno === nivel);
-    if(q) alumnos = alumnos.filter(a =>
-      a.nombres.toLowerCase().includes(q) ||
-      a.apellidos.toLowerCase().includes(q) ||
-      a.id.includes(q)
-    );
+    if(q) {
+      const qClean = q.trim();
+      alumnos = alumnos.filter(a =>
+        a.nombres.toLowerCase().includes(qClean) ||
+        a.apellidos.toLowerCase().includes(qClean) ||
+        a.id.trim().toLowerCase().includes(qClean)
+      );
+    }
 
     count.textContent = 'Mostrando ' + alumnos.length + ' de ' + totalDB + ' alumno' + (totalDB!==1?'s':'');
 
@@ -2549,7 +2561,7 @@ async function renderRegistro() {
     if(grado   && grado   !== 'TODOS') regs = regs.filter(r => r.grado === grado);
     if(seccion && seccion !== 'TODOS') regs = regs.filter(r => r.seccion === seccion);
     if(nivel   && nivel   !== 'TODOS') regs = regs.filter(r => r.turno === nivel);
-    if(q) regs = regs.filter(r => r.nombre.toLowerCase().includes(q) || r.alumnoId.includes(q));
+    if(q) regs = regs.filter(r => r.nombre.toLowerCase().includes(q.trim()) || r.alumnoId.trim().toLowerCase().includes(q.trim()));
 
     // 2. Agrupar por alumnoId + fecha → una fila por alumno por día
     const grupos = {};
