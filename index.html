@@ -334,6 +334,21 @@
     .info-item span  { font-size: 0.82rem !important; }
     /* Ocultar stats en móvil para ahorrar espacio */
     #sec-scan .stats-row { display: none; }
+
+    /* Barra de botones fija en móvil */
+    #scan-action-bar {
+      flex-shrink: 0;
+      display: flex !important;
+      gap: 8px;
+      padding: 6px 0 4px;
+    }
+    /* Ocultar botones dentro del result-student en móvil (ya están en la barra) */
+    #result-student .btn-action-group { display: none; }
+  }
+
+  /* Desktop: barra oculta, botones dentro del card */
+  @media(min-width:701px){
+    #scan-action-bar { display: none !important; }
   }
 
   
@@ -1075,12 +1090,18 @@
             <div class="info-item"><label>Hora</label><span id="stu-time">—</span></div>
             <div class="info-item"><label>Tipo</label><span id="stu-type">—</span></div>
           </div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <div class="btn-action-group" style="display:flex;gap:8px;flex-wrap:wrap;">
             <button class="btn btn-success" onclick="confirmRegister('INGRESO')">✔ Confirmar Ingreso</button>
             <button class="btn btn-ghost"   onclick="confirmRegister('SALIDA')">🚪 Registrar Salida</button>
           </div>
         </div>
       </div>
+    </div>
+
+    <!-- BARRA BOTONES FIJA (visible en móvil cuando hay alumno escaneado) -->
+    <div id="scan-action-bar" style="display:none;">
+      <button class="btn btn-success" onclick="confirmRegister('INGRESO')" style="flex:1;justify-content:center;font-size:1rem;padding:14px;">✔ Ingreso</button>
+      <button class="btn btn-ghost"   onclick="confirmRegister('SALIDA')"  style="flex:1;justify-content:center;font-size:1rem;padding:14px;">🚪 Salida</button>
     </div>
 
     <!-- STATS ABAJO -->
@@ -2598,6 +2619,7 @@ async function showStudentResult(alumno) {
   document.getElementById('result-student').style.display = 'flex';
   document.getElementById('result-student').style.flexDirection = 'column';
   document.getElementById('result-student').style.gap = '12px';
+  document.getElementById('scan-action-bar').style.display = 'flex'; // Mostrar barra móvil
 }
 
 async function confirmRegister(tipo) {
@@ -2643,6 +2665,7 @@ async function confirmRegister(tipo) {
     pendingStudent = null;
     document.getElementById('result-empty').style.display = 'flex';
     document.getElementById('result-student').style.display = 'none';
+    document.getElementById('scan-action-bar').style.display = 'none'; // Ocultar barra móvil
     toast(`${tipo} registrado: ${alumno.nombres} — ${estado}`, tipo==='INGRESO' ? 'success' : 'info');
 
     // Enviar WhatsApp al apoderado
