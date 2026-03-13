@@ -4509,7 +4509,42 @@ async function guardarIncidente() {
         else toast('⚠️ WhatsApp no pudo enviarse — revisa la configuración de Factiliza','warning');
       }
     }
+    // Mostrar botón de llamada solo en móvil
+    if(alumnoData?.telefono && /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent)) {
+      mostrarBotonLlamada(alumnoData.telefono, alumnoData.apoderadoNombres + ' ' + alumnoData.apoderadoApellidos);
+    }
   } catch(e) { toast('Error al guardar: ' + e.message, 'error'); }
+}
+
+function mostrarBotonLlamada(telefono, nombreApoderado) {
+  // Limpiar número
+  let num = telefono.replace(/[^0-9]/g, '');
+  if(num.length === 9) num = '51' + num;
+
+  // Eliminar modal anterior si existe
+  const existing = document.getElementById('modal-llamada');
+  if(existing) existing.remove();
+
+  const modal = document.createElement('div');
+  modal.id = 'modal-llamada';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9998;display:flex;align-items:center;justify-content:center;padding:20px;';
+  modal.innerHTML = `
+    <div style="background:var(--surface);border-radius:20px;padding:28px 24px;max-width:320px;width:100%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,0.5);">
+      <div style="font-size:2.5rem;margin-bottom:8px;">📞</div>
+      <div style="font-size:1rem;font-weight:700;color:var(--text);margin-bottom:4px;">Llamar al apoderado</div>
+      <div style="font-size:0.85rem;color:var(--muted);margin-bottom:6px;">${nombreApoderado || 'Apoderado'}</div>
+      <div style="font-size:1.1rem;font-weight:700;color:var(--accent);margin-bottom:20px;letter-spacing:1px;">${telefono}</div>
+      <a href="tel:+${num}" style="display:block;background:linear-gradient(135deg,#16a34a,#22c55e);color:#fff;text-decoration:none;border-radius:12px;padding:14px;font-size:1rem;font-weight:700;margin-bottom:10px;" onclick="document.getElementById('modal-llamada').remove()">
+        📞 Llamar ahora
+      </a>
+      <button onclick="document.getElementById('modal-llamada').remove()" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:12px;color:var(--muted);font-size:0.9rem;cursor:pointer;">
+        Omitir
+      </button>
+    </div>
+  `;
+  document.body.appendChild(modal);
+  // Cerrar al tocar el fondo
+  modal.addEventListener('click', e => { if(e.target === modal) modal.remove(); });
 }
 
 async function renderIncidentes() {
