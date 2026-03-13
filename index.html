@@ -1904,8 +1904,8 @@ window.doLoginApoderado = async function() {
   document.getElementById('login-loading').style.display = 'block';
 
   try {
-    // Email virtual para apoderado: dni.apo@gmail.com
-    const emailVirtual = `${dni}.apo@gmail.com`;
+    // Email virtual apoderado: {dni}@apo.marello.pe  (ej: 33348249@apo.marello.pe)
+    const emailVirtual = `${dni}@apo.marello.pe`;
     const cred = await auth.signInWithEmailAndPassword(emailVirtual, pass);
     _loginIntentos = 0;
     // onAuthStateChanged se encarga del resto
@@ -2078,9 +2078,9 @@ function doLogout() {
 auth.onAuthStateChanged(async user => {
   if(user) {
     // Detectar si es apoderado (email virtual) o personal
-    if(user.email && user.email.includes('.apo@gmail.com')) {
+    if(user.email && user.email.includes('@apo.marello.pe')) {
       // ── ES APODERADO ──
-      const dni = user.email.replace('.apo@gmail.com','');
+      const dni = user.email.replace('@apo.marello.pe','');
       _apoderadoUID = user.uid;
       try {
         const alumnoSnap = await db.collection('alumnos').doc(dni).get();
@@ -5295,7 +5295,7 @@ function updateBottomNavActive(id) {
 // Portal apoderado → apoderado.html
 
 async function crearCuentaApoderado(alumno) {
-  const email = `${alumno.id}.apo@gmail.com`;
+  const email = `${alumno.id}@apo.marello.pe`;
   const pass  = alumno.id;
   let intentos = 0;
   while(intentos < 3) {
@@ -5352,7 +5352,7 @@ async function crearCuentasApoderadosMasivo() {
       const a = alumnos[i];
       const pct = Math.round(((i+1)/alumnos.length)*100);
       statusEl.textContent = `Procesando ${i+1}/${alumnos.length} (${pct}%): ${a.apellidos} ${a.nombres}...`;
-      const email = `${a.id}.apo@gmail.com`;
+      const email = `${a.id}@apo.marello.pe`;
       try {
         const appName = 'bulk_' + a.id + '_' + Date.now();
         const tmpApp  = firebase.initializeApp(firebaseConfig, appName);
@@ -5404,7 +5404,7 @@ async function crearCuentasApoderadosMasivo() {
 
 async function resetPassApoderado(dni) {
   if(!confirm(`Resetear contrasena del apoderado DNI ${dni}?\n\nNueva contrasena = ${dni}`)) return;
-  const email = `${dni}.apo@gmail.com`;
+  const email = `${dni}@apo.marello.pe`;
   try {
     toast('Procesando...', 'info');
     const appName = 'reset_' + Date.now();

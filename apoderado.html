@@ -208,11 +208,11 @@ document.getElementById('btn-guardar-pass').addEventListener('click', guardarNue
 
 // Verificar sesion
 auth.onAuthStateChanged(function(user) {
-  if(!user || user.email.indexOf('.apo@gmail.com') === -1) {
+  if(!user || user.email.indexOf('@apo.marello.pe') === -1) {
     window.location.href = 'index.html';
     return;
   }
-  var dni = user.email.replace('.apo@gmail.com', '');
+  var dni = user.email.replace('@apo.marello.pe', '');
   db.collection('alumnos').doc(dni).get().then(function(snap) {
     if(!snap.exists) { auth.signOut(); window.location.href = 'index.html'; return; }
     alumno = Object.assign({ id: dni }, snap.data());
