@@ -2395,14 +2395,16 @@ function aplicarPermisos(rol) {
 function showSectionDirect(id) {
   currentSection = id;
   document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
-  document.getElementById('scan-action-bar').style.display = 'none'; // Ocultar barra al cambiar sección
+  document.getElementById('scan-action-bar').style.display = 'none';
   document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
   const sec = document.getElementById('sec-'+id);
   const tab = document.getElementById('tab-'+id);
   if(sec) sec.classList.add('active');
   if(tab) tab.classList.add('active');
+  // Scroll al top siempre al cambiar sección
+  window.scrollTo({ top: 0, behavior: 'instant' });
   if(id==='alumnos') { limpiarFiltrosAlumnos(); }
-  if(id==='registro') { setTimeout(limpiarFiltrosRegistro, 50); }
+  if(id==='registro') { limpiarFiltrosRegistro(); } // Sin setTimeout — ejecutar directo
   if(id==='reportes') renderReportes();
   if(id==='scan') updateStats();
   if(id==='usuarios') renderUsuarios();
@@ -3134,7 +3136,7 @@ function limpiarFiltrosRegistro() {
   document.getElementById('registro-tbody').innerHTML = '';
   document.getElementById('registro-empty').style.display = 'block';
   document.getElementById('registro-empty').querySelector('p').textContent = 'Selecciona una fecha u otro filtro para ver los registros';
-  DB.getRegistros({}).then(r => document.getElementById('registro-count').textContent = r.length + ' registros en total').catch(()=>{});
+  document.getElementById('registro-count').textContent = '';
 }
 
 function validarRangoFecha() {
