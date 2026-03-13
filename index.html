@@ -258,8 +258,82 @@
     grid-template-columns: 1fr 1fr;
     gap: 20px;
   }
+  /* MÓVIL: todo en pantalla sin scroll */
   @media(max-width:700px){
-    .scanner-layout { grid-template-columns: 1fr; gap: 12px; }
+    #sec-scan {
+      display: flex;
+      flex-direction: column;
+      height: calc(100dvh - 52px - 62px - 28px); /* header + bottom-nav + padding main */
+      overflow: hidden;
+      padding: 6px 10px 0 !important;
+      gap: 6px;
+    }
+    .scan-controls {
+      flex-shrink: 0;
+    }
+    .scanner-layout {
+      grid-template-columns: 1fr;
+      gap: 6px;
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+    }
+    .scanner-layout > div:first-child {
+      flex: 0 0 auto;
+    }
+    #qr-reader {
+      aspect-ratio: unset !important;
+      height: 200px !important;
+    }
+    #qr-video {
+      height: 200px !important;
+      object-fit: cover;
+    }
+    .scan-status {
+      padding: 4px 8px !important;
+      font-size: 0.75rem !important;
+    }
+    .manual-input {
+      display: flex;
+      align-items: flex-end;
+      gap: 8px;
+      margin-top: 4px !important;
+    }
+    .manual-input .form-group {
+      flex: 1;
+      margin: 0 !important;
+    }
+    .manual-input label {
+      font-size: 0.72rem !important;
+    }
+    .manual-input input {
+      padding: 7px 10px !important;
+      font-size: 0.85rem !important;
+    }
+    .manual-input button {
+      flex-shrink: 0;
+      padding: 7px 14px !important;
+      font-size: 0.8rem !important;
+    }
+    .result-box {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      padding: 10px !important;
+      gap: 6px !important;
+    }
+    .result-empty {
+      height: 100% !important;
+      font-size: 0.8rem;
+    }
+    .student-name { font-size: 0.95rem !important; }
+    .student-meta { font-size: 0.75rem !important; }
+    .info-grid { gap: 6px !important; }
+    .info-item label { font-size: 0.68rem !important; }
+    .info-item span  { font-size: 0.82rem !important; }
+    /* Ocultar stats en móvil para ahorrar espacio */
+    #sec-scan .stats-row { display: none; }
   }
 
   
