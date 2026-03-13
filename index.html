@@ -782,6 +782,12 @@
 <body>
 
 <!-- LOGIN SCREEN -->
+<!-- Aviso inactividad -->
+<div id="inact-warning" style="display:none;position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:9999;background:#1e293b;border:2px solid #f59e0b;border-radius:14px;padding:14px 22px;color:#fff;font-family:sans-serif;font-size:0.88rem;display:none;align-items:center;gap:14px;box-shadow:0 8px 32px rgba(0,0,0,0.45);max-width:360px;width:92%;">
+  <span>⏱️ Tu sesión cerrará en <strong>2 min</strong> por inactividad.</span>
+  <button onclick="resetInactTimer()" style="background:#f59e0b;border:none;border-radius:8px;padding:6px 14px;color:#000;font-weight:700;cursor:pointer;font-size:0.83rem;white-space:nowrap;">Seguir activo</button>
+</div>
+
 <div id="login-screen">
   <div class="login-box">
     <div class="login-logo">Asistencia<span>QR</span></div>
@@ -1613,9 +1619,44 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 const auth = firebase.auth();
 
+// Persistencia SESSION: la sesión se borra al cerrar el navegador/pestaña
+auth.setPersistence(firebase.auth.Auth.Persistence.SESSION).catch(e => console.warn('setPersistence:', e));
+
 // Usuario actual
 let currentUser = null;
 let currentRol = null; // admin | director | profesor | portero
+
+// ── Auto-logout por inactividad (20 minutos) ─────────────────
+const INACTIVIDAD_MS = 20 * 60 * 1000; // 20 minutos
+let _inactTimer = null;
+let _inactWarning = null;
+const WARN_MS = 2 * 60 * 1000; // avisar 2 min antes
+
+function resetInactTimer() {
+  clearTimeout(_inactTimer);
+  clearTimeout(_inactWarning);
+  // Ocultar aviso si estaba visible
+  const warn = document.getElementById('inact-warning');
+  if(warn) warn.style.display = 'none';
+  if(!currentUser) return;
+  // Aviso 2 min antes
+  _inactWarning = setTimeout(() => {
+    const w = document.getElementById('inact-warning');
+    if(w) w.style.display = 'flex';
+  }, INACTIVIDAD_MS - WARN_MS);
+  // Cerrar sesión
+  _inactTimer = setTimeout(() => {
+    if(currentUser) {
+      auth.signOut();
+      toast('Sesión cerrada por inactividad', 'warning');
+    }
+  }, INACTIVIDAD_MS);
+}
+
+// Detectar cualquier actividad del usuario
+['mousemove','mousedown','keydown','touchstart','scroll','click'].forEach(evt => {
+  document.addEventListener(evt, resetInactTimer, { passive: true });
+});
 
 // ============================================================
 // LOGIN / AUTH
@@ -1667,6 +1708,8 @@ window.doLogin = function() {
 };
 
 function doLogout() {
+  clearTimeout(_inactTimer);
+  clearTimeout(_inactWarning);
   if(!confirm('¿Cerrar sesión?')) return;
   auth.signOut();
 }
@@ -1704,6 +1747,7 @@ auth.onAuthStateChanged(async user => {
 
     // Ocultar login, mostrar app
     document.getElementById('login-screen').style.display = 'none';
+    resetInactTimer(); // Iniciar contador de inactividad
     document.getElementById('user-name-display').textContent = nombre;
     document.getElementById('user-name-display').style.display = 'inline';
     document.getElementById('user-rol-badge').textContent = currentRol.toUpperCase();
