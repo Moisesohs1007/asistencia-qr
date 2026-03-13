@@ -937,12 +937,6 @@ const firebaseConfig = {
   appId: "1:617000910031:web:ccc2454260d8b4e7704bba"
 };
 firebase.initializeApp(firebaseConfig);
-const db = firebase.firestore();
-const auth = firebase.auth();
-
-
-
-const app  = firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db   = firebase.firestore();
 auth.setPersistence(firebase.auth.Auth.Persistence.SESSION);
