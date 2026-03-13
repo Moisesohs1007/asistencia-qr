@@ -4489,10 +4489,15 @@ async function guardarIncidente() {
     toast('Reporte guardado','success');
     closeModal('modal-incidente');
     renderIncidentes();
-    // Generar PDF y obtener link
-    const pdfLink = await generarPDFIncidente({ ...incidente, fotoData });
-    // Enviar WhatsApp al apoderado
+
+    // Mostrar botón de llamada INMEDIATAMENTE en móvil (sin esperar PDF ni WhatsApp)
     const alumnoData = incAlumnoSeleccionado;
+    if(alumnoData?.telefono && /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent)) {
+      mostrarBotonLlamada(alumnoData.telefono, (alumnoData.apoderadoNombres||'') + ' ' + (alumnoData.apoderadoApellidos||''));
+    }
+
+    // PDF y WhatsApp corren en segundo plano sin bloquear la UI
+    const pdfLink = await generarPDFIncidente({ ...incidente, fotoData });
     if(alumnoData?.telefono) {
       const cfg2 = await getConfig();
       const nomColegio = cfg2?.nombreColegio || 'Institución Educativa';
@@ -4509,10 +4514,7 @@ async function guardarIncidente() {
         else toast('⚠️ WhatsApp no pudo enviarse — revisa la configuración de Factiliza','warning');
       }
     }
-    // Mostrar botón de llamada solo en móvil
-    if(alumnoData?.telefono && /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent)) {
-      mostrarBotonLlamada(alumnoData.telefono, alumnoData.apoderadoNombres + ' ' + alumnoData.apoderadoApellidos);
-    }
+    // (llamada ya mostrada arriba inmediatamente)
   } catch(e) { toast('Error al guardar: ' + e.message, 'error'); }
 }
 
