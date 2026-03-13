@@ -3545,11 +3545,31 @@ async function handleExcel(e) {
         }
       }
 
+      // Filtrar filas válidas primero
+      const filasValidas = [];
       for(let i = startRow; i < rows.length; i++) {
         const cols = rows[i].map(c => String(c).trim());
-        const [id, nombres, apellidos, turno, grado, seccion, foto, apoderadoNombres, apoderadoApellidos, telefono] = cols;
+        const [id] = cols;
         if(!id || !/^\d{8}$/.test(id)) { skipped++; continue; }
-        if(!nombres && !apellidos) { skipped++; continue; }
+        if(!cols[1] && !cols[2]) { skipped++; continue; }
+        filasValidas.push(cols);
+      }
+      const total = filasValidas.length;
+
+      // Mostrar barra de progreso
+      let progEl = document.getElementById('import-progress-bar');
+      if(!progEl) {
+        const div = document.createElement('div');
+        div.id = 'import-progress-container';
+        div.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);z-index:9999;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px 24px;min-width:300px;max-width:90vw;box-shadow:0 8px 32px rgba(0,0,0,0.4);text-align:center;';
+        div.innerHTML = '<div style="font-size:0.85rem;font-weight:700;color:var(--text);margin-bottom:10px;" id="import-progress-label">Importando alumnos...</div><div style="background:var(--border);border-radius:20px;height:8px;overflow:hidden;"><div id="import-progress-bar" style="height:100%;background:var(--accent);border-radius:20px;width:0%;transition:width 0.3s;"></div></div><div style="font-size:0.78rem;color:var(--muted);margin-top:8px;" id="import-progress-count">0 / '+total+'</div>';
+        document.body.appendChild(div);
+        progEl = document.getElementById('import-progress-bar');
+      }
+
+      for(let i = 0; i < filasValidas.length; i++) {
+        const cols = filasValidas[i];
+        const [id, nombres, apellidos, turno, grado, seccion, foto, apoderadoNombres, apoderadoApellidos, telefono] = cols;
         const limite = await getLimiteByNivel(turno || 'Primaria');
         const alumno = {
           id,
@@ -3574,10 +3594,20 @@ async function handleExcel(e) {
           await crearCuentaApoderadoSilencioso(alumno);
           added++;
         }
+        // Actualizar barra de progreso
+        const pct = Math.round(((i+1)/total)*100);
+        progEl.style.width = pct + '%';
+        document.getElementById('import-progress-count').textContent = (i+1) + ' / ' + total + ' alumnos';
+        document.getElementById('import-progress-label').textContent = 'Importando... ' + pct + '%';
       }
+
+      // Quitar barra de progreso
+      const cont = document.getElementById('import-progress-container');
+      if(cont) cont.remove();
+
       renderAlumnos();
       updateStats();
-      toast(`✅ ${added} nuevos, ${updated} actualizados${skipped ? ', '+skipped+' omitidos' : ''}`, 'success');
+      toast(`✅ Importación completa: ${added} nuevos, ${updated} actualizados${skipped ? ', '+skipped+' omitidos' : ''}`, 'success');
     } catch(err) {
       console.error('Excel import error:', err);
       toast('Error al leer el archivo Excel: ' + err.message, 'error');
