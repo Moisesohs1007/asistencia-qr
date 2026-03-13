@@ -1888,8 +1888,8 @@ window.doLoginApoderado = async function() {
   document.getElementById('login-loading').style.display = 'block';
 
   try {
-    // Email virtual para apoderado: dni@apoderado.marello.pe
-    const emailVirtual = `${dni}@apoderado.marello.pe`;
+    // Email virtual para apoderado: dni.apo@gmail.com
+    const emailVirtual = `${dni}.apo@gmail.com`;
     const cred = await auth.signInWithEmailAndPassword(emailVirtual, pass);
     _loginIntentos = 0;
     // onAuthStateChanged se encarga del resto
@@ -1910,7 +1910,7 @@ window.doLoginApoderado = async function() {
 
 // Crear cuenta apoderado en Firebase Auth
 async function crearCuentaApoderado(alumno) {
-  const emailVirtual = `${alumno.id}@apoderado.marello.pe`;
+  const emailVirtual = `${alumno.id}.apo@gmail.com`;
   const passInicial = alumno.id; // DNI como contraseña inicial
   try {
     // Usar secondaryApp para no cerrar sesión del admin
@@ -2089,9 +2089,9 @@ function doLogout() {
 auth.onAuthStateChanged(async user => {
   if(user) {
     // Detectar si es apoderado (email virtual) o personal
-    if(user.email && user.email.endsWith('@apoderado.marello.pe')) {
+    if(user.email && user.email.includes('.apo@gmail.com')) {
       // ── ES APODERADO ──
-      const dni = user.email.replace('@apoderado.marello.pe','');
+      const dni = user.email.replace('.apo@gmail.com','');
       _apoderadoUID = user.uid;
       try {
         const alumnoSnap = await db.collection('alumnos').doc(dni).get();
@@ -2713,7 +2713,7 @@ async function deleteAlumno(id) {
 
 async function resetPassApoderado(dni) {
   if(!confirm(`¿Resetear la contraseña del apoderado de DNI ${dni}?\n\nLa nueva contraseña será el mismo DNI: ${dni}`)) return;
-  const email = `${dni}@apoderado.marello.pe`;
+  const email = `${dni}.apo@gmail.com`;
   try {
     toast('⏳ Procesando...', 'info');
     // Intentar crear cuenta nueva (si no existe)
@@ -5310,6 +5310,105 @@ function updateBottomNavActive(id) {
 // INIT — auth listener maneja el inicio
 
 // Portal apoderado → apoderado.html
+
+async function crearCuentaApoderado(alumno) {
+  const email = `${alumno.id}.apo@gmail.com`;
+  const pass  = alumno.id;
+  try {
+    const appName = 'apo_' + alumno.id + '_' + Date.now();
+    const tmpApp  = firebase.initializeApp(firebaseConfig, appName);
+    const tmpAuth = tmpApp.auth();
+    try {
+      await tmpAuth.createUserWithEmailAndPassword(email, pass);
+    } catch(e) {
+      if(e.code !== 'auth/email-already-in-use') throw e;
+    }
+    await tmpAuth.signOut();
+    await tmpApp.delete();
+    await db.collection('apoderados').doc(alumno.id).set({
+      alumnoId: alumno.id, email, primerIngreso: true,
+      telefono: alumno.telefono || '',
+      creadoEn: firebase.firestore.FieldValue.serverTimestamp()
+    }, { merge: true });
+    return true;
+  } catch(e) { console.warn('crearCuentaApoderado:', e); return false; }
+}
+
+async function crearCuentaApoderadoSilencioso(alumno) {
+  try { await crearCuentaApoderado(alumno); } catch(e) { console.warn(e); }
+}
+
+async function crearCuentasApoderadosMasivo() {
+  const statusEl = document.getElementById('apo-bulk-status');
+  statusEl.style.display = 'block';
+  statusEl.style.background = 'rgba(59,130,246,0.12)';
+  statusEl.style.border = '1px solid rgba(59,130,246,0.3)';
+  statusEl.style.color = '#60a5fa';
+  statusEl.textContent = 'Obteniendo lista de alumnos...';
+  try {
+    const alumnos = await DB.getAlumnos();
+    let creados = 0, yaExistian = 0, errores = 0;
+    for(let i = 0; i < alumnos.length; i++) {
+      const a = alumnos[i];
+      statusEl.textContent = `Procesando ${i+1}/${alumnos.length}: ${a.nombres} ${a.apellidos}...`;
+      const email = `${a.id}.apo@gmail.com`;
+      try {
+        const appName = 'bulk_' + a.id + '_' + Date.now();
+        const tmpApp  = firebase.initializeApp(firebaseConfig, appName);
+        const tmpAuth = tmpApp.auth();
+        let nuevo = false;
+        try {
+          await tmpAuth.createUserWithEmailAndPassword(email, a.id);
+          nuevo = true; creados++;
+        } catch(e) {
+          if(e.code === 'auth/email-already-in-use') yaExistian++;
+          else throw e;
+        }
+        await tmpAuth.signOut();
+        await tmpApp.delete();
+        if(nuevo) {
+          await db.collection('apoderados').doc(a.id).set({
+            alumnoId: a.id, email, primerIngreso: true,
+            telefono: a.telefono || '',
+            creadoEn: firebase.firestore.FieldValue.serverTimestamp()
+          }, { merge: true });
+        }
+      } catch(e) { errores++; console.warn('Error alumno', a.id, e); }
+      await new Promise(r => setTimeout(r, 400));
+    }
+    statusEl.style.background = 'rgba(16,185,129,0.12)';
+    statusEl.style.border = '1px solid rgba(16,185,129,0.3)';
+    statusEl.style.color = '#10b981';
+    statusEl.textContent = `Listo: ${creados} nuevas, ${yaExistian} ya existian${errores ? ', ' + errores + ' errores' : ''}.`;
+  } catch(e) {
+    statusEl.style.background = 'rgba(239,68,68,0.12)';
+    statusEl.style.color = '#ef4444';
+    statusEl.textContent = 'Error: ' + e.message;
+  }
+}
+
+async function resetPassApoderado(dni) {
+  if(!confirm(`Resetear contrasena del apoderado DNI ${dni}?\n\nNueva contrasena = ${dni}`)) return;
+  const email = `${dni}.apo@gmail.com`;
+  try {
+    toast('Procesando...', 'info');
+    const appName = 'reset_' + Date.now();
+    const tmpApp  = firebase.initializeApp(firebaseConfig, appName);
+    const tmpAuth = tmpApp.auth();
+    try {
+      await tmpAuth.createUserWithEmailAndPassword(email, dni);
+    } catch(e) {
+      if(e.code !== 'auth/email-already-in-use') throw e;
+    }
+    await tmpAuth.signOut();
+    await tmpApp.delete();
+    await db.collection('apoderados').doc(dni).set({
+      primerIngreso: true, passReseteada: true,
+      reseteadoEn: firebase.firestore.FieldValue.serverTimestamp()
+    }, { merge: true });
+    toast(`Cuenta reseteada. Apoderado ingresa con DNI: ${dni}`, 'success');
+  } catch(e) { toast('Error: ' + e.message, 'error'); }
+}
 </script>
 
   <!-- ===== MODAL PRIVILEGIOS PROFESOR ===== -->

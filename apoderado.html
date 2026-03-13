@@ -953,12 +953,12 @@ let _apoRegistros    = [];
 
 // ── Verificar sesión al cargar ──
 auth.onAuthStateChanged(async user => {
-  if(!user || !user.email.endsWith('@apoderado.marello.pe')) {
+  if(!user || !user.email.includes('.apo@gmail.com')) {
     // No hay sesión de apoderado — redirigir al login
     window.location.href = 'index.html';
     return;
   }
-  const dni = user.email.replace('@apoderado.marello.pe','');
+  const dni = user.email.replace('.apo@gmail.com','');
   try {
     const alumnoSnap = await db.collection('alumnos').doc(dni).get();
     if(!alumnoSnap.exists) { auth.signOut(); window.location.href = 'index.html'; return; }
