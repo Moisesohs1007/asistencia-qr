@@ -1877,65 +1877,63 @@ auth.setPersistence(firebase.auth.Auth.Persistence.SESSION).catch(e => console.w
 // Usuario actual
 let currentUser = null;
 
-// ── CONTROL DE SESIÓN DUPLICADA ──
-const _sessionId = Math.random().toString(36).slice(2); // ID único por pestaña
-let _sessionChannel = null;
-let _sessionWarningShown = false;
+// ── CONTROL DE CÁMARA ENTRE PESTAÑAS ──
+const _sessionId = Math.random().toString(36).slice(2);
+let _cameraChannel = null;
 
 function initSessionControl() {
-  if(!window.BroadcastChannel) return; // Fallback: navegadores muy viejos
-  _sessionChannel = new BroadcastChannel('asistencia_qr_session');
+  if(!window.BroadcastChannel) return;
+  _cameraChannel = new BroadcastChannel('asistencia_qr_camera');
 
-  // Escuchar mensajes de otras pestañas
-  _sessionChannel.onmessage = (e) => {
-    if(e.data.type === 'SESSION_OPENED' && e.data.uid === currentUser?.uid && e.data.sid !== _sessionId) {
-      // Otra pestaña del mismo usuario se abrió
-      if(!_sessionWarningShown) {
-        _sessionWarningShown = true;
-        mostrarAvisoDuplicado();
+  _cameraChannel.onmessage = (e) => {
+    if(e.data.type === 'CAMERA_STARTED' && e.data.sid !== _sessionId) {
+      // Otra pestaña activó la cámara — detener la nuestra si está activa
+      if(scannerRunning) {
+        stopScanner();
+        mostrarAvisoCamara();
       }
     }
-    if(e.data.type === 'SESSION_PING' && e.data.uid === currentUser?.uid && e.data.sid !== _sessionId) {
-      // Otra pestaña preguntó si hay alguien — responder
-      _sessionChannel.postMessage({ type: 'SESSION_OPENED', uid: currentUser?.uid, sid: _sessionId });
+    if(e.data.type === 'CAMERA_PING' && e.data.sid !== _sessionId) {
+      // Otra pestaña pregunta si alguien tiene la cámara — responder si la tenemos
+      if(scannerRunning) {
+        _cameraChannel.postMessage({ type: 'CAMERA_STARTED', sid: _sessionId });
+      }
     }
   };
 }
 
 function anunciarSesion() {
-  if(!_sessionChannel || !currentUser) return;
-  _sessionWarningShown = false;
-  // Avisar a otras pestañas que esta sesión se abrió
-  _sessionChannel.postMessage({ type: 'SESSION_OPENED', uid: currentUser.uid, sid: _sessionId });
-  // También preguntar si hay otras pestañas abiertas
-  _sessionChannel.postMessage({ type: 'SESSION_PING', uid: currentUser.uid, sid: _sessionId });
+  // Al iniciar sesión preguntar si hay cámara activa en otra pestaña
+  if(_cameraChannel) {
+    _cameraChannel.postMessage({ type: 'CAMERA_PING', sid: _sessionId });
+  }
 }
 
-function mostrarAvisoDuplicado() {
-  // Crear modal de aviso
-  let modal = document.getElementById('modal-sesion-duplicada');
+function anunciarCamaraActiva() {
+  // Llamar cuando se activa la cámara en esta pestaña
+  if(_cameraChannel) {
+    _cameraChannel.postMessage({ type: 'CAMERA_STARTED', sid: _sessionId });
+  }
+}
+
+function mostrarAvisoCamara() {
+  let modal = document.getElementById('modal-camara-duplicada');
   if(!modal) {
     modal = document.createElement('div');
-    modal.id = 'modal-sesion-duplicada';
-    modal.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;padding:20px;';
+    modal.id = 'modal-camara-duplicada';
+    modal.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.75);display:flex;align-items:center;justify-content:center;padding:20px;';
     modal.innerHTML = `
       <div style="background:var(--surface);border:1px solid rgba(239,68,68,0.4);border-radius:18px;padding:28px 24px;max-width:360px;width:100%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,0.5);">
-        <div style="font-size:2.5rem;margin-bottom:12px;">⚠️</div>
-        <div style="font-size:1rem;font-weight:700;color:var(--text);margin-bottom:8px;">Sesión abierta en otra pestaña</div>
-        <div style="font-size:0.83rem;color:var(--muted);margin-bottom:20px;line-height:1.5;">
-          Tu cuenta está activa en otra ventana o pestaña del navegador.<br>
-          Usar el sistema en dos lugares a la vez puede causar problemas con la cámara y los registros.
+        <div style="font-size:2.5rem;margin-bottom:12px;">📷</div>
+        <div style="font-size:1rem;font-weight:700;color:var(--text);margin-bottom:8px;">Cámara tomada por otra pestaña</div>
+        <div style="font-size:0.83rem;color:var(--muted);margin-bottom:20px;line-height:1.6;">
+          Otra ventana del sistema activó la cámara de este dispositivo.<br>
+          La cámara de esta pestaña fue detenida automáticamente para evitar conflictos.
         </div>
-        <div style="display:flex;flex-direction:column;gap:10px;">
-          <button onclick="document.getElementById('modal-sesion-duplicada').remove(); _sessionWarningShown=false;" 
-            style="padding:12px;border-radius:10px;border:none;background:var(--accent);color:#fff;font-weight:700;cursor:pointer;font-size:0.9rem;">
-            Continuar en esta pestaña
-          </button>
-          <button onclick="window.close() || (window.location.href='about:blank')" 
-            style="padding:10px;border-radius:10px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;font-size:0.85rem;">
-            Cerrar esta pestaña
-          </button>
-        </div>
+        <button onclick="document.getElementById('modal-camara-duplicada').remove();"
+          style="width:100%;padding:12px;border-radius:10px;border:none;background:var(--accent);color:#fff;font-weight:700;cursor:pointer;font-size:0.9rem;">
+          Entendido
+        </button>
       </div>`;
     document.body.appendChild(modal);
   }
@@ -2336,7 +2334,7 @@ auth.onAuthStateChanged(async user => {
   } else {
     currentUser = null;
     currentRol = null;
-    if(_sessionChannel) { _sessionChannel.close(); _sessionChannel = null; }
+    if(_cameraChannel) { _cameraChannel.close(); _cameraChannel = null; }
     // Ocultar todas las pestañas al cerrar sesión
     ['scan','alumnos','registro','reportes','incidentes','usuarios','config'].forEach(t => {
       const el = document.getElementById('tab-'+t);
@@ -2516,6 +2514,7 @@ function startScanner() {
         scannerRunning = true;
         setUIScanning(true);
         document.getElementById('scan-status').textContent = '🟢 Cámara activa — apunta al QR';
+        anunciarCamaraActiva(); // Avisar a otras pestañas
         startScanLoop();
       };
       video.onloadedmetadata = onReady;
