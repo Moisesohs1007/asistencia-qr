@@ -1261,6 +1261,22 @@
       <div style="margin-top:10px;font-size:0.78rem;color:var(--muted);">⚠️ Si ya existe una cuenta no se modifica. Solo crea las que faltan.</div>
     </div>
 
+    <!-- Zona de peligro -->
+    <div class="card" style="margin-bottom:20px;padding:20px 24px;border:2px solid rgba(239,68,68,0.5);">
+      <div style="font-family:var(--font-display);font-size:1rem;font-weight:700;margin-bottom:6px;color:#ef4444;">&#9888;&#65039; Zona de Peligro &mdash; Resetear Sistema</div>
+      <div style="color:var(--muted);font-size:0.82rem;margin-bottom:16px;">
+        Borra <strong style="color:var(--text);">permanentemente</strong> todos los datos del sistema:<br>
+        alumnos, registros de asistencia, incidentes, cuentas de apoderados y usuarios del personal.<br>
+        <strong style="color:#ef4444;">Solo se conserva el usuario administrador principal.</strong><br>
+        Esta accion no se puede deshacer.
+      </div>
+      <div id="reset-status" style="display:none;margin-bottom:12px;padding:10px 14px;border-radius:10px;font-size:0.83rem;"></div>
+      <button class="btn" onclick="resetearTodoElSistema()" style="background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.5);color:#ef4444;font-weight:700;">
+        &#128465;&#65039; Borrar todos los datos
+      </button>
+    </div>
+
+    
     <!-- Niveles y horarios -->
     <div class="card" style="margin-bottom:20px;padding:20px 24px;">
       <div style="font-family:var(--font-display);font-size:1rem;font-weight:700;margin-bottom:4px;color:var(--accent);">🕐 Horarios de Ingreso por Nivel</div>
@@ -5409,6 +5425,86 @@ async function resetPassApoderado(dni) {
     toast(`Cuenta reseteada. Apoderado ingresa con DNI: ${dni}`, 'success');
   } catch(e) { toast('Error: ' + e.message, 'error'); }
 }
+
+async function resetearTodoElSistema() {
+  // Solo el admin principal puede hacer esto
+  if(currentRol !== 'admin') { toast('Solo el administrador principal puede hacer esto', 'error'); return; }
+
+  const confirm1 = confirm('ATENCION: Esta accion borrara TODOS los datos del sistema.\n\nSe eliminara:\n- Todos los alumnos\n- Todos los registros de asistencia\n- Todos los incidentes\n- Todas las cuentas de apoderados\n- Todos los usuarios del personal (excepto tu cuenta)\n\n¿Deseas continuar?');
+  if(!confirm1) return;
+
+  const confirmTxt = prompt('Para confirmar escribe exactamente: BORRAR TODO');
+  if(confirmTxt !== 'BORRAR TODO') { toast('Confirmacion incorrecta. Operacion cancelada.', 'error'); return; }
+
+  const statusEl = document.getElementById('reset-status');
+  statusEl.style.display = 'block';
+  statusEl.style.background = 'rgba(239,68,68,0.12)';
+  statusEl.style.border = '1px solid rgba(239,68,68,0.3)';
+  statusEl.style.color = '#ef4444';
+
+  const ADMIN_UID = 'vNDKTaM6Aha8w3lDHl5iAFfaDKa2';
+
+  async function borrarColeccion(nombre) {
+    statusEl.textContent = 'Borrando ' + nombre + '...';
+    const snap = await db.collection(nombre).get();
+    const batch_size = 400;
+    let docs = snap.docs;
+    let total = 0;
+    while(docs.length > 0) {
+      const lote = db.batch();
+      docs.slice(0, batch_size).forEach(d => lote.delete(d.ref));
+      await lote.commit();
+      total += Math.min(docs.length, batch_size);
+      docs = docs.slice(batch_size);
+    }
+    return total;
+  }
+
+  try {
+    // 1. Borrar alumnos
+    const nAlumnos = await borrarColeccion('alumnos');
+
+    // 2. Borrar registros
+    const nRegistros = await borrarColeccion('registros');
+
+    // 3. Borrar incidentes
+    const nIncidentes = await borrarColeccion('incidentes');
+
+    // 4. Borrar apoderados
+    const nApoderados = await borrarColeccion('apoderados');
+
+    // 5. Borrar usuarios excepto el admin principal
+    statusEl.textContent = 'Borrando usuarios del personal...';
+    const usuariosSnap = await db.collection('usuarios').get();
+    const batchUsuarios = db.batch();
+    let nUsuarios = 0;
+    usuariosSnap.docs.forEach(d => {
+      if(d.id !== ADMIN_UID) {
+        batchUsuarios.delete(d.ref);
+        nUsuarios++;
+      }
+    });
+    if(nUsuarios > 0) await batchUsuarios.commit();
+
+    statusEl.style.background = 'rgba(16,185,129,0.12)';
+    statusEl.style.border = '1px solid rgba(16,185,129,0.3)';
+    statusEl.style.color = '#10b981';
+    statusEl.textContent = 'Sistema reseteado correctamente. Eliminados: ' + nAlumnos + ' alumnos, ' + nRegistros + ' registros, ' + nIncidentes + ' incidentes, ' + nApoderados + ' apoderados, ' + nUsuarios + ' usuarios.';
+
+    // Limpiar cache local
+    if(window.DB && window.DB._cache) window.DB._cache = {};
+    toast('Sistema reseteado correctamente', 'success');
+
+    // Recargar datos de la UI
+    setTimeout(() => { showSection('config'); }, 2000);
+
+  } catch(e) {
+    statusEl.textContent = 'Error durante el reset: ' + e.message;
+    console.error(e);
+    toast('Error: ' + e.message, 'error');
+  }
+}
+
 </script>
 
   <!-- ===== MODAL PRIVILEGIOS PROFESOR ===== -->
