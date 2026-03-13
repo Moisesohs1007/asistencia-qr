@@ -1087,7 +1087,7 @@ async function mostrarPortalApoderado(alumno) {
 
 async function obtenerRegistrosAlumno() {
   if(_apoRegistros.length > 0) return _apoRegistros;
-  const snap = await db.collection('registros').where('alumnoId','==',_apoderadoAlumno.id).orderBy('fecha','desc').get();
+  const snap = await db.collection('registros').where('alumnoId','==',_apoderadoAlumno.id).get();
   // Agrupar por fecha (igual que el sistema principal)
   const grupos = {};
   snap.docs.forEach(d => {
@@ -1146,10 +1146,13 @@ async function cargarResumenApoderado() {
     }).join('');
   } catch(e) {
     console.error('Error resumen apoderado:', e);
+    const cont = document.getElementById('apo-ultimos-registros');
+    if(cont) cont.innerHTML = `<div style="padding:16px;text-align:center;color:var(--danger);font-size:0.83rem;">Error al cargar datos: ${e.message}</div>`;
+    document.getElementById('apo-kpi-puntual').textContent  = '—';
+    document.getElementById('apo-kpi-tardanza').textContent = '—';
+    document.getElementById('apo-kpi-ausente').textContent  = '—';
   }
 }
-
-async function cargarHistorialApoderado() {
   const mes  = document.getElementById('apo-hist-mes')?.value || '';
   const tipo = document.getElementById('apo-hist-tipo')?.value || '';
   const cont = document.getElementById('apo-historial-list');
@@ -1195,7 +1198,7 @@ async function cargarIncidentesApoderado() {
   const cont = document.getElementById('apo-incidentes-list');
   cont.innerHTML = '<div style="padding:16px;text-align:center;color:var(--muted);font-size:0.83rem;">Cargando...</div>';
   try {
-    const snap = await db.collection('incidentes').where('alumnoId','==',_apoderadoAlumno.id).orderBy('fecha','desc').get();
+    const snap = await db.collection('incidentes').where('alumnoId','==',_apoderadoAlumno.id).get();
     if(snap.empty) {
       cont.innerHTML = '<div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:48px 20px;text-align:center;"><div style="font-size:3rem;margin-bottom:12px;">✅</div><div style="font-weight:700;color:var(--text);margin-bottom:8px;">Sin incidentes</div><div style="color:var(--muted);font-size:0.85rem;">No hay reportes de incidentes para este alumno</div></div>';
       return;
