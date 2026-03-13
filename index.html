@@ -1925,35 +1925,8 @@ window.doLoginApoderado = async function() {
 };
 
 // Crear cuenta apoderado en Firebase Auth
-async function crearCuentaApoderado(alumno) {
-  const emailVirtual = `${alumno.id}.apo@gmail.com`;
-  const passInicial = alumno.id; // DNI como contraseña inicial
-  try {
-    // Usar secondaryApp para no cerrar sesión del admin
-    const secondaryApp2 = firebase.initializeApp(firebaseConfig, 'apoderado_create_' + alumno.id + '_' + Date.now());
-    const secAuth2 = secondaryApp2.auth();
-    await secAuth2.createUserWithEmailAndPassword(emailVirtual, passInicial);
-    await secAuth2.signOut();
-    await secondaryApp2.delete();
-    // Guardar en Firestore que es apoderado y requiere cambio de contraseña
-    await db.collection('apoderados').doc(alumno.id).set({
-      alumnoId: alumno.id,
-      email: emailVirtual,
-      primerIngreso: true,
-      telefono: alumno.telefono || '',
-      creadoEn: firebase.firestore.FieldValue.serverTimestamp()
-    }, { merge: true });
-    return true;
-  } catch(err) {
-    if(err.code === 'auth/email-already-in-use') return true; // Ya existe, ok
-    console.warn('Error creando apoderado:', err);
-    return false;
-  }
-}
-
 // Mostrar modal cambio de contraseña obligatorio
 function mostrarModalCambioPass(alumnoData) {
-  // Pre-llenar teléfono si existe
   document.getElementById('nueva-pass-telefono').value = alumnoData.telefono || '';
   document.getElementById('nueva-pass-1').value = '';
   document.getElementById('nueva-pass-2').value = '';
@@ -2727,60 +2700,6 @@ async function deleteAlumno(id) {
   } catch(e) { toast('Error al eliminar','error'); }
 }
 
-async function resetPassApoderado(dni) {
-  if(!confirm(`¿Resetear la contraseña del apoderado de DNI ${dni}?\n\nLa nueva contraseña será el mismo DNI: ${dni}`)) return;
-  const email = `${dni}.apo@gmail.com`;
-  try {
-    toast('⏳ Procesando...', 'info');
-    // Intentar crear cuenta nueva (si no existe)
-    // Si ya existe, la recreamos eliminando y volviendo a crear
-    const appName = 'reset_apo_' + Date.now();
-    const tempApp = firebase.initializeApp(firebaseConfig, appName);
-    const tempAuth = tempApp.auth();
-    let created = false;
-    try {
-      await tempAuth.createUserWithEmailAndPassword(email, dni);
-      created = true;
-    } catch(err) {
-      if(err.code === 'auth/email-already-in-use') {
-        // Iniciar sesión con la contraseña actual (el DNI original) no es posible sin saberla
-        // Solución: usar signInWithEmailAndPassword con el DNI y luego updatePassword
-        // Si eso falla, marcar en Firestore para forzar reset en próximo ingreso
-        try {
-          // Intentar login con DNI como contraseña (si ya fue reseteado antes)
-          await tempAuth.signInWithEmailAndPassword(email, dni);
-          // Si funciona, la contraseña ya es el DNI, solo actualizamos Firestore
-          await tempAuth.signOut();
-          created = true;
-        } catch(e2) {
-          // La cuenta existe pero tiene otra contraseña — marcar para reset forzado
-          created = false;
-        }
-      }
-    }
-    await tempAuth.signOut();
-    await tempApp.delete();
-
-    // Actualizar Firestore: marcar primerIngreso = true para forzar cambio al ingresar
-    await db.collection('apoderados').doc(dni).set({
-      alumnoId: dni,
-      email: email,
-      primerIngreso: true,
-      passReseteada: true,
-      reseteadoPor: currentUser?.uid || 'admin',
-      reseteadoEn: firebase.firestore.FieldValue.serverTimestamp()
-    }, { merge: true });
-
-    if(created) {
-      toast(`✅ Cuenta creada/reseteada. Apoderado ingresa con DNI: ${dni}`, 'success');
-    } else {
-      toast(`⚠️ Cuenta marcada para reset. El apoderado deberá crear cuenta nueva con DNI: ${dni}`, 'warning');
-    }
-  } catch(e) {
-    toast('Error al resetear: ' + e.message, 'error');
-    console.error(e);
-  }
-}
 
 function limpiarFiltrosAlumnos() {
   document.getElementById('fa-grado').value = '';
@@ -3607,7 +3526,13 @@ async function handleExcel(e) {
 
       renderAlumnos();
       updateStats();
-      toast(`✅ Importación completa: ${added} nuevos, ${updated} actualizados${skipped ? ', '+skipped+' omitidos' : ''}`, 'success');
+      // Toast especial que dura más para importación masiva
+      const toastEl = document.createElement('div');
+      toastEl.className = 'toast success';
+      toastEl.style.cssText = 'max-width:380px;padding:14px 18px;font-size:0.88rem;';
+      toastEl.innerHTML = `<span style="font-size:1rem;">✓</span><span class="toast-msg">✅ Importación completa<br><strong>${added} nuevos</strong>${updated ? ', '+updated+' actualizados' : ''}${skipped ? ', '+skipped+' omitidos' : ''}<br><span style="font-size:0.78rem;opacity:0.8;">Este mensaje desaparece en 8 segundos</span></span>`;
+      document.getElementById('toast-container').appendChild(toastEl);
+      setTimeout(() => toastEl.remove(), 8000);
     } catch(err) {
       console.error('Excel import error:', err);
       toast('Error al leer el archivo Excel: ' + err.message, 'error');
@@ -5372,24 +5297,40 @@ function updateBottomNavActive(id) {
 async function crearCuentaApoderado(alumno) {
   const email = `${alumno.id}.apo@gmail.com`;
   const pass  = alumno.id;
-  try {
-    const appName = 'apo_' + alumno.id + '_' + Date.now();
-    const tmpApp  = firebase.initializeApp(firebaseConfig, appName);
-    const tmpAuth = tmpApp.auth();
+  let intentos = 0;
+  while(intentos < 3) {
     try {
-      await tmpAuth.createUserWithEmailAndPassword(email, pass);
+      const appName = 'apo_' + alumno.id + '_' + Date.now();
+      const tmpApp  = firebase.initializeApp(firebaseConfig, appName);
+      const tmpAuth = tmpApp.auth();
+      try {
+        await tmpAuth.createUserWithEmailAndPassword(email, pass);
+      } catch(e) {
+        if(e.code !== 'auth/email-already-in-use') throw e;
+        // Ya existe — solo asegurar Firestore
+      }
+      await tmpAuth.signOut();
+      await tmpApp.delete();
+      await db.collection('apoderados').doc(alumno.id).set({
+        alumnoId: alumno.id, email, primerIngreso: true,
+        telefono: alumno.telefono || '',
+        creadoEn: firebase.firestore.FieldValue.serverTimestamp()
+      }, { merge: true });
+      return true;
     } catch(e) {
-      if(e.code !== 'auth/email-already-in-use') throw e;
+      intentos++;
+      console.warn(`crearCuentaApoderado intento ${intentos}:`, e.code, alumno.id);
+      if(e.code === 'auth/too-many-requests' || e.code === 'auth/quota-exceeded') {
+        // Esperar más ante rate limit
+        await new Promise(r => setTimeout(r, 3000 * intentos));
+      } else if(intentos < 3) {
+        await new Promise(r => setTimeout(r, 800));
+      } else {
+        return false;
+      }
     }
-    await tmpAuth.signOut();
-    await tmpApp.delete();
-    await db.collection('apoderados').doc(alumno.id).set({
-      alumnoId: alumno.id, email, primerIngreso: true,
-      telefono: alumno.telefono || '',
-      creadoEn: firebase.firestore.FieldValue.serverTimestamp()
-    }, { merge: true });
-    return true;
-  } catch(e) { console.warn('crearCuentaApoderado:', e); return false; }
+  }
+  return false;
 }
 
 async function crearCuentaApoderadoSilencioso(alumno) {
@@ -5406,9 +5347,11 @@ async function crearCuentasApoderadosMasivo() {
   try {
     const alumnos = await DB.getAlumnos();
     let creados = 0, yaExistian = 0, errores = 0;
+    const fallidos = [];
     for(let i = 0; i < alumnos.length; i++) {
       const a = alumnos[i];
-      statusEl.textContent = `Procesando ${i+1}/${alumnos.length}: ${a.nombres} ${a.apellidos}...`;
+      const pct = Math.round(((i+1)/alumnos.length)*100);
+      statusEl.textContent = `Procesando ${i+1}/${alumnos.length} (${pct}%): ${a.apellidos} ${a.nombres}...`;
       const email = `${a.id}.apo@gmail.com`;
       try {
         const appName = 'bulk_' + a.id + '_' + Date.now();
@@ -5419,25 +5362,39 @@ async function crearCuentasApoderadosMasivo() {
           await tmpAuth.createUserWithEmailAndPassword(email, a.id);
           nuevo = true; creados++;
         } catch(e) {
-          if(e.code === 'auth/email-already-in-use') yaExistian++;
-          else throw e;
+          if(e.code === 'auth/email-already-in-use') { yaExistian++; }
+          else if(e.code === 'auth/too-many-requests') {
+            // Rate limit — esperar y reintentar
+            await new Promise(r => setTimeout(r, 5000));
+            try {
+              await tmpAuth.createUserWithEmailAndPassword(email, a.id);
+              nuevo = true; creados++;
+            } catch(e2) {
+              if(e2.code === 'auth/email-already-in-use') yaExistian++;
+              else { errores++; fallidos.push(a.id); }
+            }
+          } else throw e;
         }
         await tmpAuth.signOut();
         await tmpApp.delete();
-        if(nuevo) {
-          await db.collection('apoderados').doc(a.id).set({
-            alumnoId: a.id, email, primerIngreso: true,
-            telefono: a.telefono || '',
-            creadoEn: firebase.firestore.FieldValue.serverTimestamp()
-          }, { merge: true });
-        }
-      } catch(e) { errores++; console.warn('Error alumno', a.id, e); }
-      await new Promise(r => setTimeout(r, 400));
+        // Siempre asegurar doc en Firestore
+        await db.collection('apoderados').doc(a.id).set({
+          alumnoId: a.id, email, primerIngreso: true,
+          telefono: a.telefono || '',
+          creadoEn: firebase.firestore.FieldValue.serverTimestamp()
+        }, { merge: true });
+      } catch(e) {
+        errores++;
+        fallidos.push(a.id);
+        console.warn('Error alumno', a.id, e.code, e.message);
+      }
+      // Pausa entre creaciones para evitar rate limit
+      await new Promise(r => setTimeout(r, 600));
     }
-    statusEl.style.background = 'rgba(16,185,129,0.12)';
-    statusEl.style.border = '1px solid rgba(16,185,129,0.3)';
-    statusEl.style.color = '#10b981';
-    statusEl.textContent = `Listo: ${creados} nuevas, ${yaExistian} ya existian${errores ? ', ' + errores + ' errores' : ''}.`;
+    statusEl.style.background = errores ? 'rgba(245,158,11,0.12)' : 'rgba(16,185,129,0.12)';
+    statusEl.style.border = errores ? '1px solid rgba(245,158,11,0.3)' : '1px solid rgba(16,185,129,0.3)';
+    statusEl.style.color = errores ? '#f59e0b' : '#10b981';
+    statusEl.textContent = `✅ Listo: ${creados} nuevas, ${yaExistian} ya existían${errores ? ', ⚠ ' + errores + ' errores (ver consola)' : ''}.`;
   } catch(e) {
     statusEl.style.background = 'rgba(239,68,68,0.12)';
     statusEl.style.color = '#ef4444';
