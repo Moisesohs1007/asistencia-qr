@@ -1248,6 +1248,19 @@
       </div>
     </div>
 
+    <!-- Cuentas Apoderados -->
+    <div class="card" style="margin-bottom:20px;padding:20px 24px;border:1px solid rgba(245,158,11,0.3);">
+      <div style="font-family:var(--font-display);font-size:1rem;font-weight:700;margin-bottom:4px;color:#f59e0b;">👨‍👩‍👧 Cuentas de Apoderados</div>
+      <div style="color:var(--muted);font-size:0.82rem;margin-bottom:16px;">Los apoderados ingresan con el DNI del alumno como usuario y contraseña inicial. Usa este botón para crear o actualizar las cuentas de todos los alumnos existentes.</div>
+      <div id="apo-bulk-status" style="display:none;margin-bottom:12px;padding:10px 14px;border-radius:10px;font-size:0.83rem;"></div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;">
+        <button class="btn btn-primary" onclick="crearCuentasApoderadosMasivo()" style="background:#f59e0b;border-color:#f59e0b;">
+          👥 Crear cuentas para todos los alumnos
+        </button>
+      </div>
+      <div style="margin-top:10px;font-size:0.78rem;color:var(--muted);">⚠️ Si ya existe una cuenta no se modifica. Solo crea las que faltan.</div>
+    </div>
+
     <!-- Niveles y horarios -->
     <div class="card" style="margin-bottom:20px;padding:20px 24px;">
       <div style="font-family:var(--font-display);font-size:1rem;font-weight:700;margin-bottom:4px;color:var(--accent);">🕐 Horarios de Ingreso por Nivel</div>
@@ -2092,16 +2105,9 @@ auth.onAuthStateChanged(async user => {
           return;
         }
         _apoderadoAlumno = { id: dni, ...alumnoSnap.data() };
-        // Verificar si requiere cambio de contraseña
-        const apoSnap = await db.collection('apoderados').doc(dni).get();
-        const primerIngreso = apoSnap.exists ? apoSnap.data().primerIngreso : true;
-        document.getElementById('login-screen').style.display = 'none';
+        // Redirigir a apoderado.html — la sesión Firebase se mantiene
         document.getElementById('login-loading').style.display = 'none';
-        if(primerIngreso) {
-          mostrarModalCambioPass(_apoderadoAlumno);
-        } else {
-          mostrarPortalApoderado(_apoderadoAlumno);
-        }
+        window.location.href = 'apoderado.html';
       } catch(e) {
         console.error('Error apoderado auth:', e);
         auth.signOut();
@@ -2706,21 +2712,57 @@ async function deleteAlumno(id) {
 }
 
 async function resetPassApoderado(dni) {
-  if(!confirm(`¿Resetear la contraseña del apoderado de DNI ${dni}?\n\nLa contraseña volverá a ser: ${dni} (el DNI)`)) return;
+  if(!confirm(`¿Resetear la contraseña del apoderado de DNI ${dni}?\n\nLa nueva contraseña será el mismo DNI: ${dni}`)) return;
+  const email = `${dni}@apoderado.marello.pe`;
   try {
-    // Marcar en Firestore que requiere cambio de contraseña en próximo ingreso
+    toast('⏳ Procesando...', 'info');
+    // Intentar crear cuenta nueva (si no existe)
+    // Si ya existe, la recreamos eliminando y volviendo a crear
+    const appName = 'reset_apo_' + Date.now();
+    const tempApp = firebase.initializeApp(firebaseConfig, appName);
+    const tempAuth = tempApp.auth();
+    let created = false;
+    try {
+      await tempAuth.createUserWithEmailAndPassword(email, dni);
+      created = true;
+    } catch(err) {
+      if(err.code === 'auth/email-already-in-use') {
+        // Iniciar sesión con la contraseña actual (el DNI original) no es posible sin saberla
+        // Solución: usar signInWithEmailAndPassword con el DNI y luego updatePassword
+        // Si eso falla, marcar en Firestore para forzar reset en próximo ingreso
+        try {
+          // Intentar login con DNI como contraseña (si ya fue reseteado antes)
+          await tempAuth.signInWithEmailAndPassword(email, dni);
+          // Si funciona, la contraseña ya es el DNI, solo actualizamos Firestore
+          await tempAuth.signOut();
+          created = true;
+        } catch(e2) {
+          // La cuenta existe pero tiene otra contraseña — marcar para reset forzado
+          created = false;
+        }
+      }
+    }
+    await tempAuth.signOut();
+    await tempApp.delete();
+
+    // Actualizar Firestore: marcar primerIngreso = true para forzar cambio al ingresar
     await db.collection('apoderados').doc(dni).set({
+      alumnoId: dni,
+      email: email,
       primerIngreso: true,
       passReseteada: true,
-      reseteadoPor: currentUser.uid,
+      reseteadoPor: currentUser?.uid || 'admin',
       reseteadoEn: firebase.firestore.FieldValue.serverTimestamp()
     }, { merge: true });
-    // Intentar resetear en Firebase Auth via re-creación
-    // Como no tenemos Admin SDK, usamos la contraseña guardada en Firestore como fallback
-    // El apoderado deberá contactar al admin si no puede ingresar con el DNI
-    toast(`✅ Contraseña reseteada. El apoderado deberá ingresar con DNI: ${dni}`, 'success');
+
+    if(created) {
+      toast(`✅ Cuenta creada/reseteada. Apoderado ingresa con DNI: ${dni}`, 'success');
+    } else {
+      toast(`⚠️ Cuenta marcada para reset. El apoderado deberá crear cuenta nueva con DNI: ${dni}`, 'warning');
+    }
   } catch(e) {
     toast('Error al resetear: ' + e.message, 'error');
+    console.error(e);
   }
 }
 
@@ -5267,288 +5309,7 @@ function updateBottomNavActive(id) {
 }
 // INIT — auth listener maneja el inicio
 
-// ══════════════════════════════════════════════════════════════
-// PORTAL APODERADO — FUNCIONES
-// ══════════════════════════════════════════════════════════════
-
-let _apoRegistros = []; // cache de registros del alumno
-
-function doLogoutApoderado() {
-  if(!confirm('¿Cerrar sesión?')) return;
-  _apoderadoUID = null;
-  _apoderadoAlumno = null;
-  _apoRegistros = [];
-  auth.signOut().then(() => {
-    document.getElementById('portal-apoderado').style.display = 'none';
-    document.getElementById('login-screen').style.display = 'flex';
-    document.getElementById('login-pass-apoderado').value = '';
-    document.getElementById('login-dni-apoderado').value = '';
-    document.getElementById('login-error').style.display = 'none';
-    switchLoginTab('apoderado');
-  });
-}
-
-function showApoTab(tab) {
-  const tabs = ['resumen','historial','incidentes','carnet','comunicados','contacto'];
-  tabs.forEach(t => {
-    document.getElementById('apo-panel-' + t).style.display = t === tab ? 'block' : 'none';
-    const btn = document.getElementById('apo-tab-' + t);
-    if(btn) {
-      btn.style.color = t === tab ? 'var(--accent)' : 'var(--muted)';
-      btn.style.borderBottomColor = t === tab ? 'var(--accent)' : 'transparent';
-    }
-  });
-  if(tab === 'historial') cargarHistorialApoderado();
-  if(tab === 'incidentes') cargarIncidentesApoderado();
-  if(tab === 'carnet') renderCarnetDigital();
-  if(tab === 'contacto') cargarContactoApoderado();
-}
-
-function generarOpcionesMeses() {
-  const meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
-  const ahora = new Date();
-  let opts = '<option value="">Todo el año</option>';
-  for(let i = 0; i <= ahora.getMonth(); i++) {
-    const val = String(i + 1).padStart(2,'0');
-    opts += `<option value="${val}">${meses[i]} ${ahora.getFullYear()}</option>`;
-  }
-  return opts;
-}
-
-async function mostrarPortalApoderado(alumno) {
-  // Ocultar todo lo demás
-  document.getElementById('login-screen').style.display = 'none';
-  document.querySelector('header') && (document.querySelector('header').style.display = 'none');
-  document.querySelector('.bottom-nav') && (document.querySelector('.bottom-nav').style.display = 'none');
-  document.querySelector('nav') && (document.querySelector('nav').style.display = 'none');
-
-  // Mostrar portal
-  document.getElementById('portal-apoderado').style.display = 'block';
-
-  // Llenar datos del alumno en header y card
-  const nombre = `${alumno.nombres} ${alumno.apellidos}`;
-  const grado = `${alumno.grado} ${alumno.seccion} — ${alumno.turno}`;
-
-  document.getElementById('apo-nombre-header').textContent = nombre;
-  document.getElementById('apo-grado-header').textContent = grado;
-  document.getElementById('apo-nombre-card').textContent = nombre;
-  document.getElementById('apo-grado-card').textContent = grado;
-  document.getElementById('apo-dni-card').textContent = `DNI: ${alumno.id}`;
-
-  if(alumno.foto) {
-    document.getElementById('apo-foto-img').src = alumno.foto;
-    document.getElementById('apo-foto-card-img').src = alumno.foto;
-  }
-
-  // Opciones de mes en filtros
-  const mesOpts = generarOpcionesMeses();
-  document.getElementById('apo-filtro-mes').innerHTML = mesOpts;
-  document.getElementById('apo-hist-mes').innerHTML = mesOpts;
-
-  // Mostrar tab resumen por defecto
-  showApoTab('resumen');
-  await cargarResumenApoderado();
-}
-
-async function obtenerRegistrosAlumno() {
-  if(_apoRegistros.length > 0) return _apoRegistros;
-  const snap = await db.collection('registros').where('alumnoId','==',_apoderadoAlumno.id).orderBy('fecha','desc').get();
-  // Agrupar por fecha (igual que el sistema principal)
-  const grupos = {};
-  snap.docs.forEach(d => {
-    const datos = d.data();
-    const key = `${datos.alumnoId}_${datos.fecha}`;
-    if(!grupos[key]) grupos[key] = { fecha: datos.fecha, estado: datos.estado, horaIngreso: null, horaSalida: null };
-    if(datos.tipo === 'ingreso' || datos.tipo === 'Ingreso' || !datos.tipo) {
-      if(!grupos[key].horaIngreso) grupos[key].horaIngreso = datos.hora;
-    } else {
-      grupos[key].horaSalida = datos.hora;
-    }
-    // Estado: si cualquier registro del día es tardanza, el estado es tardanza
-    if(datos.estado === 'Tardanza') grupos[key].estado = 'Tardanza';
-    else if(!grupos[key].estado && datos.estado) grupos[key].estado = datos.estado;
-  });
-  _apoRegistros = Object.values(grupos).sort((a,b) => b.fecha.localeCompare(a.fecha));
-  return _apoRegistros;
-}
-
-async function cargarResumenApoderado() {
-  const mes = document.getElementById('apo-filtro-mes')?.value || '';
-  try {
-    const todos = await obtenerRegistrosAlumno();
-    const filtrados = mes ? todos.filter(r => r.fecha && r.fecha.substring(5,7) === mes) : todos;
-
-    const puntual  = filtrados.filter(r => r.estado === 'Puntual').length;
-    const tardanza = filtrados.filter(r => r.estado === 'Tardanza').length;
-    const ausente  = filtrados.filter(r => r.estado === 'Ausente').length;
-
-    document.getElementById('apo-kpi-puntual').textContent  = puntual;
-    document.getElementById('apo-kpi-tardanza').textContent = tardanza;
-    document.getElementById('apo-kpi-ausente').textContent  = ausente;
-
-    // Últimos 8 registros
-    const ultimos = filtrados.slice(0, 8);
-    const cont = document.getElementById('apo-ultimos-registros');
-    if(ultimos.length === 0) {
-      cont.innerHTML = '<div style="padding:16px;text-align:center;color:var(--muted);font-size:0.83rem;">Sin registros en este período</div>';
-      return;
-    }
-    cont.innerHTML = ultimos.map(r => {
-      const [anio, mesN, dia] = (r.fecha||'').split('-');
-      const fechaStr = dia && mesN ? `${dia}/${mesN}/${anio}` : r.fecha;
-      const color = r.estado === 'Puntual' ? '#10b981' : r.estado === 'Tardanza' ? '#f59e0b' : '#ef4444';
-      const icono = r.estado === 'Puntual' ? '✅' : r.estado === 'Tardanza' ? '⚠️' : '❌';
-      return `<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-bottom:1px solid var(--border);">
-        <div style="display:flex;align-items:center;gap:10px;">
-          <span style="font-size:1.1rem;">${icono}</span>
-          <div>
-            <div style="font-size:0.83rem;font-weight:600;color:var(--text);">${fechaStr}</div>
-            <div style="font-size:0.75rem;color:var(--muted);">${r.horaIngreso ? '🕐 ' + r.horaIngreso : ''} ${r.horaSalida ? '— 🚪 ' + r.horaSalida : ''}</div>
-          </div>
-        </div>
-        <span style="font-size:0.75rem;font-weight:700;color:${color};background:${color}22;padding:3px 8px;border-radius:6px;">${r.estado || '—'}</span>
-      </div>`;
-    }).join('');
-  } catch(e) {
-    console.error('Error resumen apoderado:', e);
-  }
-}
-
-async function cargarHistorialApoderado() {
-  const mes  = document.getElementById('apo-hist-mes')?.value || '';
-  const tipo = document.getElementById('apo-hist-tipo')?.value || '';
-  const cont = document.getElementById('apo-historial-list');
-  cont.innerHTML = '<div style="padding:16px;text-align:center;color:var(--muted);font-size:0.83rem;">Cargando...</div>';
-  try {
-    const todos = await obtenerRegistrosAlumno();
-    let filtrados = mes  ? todos.filter(r => r.fecha && r.fecha.substring(5,7) === mes)  : todos;
-    filtrados = tipo ? filtrados.filter(r => r.estado === tipo) : filtrados;
-
-    if(filtrados.length === 0) {
-      cont.innerHTML = '<div style="padding:24px;text-align:center;color:var(--muted);font-size:0.83rem;">Sin registros con esos filtros</div>';
-      return;
-    }
-    cont.innerHTML = filtrados.map(r => {
-      const [anio, mesN, dia] = (r.fecha||'').split('-');
-      const fechaStr = dia && mesN ? `${dia}/${mesN}/${anio}` : r.fecha;
-      const color = r.estado === 'Puntual' ? '#10b981' : r.estado === 'Tardanza' ? '#f59e0b' : '#ef4444';
-      const icono = r.estado === 'Puntual' ? '✅' : r.estado === 'Tardanza' ? '⚠️' : '❌';
-      const diasSemana = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
-      const diaSemana = r.fecha ? diasSemana[new Date(r.fecha + 'T12:00:00').getDay()] : '';
-      return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;">
-        <div style="display:flex;align-items:center;gap:12px;">
-          <div style="text-align:center;min-width:40px;">
-            <div style="font-size:0.68rem;color:var(--muted);font-weight:600;">${diaSemana}</div>
-            <div style="font-size:1.2rem;font-weight:800;color:var(--text);">${dia || ''}</div>
-            <div style="font-size:0.68rem;color:var(--muted);">${mesN ? ['','Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'][parseInt(mesN)] : ''}</div>
-          </div>
-          <div style="width:1px;height:40px;background:var(--border);"></div>
-          <div>
-            <div style="font-size:0.82rem;color:var(--muted);">${r.horaIngreso ? '🕐 Ingreso: <strong style="color:var(--text)">' + r.horaIngreso + '</strong>' : '<span style="color:var(--muted)">Sin ingreso registrado</span>'}</div>
-            <div style="font-size:0.82rem;color:var(--muted);margin-top:2px;">${r.horaSalida ? '🚪 Salida: <strong style="color:var(--text)">' + r.horaSalida + '</strong>' : ''}</div>
-          </div>
-        </div>
-        <span style="font-size:1.4rem;">${icono}</span>
-      </div>`;
-    }).join('');
-  } catch(e) {
-    cont.innerHTML = '<div style="padding:16px;text-align:center;color:var(--danger);font-size:0.83rem;">Error al cargar</div>';
-  }
-}
-
-async function cargarIncidentesApoderado() {
-  const cont = document.getElementById('apo-incidentes-list');
-  cont.innerHTML = '<div style="padding:16px;text-align:center;color:var(--muted);font-size:0.83rem;">Cargando...</div>';
-  try {
-    const snap = await db.collection('incidentes').where('alumnoId','==',_apoderadoAlumno.id).orderBy('fecha','desc').get();
-    if(snap.empty) {
-      cont.innerHTML = '<div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:48px 20px;text-align:center;"><div style="font-size:3rem;margin-bottom:12px;">✅</div><div style="font-weight:700;color:var(--text);margin-bottom:8px;">Sin incidentes</div><div style="color:var(--muted);font-size:0.85rem;">No hay reportes de incidentes para este alumno</div></div>';
-      return;
-    }
-    cont.innerHTML = snap.docs.map(d => {
-      const inc = d.data();
-      const fecha = inc.fecha ? (() => { const [a,m,di] = inc.fecha.split('-'); return `${di}/${m}/${a}`; })() : '—';
-      const gravedad = inc.gravedad || 'leve';
-      const colorG = gravedad === 'grave' ? '#ef4444' : gravedad === 'moderado' ? '#f59e0b' : '#3b82f6';
-      const fotos = inc.fotos || [];
-      return `<div style="background:var(--surface);border:1px solid var(--border);border-left:4px solid ${colorG};border-radius:12px;padding:16px;margin-bottom:10px;">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">
-          <div>
-            <div style="font-weight:700;color:var(--text);font-size:0.9rem;">${inc.tipo || 'Incidente'}</div>
-            <div style="font-size:0.75rem;color:var(--muted);">📅 ${fecha} ${inc.hora ? '· 🕐 ' + inc.hora : ''}</div>
-          </div>
-          <span style="font-size:0.72rem;font-weight:700;color:${colorG};background:${colorG}22;padding:3px 8px;border-radius:6px;text-transform:capitalize;">${gravedad}</span>
-        </div>
-        <div style="font-size:0.83rem;color:var(--muted);line-height:1.5;">${inc.descripcion || ''}</div>
-        ${fotos.length > 0 ? `<div style="display:grid;grid-template-columns:repeat(${Math.min(fotos.length,2)},1fr);gap:6px;margin-top:10px;">${fotos.map(f => `<img src="${f}" style="width:100%;height:80px;object-fit:cover;border-radius:8px;border:1px solid var(--border);">`).join('')}</div>` : ''}
-      </div>`;
-    }).join('');
-  } catch(e) {
-    cont.innerHTML = '<div style="padding:16px;text-align:center;color:var(--danger);font-size:0.83rem;">Error al cargar incidentes</div>';
-  }
-}
-
-async function renderCarnetDigital() {
-  const alumno = _apoderadoAlumno;
-  if(!alumno) return;
-  document.getElementById('apo-carnet-foto').src = alumno.foto || '';
-  document.getElementById('apo-carnet-nombre').textContent = `${alumno.nombres} ${alumno.apellidos}`;
-  document.getElementById('apo-carnet-grado').textContent = `${alumno.grado} "${alumno.seccion}" · ${alumno.turno}`;
-  document.getElementById('apo-carnet-dni').textContent = `DNI: ${alumno.id}`;
-  document.getElementById('apo-carnet-year').textContent = `Año Escolar ${new Date().getFullYear()}`;
-  document.getElementById('apo-carnet-qr-img').src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${alumno.id}&color=000000&ecc=H`;
-  // Nombre del colegio
-  try {
-    const cfg = await db.collection('config').doc('general').get();
-    if(cfg.exists && cfg.data().nombre) {
-      document.getElementById('apo-carnet-colegio-nombre').textContent = cfg.data().nombre;
-    }
-  } catch(e) {}
-}
-
-async function cargarContactoApoderado() {
-  const cont = document.getElementById('apo-contacto-content');
-  try {
-    const cfg = await db.collection('config').doc('general').get();
-    const d = cfg.exists ? cfg.data() : {};
-    cont.innerHTML = `
-      <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;overflow:hidden;">
-        ${d.logo ? `<div style="background:var(--navy,#1a2b5e);padding:24px;text-align:center;"><img src="${d.logo}" style="height:60px;object-fit:contain;border-radius:8px;"></div>` : ''}
-        <div style="padding:20px;">
-          <div style="font-size:1.1rem;font-weight:800;color:var(--text);margin-bottom:4px;">${d.nombre || 'I.E.P. San José Marello'}</div>
-          <div style="font-size:0.83rem;color:var(--muted);margin-bottom:20px;">Institución Educativa Privada</div>
-          ${d.direccion ? `<div style="display:flex;gap:12px;align-items:flex-start;margin-bottom:14px;"><span style="font-size:1.2rem;">📍</span><div><div style="font-size:0.78rem;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">Dirección</div><div style="font-size:0.88rem;color:var(--text);margin-top:2px;">${d.direccion}</div></div></div>` : ''}
-          ${d.telefono ? `<div style="display:flex;gap:12px;align-items:center;margin-bottom:14px;"><span style="font-size:1.2rem;">📞</span><div><div style="font-size:0.78rem;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">Teléfono</div><a href="tel:${d.telefono}" style="font-size:0.88rem;color:var(--accent);margin-top:2px;display:block;text-decoration:none;">${d.telefono}</a></div></div>` : ''}
-          ${d.email ? `<div style="display:flex;gap:12px;align-items:center;margin-bottom:14px;"><span style="font-size:1.2rem;">✉️</span><div><div style="font-size:0.78rem;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">Correo</div><a href="mailto:${d.email}" style="font-size:0.88rem;color:var(--accent);margin-top:2px;display:block;text-decoration:none;">${d.email}</div></div>` : ''}
-          ${d.horario ? `<div style="display:flex;gap:12px;align-items:flex-start;margin-bottom:14px;"><span style="font-size:1.2rem;">🕐</span><div><div style="font-size:0.78rem;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">Horario de atención</div><div style="font-size:0.88rem;color:var(--text);margin-top:2px;">${d.horario}</div></div></div>` : ''}
-          ${!d.direccion && !d.telefono && !d.email ? '<div style="text-align:center;color:var(--muted);font-size:0.85rem;padding:20px 0;">El administrador aún no ha configurado los datos de contacto</div>' : ''}
-        </div>
-      </div>`;
-  } catch(e) {
-    cont.innerHTML = '<div style="color:var(--muted);font-size:0.83rem;padding:16px;text-align:center;">Error al cargar datos de contacto</div>';
-  }
-}
-
-function compartirCarnetDigital() {
-  const alumno = _apoderadoAlumno;
-  if(!alumno) return;
-  const texto = `🪪 Carnet Digital\n${alumno.nombres} ${alumno.apellidos}\n${alumno.grado} ${alumno.seccion} — ${alumno.turno}\nDNI: ${alumno.id}`;
-  if(navigator.share) {
-    navigator.share({ title: 'Carnet Digital', text: texto }).catch(() => {});
-  } else {
-    navigator.clipboard?.writeText(texto).then(() => toast('Datos copiados al portapapeles','success'));
-  }
-}
-
-// ── Integrar crearCuentaApoderado en saveAlumno e importaciones ──
-// Se llama desde saveAlumno, handleCSV y handleExcel después de guardar
-async function crearCuentaApoderadoSilencioso(alumno) {
-  try { await crearCuentaApoderado(alumno); } catch(e) { console.warn('crearCuentaApoderado silencioso:', e); }
-}
-
-// ══════════════════════════════════════════════════════════════
-// FIN PORTAL APODERADO
-// ══════════════════════════════════════════════════════════════
+// Portal apoderado → apoderado.html
 </script>
 
   <!-- ===== MODAL PRIVILEGIOS PROFESOR ===== -->
@@ -5569,146 +5330,6 @@ async function crearCuentaApoderadoSilencioso(alumno) {
     </div>
   </div>
 
-<!-- ════════════════════════════════════════════════════════ -->
-<!-- PORTAL APODERADO                                        -->
-<!-- ════════════════════════════════════════════════════════ -->
-<div id="portal-apoderado" style="display:none;min-height:100vh;background:var(--bg);padding-bottom:80px;">
-
-  <!-- Header apoderado -->
-  <div style="background:var(--navy,#1a2b5e);padding:16px 20px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;box-shadow:0 2px 12px rgba(0,0,0,0.3);">
-    <div style="display:flex;align-items:center;gap:12px;">
-      <div style="width:40px;height:40px;border-radius:50%;background:#334155;overflow:hidden;flex-shrink:0;border:2px solid rgba(255,255,255,0.2);">
-        <img id="apo-foto-img" src="" style="width:100%;height:100%;object-fit:cover;" onerror="this.style.display='none'">
-      </div>
-      <div>
-        <div id="apo-nombre-header" style="font-weight:700;color:#fff;font-size:0.9rem;"></div>
-        <div id="apo-grado-header" style="color:rgba(255,255,255,0.6);font-size:0.75rem;"></div>
-      </div>
-    </div>
-    <button onclick="doLogoutApoderado()" style="background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);color:#fff;border-radius:8px;padding:6px 12px;cursor:pointer;font-size:0.8rem;">🚪 Salir</button>
-  </div>
-
-  <!-- Nav tabs apoderado -->
-  <div style="background:var(--surface);border-bottom:1px solid var(--border);display:flex;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;position:sticky;top:72px;z-index:99;">
-    <button class="apo-tab-btn" id="apo-tab-resumen" onclick="showApoTab('resumen')" style="flex-shrink:0;padding:12px 16px;border:none;background:none;cursor:pointer;font-size:0.82rem;font-weight:600;color:var(--accent);border-bottom:2px solid var(--accent);white-space:nowrap;">📊 Resumen</button>
-    <button class="apo-tab-btn" id="apo-tab-historial" onclick="showApoTab('historial')" style="flex-shrink:0;padding:12px 16px;border:none;background:none;cursor:pointer;font-size:0.82rem;font-weight:600;color:var(--muted);border-bottom:2px solid transparent;white-space:nowrap;">📅 Historial</button>
-    <button class="apo-tab-btn" id="apo-tab-incidentes" onclick="showApoTab('incidentes')" style="flex-shrink:0;padding:12px 16px;border:none;background:none;cursor:pointer;font-size:0.82rem;font-weight:600;color:var(--muted);border-bottom:2px solid transparent;white-space:nowrap;">🚨 Incidentes</button>
-    <button class="apo-tab-btn" id="apo-tab-carnet" onclick="showApoTab('carnet')" style="flex-shrink:0;padding:12px 16px;border:none;background:none;cursor:pointer;font-size:0.82rem;font-weight:600;color:var(--muted);border-bottom:2px solid transparent;white-space:nowrap;">🪪 Carnet</button>
-    <button class="apo-tab-btn" id="apo-tab-comunicados" onclick="showApoTab('comunicados')" style="flex-shrink:0;padding:12px 16px;border:none;background:none;cursor:pointer;font-size:0.82rem;font-weight:600;color:var(--muted);border-bottom:2px solid transparent;white-space:nowrap;">📢 Comunicados</button>
-    <button class="apo-tab-btn" id="apo-tab-contacto" onclick="showApoTab('contacto')" style="flex-shrink:0;padding:12px 16px;border:none;background:none;cursor:pointer;font-size:0.82rem;font-weight:600;color:var(--muted);border-bottom:2px solid transparent;white-space:nowrap;">📞 Contacto</button>
-  </div>
-
-  <div style="max-width:700px;margin:0 auto;padding:16px;">
-
-    <!-- TAB RESUMEN -->
-    <div id="apo-panel-resumen">
-      <!-- Info alumno -->
-      <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:20px;margin-bottom:16px;display:flex;gap:16px;align-items:center;">
-        <div style="width:64px;height:64px;border-radius:50%;background:#334155;overflow:hidden;flex-shrink:0;border:3px solid var(--accent);">
-          <img id="apo-foto-card-img" src="" style="width:100%;height:100%;object-fit:cover;" onerror="this.parentElement.innerHTML='<div style=&quot;display:flex;align-items:center;justify-content:center;width:100%;height:100%;font-size:1.8rem;&quot;>👤</div>'">
-        </div>
-        <div style="flex:1;">
-          <div id="apo-nombre-card" style="font-weight:800;font-size:1.05rem;color:var(--text);"></div>
-          <div id="apo-grado-card" style="color:var(--muted);font-size:0.83rem;margin-top:2px;"></div>
-          <div id="apo-dni-card" style="color:var(--muted);font-size:0.78rem;margin-top:2px;"></div>
-        </div>
-      </div>
-
-      <!-- Filtro mes -->
-      <div style="display:flex;gap:8px;margin-bottom:14px;align-items:center;">
-        <span style="font-size:0.82rem;color:var(--muted);white-space:nowrap;">📅 Mes:</span>
-        <select id="apo-filtro-mes" onchange="cargarResumenApoderado()" style="flex:1;padding:7px 10px;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:0.83rem;"></select>
-      </div>
-
-      <!-- KPIs -->
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:16px;">
-        <div style="background:rgba(16,185,129,0.12);border:1px solid rgba(16,185,129,0.3);border-radius:14px;padding:16px;text-align:center;">
-          <div id="apo-kpi-puntual" style="font-size:2rem;font-weight:900;color:#10b981;">—</div>
-          <div style="font-size:0.72rem;color:#10b981;margin-top:2px;">✅ Puntual</div>
-        </div>
-        <div style="background:rgba(245,158,11,0.12);border:1px solid rgba(245,158,11,0.3);border-radius:14px;padding:16px;text-align:center;">
-          <div id="apo-kpi-tardanza" style="font-size:2rem;font-weight:900;color:#f59e0b;">—</div>
-          <div style="font-size:0.72rem;color:#f59e0b;margin-top:2px;">⚠️ Tardanza</div>
-        </div>
-        <div style="background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.3);border-radius:14px;padding:16px;text-align:center;">
-          <div id="apo-kpi-ausente" style="font-size:2rem;font-weight:900;color:#ef4444;">—</div>
-          <div style="font-size:0.72rem;color:#ef4444;margin-top:2px;">❌ Ausente</div>
-        </div>
-      </div>
-
-      <!-- Últimos registros -->
-      <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden;">
-        <div style="padding:14px 16px;border-bottom:1px solid var(--border);font-weight:700;font-size:0.88rem;color:var(--text);">📋 Últimos registros</div>
-        <div id="apo-ultimos-registros" style="padding:8px 0;">
-          <div style="padding:12px 16px;color:var(--muted);font-size:0.83rem;">Cargando...</div>
-        </div>
-      </div>
-    </div>
-
-    <!-- TAB HISTORIAL -->
-    <div id="apo-panel-historial" style="display:none;">
-      <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;">
-        <select id="apo-hist-mes" onchange="cargarHistorialApoderado()" style="flex:1;min-width:120px;padding:7px 10px;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:0.83rem;"></select>
-        <select id="apo-hist-tipo" onchange="cargarHistorialApoderado()" style="flex:1;min-width:120px;padding:7px 10px;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:0.83rem;">
-          <option value="">Todos los estados</option>
-          <option value="Puntual">✅ Puntuales</option>
-          <option value="Tardanza">⚠️ Tardanzas</option>
-          <option value="Ausente">❌ Ausentes</option>
-        </select>
-      </div>
-      <div id="apo-historial-list" style="display:flex;flex-direction:column;gap:6px;">
-        <div style="color:var(--muted);font-size:0.83rem;padding:16px;text-align:center;">Cargando...</div>
-      </div>
-    </div>
-
-    <!-- TAB INCIDENTES -->
-    <div id="apo-panel-incidentes" style="display:none;">
-      <div id="apo-incidentes-list">
-        <div style="color:var(--muted);font-size:0.83rem;padding:16px;text-align:center;">Cargando...</div>
-      </div>
-    </div>
-
-    <!-- TAB CARNET DIGITAL -->
-    <div id="apo-panel-carnet" style="display:none;text-align:center;">
-      <div style="font-size:0.83rem;color:var(--muted);margin-bottom:16px;">Muestra este código QR al portero para registrar ingreso o salida</div>
-      <div id="apo-carnet-visual" style="display:inline-block;background:linear-gradient(145deg,#0d1a3a,#1a2b5e);border-radius:18px;padding:22px;max-width:260px;width:100%;box-shadow:0 8px 32px rgba(0,0,0,0.5);">
-        <div id="apo-carnet-colegio-nombre" style="color:#c9a84c;font-size:0.68rem;font-weight:800;text-align:center;margin-bottom:12px;text-transform:uppercase;letter-spacing:1px;"></div>
-        <div style="width:80px;height:80px;border-radius:50%;background:#334155;overflow:hidden;margin:0 auto 12px;border:3px solid #c9a84c;">
-          <img id="apo-carnet-foto" src="" style="width:100%;height:100%;object-fit:cover;" onerror="this.parentElement.innerHTML='<div style=&quot;display:flex;align-items:center;justify-content:center;width:100%;height:100%;font-size:2rem;color:#c9a84c;&quot;>👤</div>'">
-        </div>
-        <div id="apo-carnet-nombre" style="color:#fff;font-weight:800;font-size:0.88rem;text-align:center;margin-bottom:3px;"></div>
-        <div id="apo-carnet-grado" style="color:#c9a84c;font-size:0.72rem;text-align:center;margin-bottom:14px;"></div>
-        <div style="background:#fff;border-radius:10px;padding:8px;margin:0 auto;width:fit-content;">
-          <img id="apo-carnet-qr-img" src="" style="width:140px;height:140px;display:block;">
-        </div>
-        <div id="apo-carnet-dni" style="color:rgba(255,255,255,0.5);font-size:0.68rem;text-align:center;margin-top:10px;letter-spacing:1px;"></div>
-        <div id="apo-carnet-year" style="color:rgba(255,255,255,0.4);font-size:0.65rem;text-align:center;margin-top:2px;"></div>
-      </div>
-      <div style="margin-top:16px;">
-        <button onclick="compartirCarnetDigital()" style="background:var(--navy,#1a2b5e);border:1px solid var(--border);color:#fff;border-radius:10px;padding:10px 20px;cursor:pointer;font-size:0.83rem;">📤 Compartir carnet</button>
-      </div>
-    </div>
-
-    <!-- TAB COMUNICADOS -->
-    <div id="apo-panel-comunicados" style="display:none;">
-      <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:48px 20px;text-align:center;">
-        <div style="font-size:3rem;margin-bottom:12px;">📢</div>
-        <div style="font-weight:700;font-size:1rem;color:var(--text);margin-bottom:8px;">Comunicados del colegio</div>
-        <div style="color:var(--muted);font-size:0.85rem;max-width:280px;margin:0 auto;">Próximamente podrás ver aquí los comunicados y circulares del colegio</div>
-        <div style="display:inline-block;margin-top:16px;padding:6px 16px;border-radius:20px;background:rgba(99,102,241,0.15);color:#818cf8;border:1px solid rgba(99,102,241,0.3);font-size:0.78rem;font-weight:600;">🔮 Próximamente</div>
-      </div>
-    </div>
-
-    <!-- TAB CONTACTO -->
-    <div id="apo-panel-contacto" style="display:none;">
-      <div id="apo-contacto-content">
-        <div style="color:var(--muted);font-size:0.83rem;padding:16px;text-align:center;">Cargando...</div>
-      </div>
-    </div>
-
-  </div>
-</div>
-<!-- FIN PORTAL APODERADO -->
 
 </body>
 </html>

@@ -1,0 +1,1331 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <title>Portal Apoderado — San José Marello</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+  :root {
+    --bg: #0a0e1a;
+    --surface: #111827;
+    --surface2: #1a2236;
+    --border: #1f2d45;
+    --accent: #38bdf8;
+    --accent2: #818cf8;
+    --success: #34d399;
+    --warning: #fbbf24;
+    --danger: #f87171;
+    --text: #e2e8f0;
+    --muted: #64748b;
+    --font-display: 'Syne', sans-serif;
+    --font-body: 'DM Sans', sans-serif;
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-body);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* BG GRID */
+  body::before {
+    content:'';
+    position:fixed;
+    inset:0;
+    background-image:
+      linear-gradient(rgba(56,189,248,0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(56,189,248,0.04) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events:none;
+    z-index:0;
+  }
+
+  /* HEADER */
+  header {
+    position: sticky; top:0; z-index:100;
+    background: rgba(10,14,26,0.85);
+    backdrop-filter: blur(16px);
+    border-bottom: 1px solid var(--border);
+    padding: 0 24px;
+    height: 64px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .logo {
+    font-family: var(--font-display);
+    font-size: 1.4rem;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+  }
+  .logo span { color: var(--accent); }
+
+  .nav-tabs {
+    display: flex;
+    gap: 4px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 4px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .nav-tabs::-webkit-scrollbar { display: none; }
+
+  .nav-tab {
+    padding: 7px 14px;
+    border-radius: 8px;
+    border: none;
+    background: transparent;
+    color: var(--muted);
+    font-family: var(--font-body);
+    font-size: 0.82rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .nav-tab.active {
+    background: var(--accent);
+    color: #0a0e1a;
+    font-weight: 700;
+  }
+  .nav-tab:not(.active):hover { color: var(--text); background: var(--surface2); }
+
+  /* MAIN */
+  main {
+    position: relative; z-index:1;
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 28px 20px 60px;
+  }
+  @media(max-width:700px){
+    main { padding: 14px 12px 80px; }
+    .stats-row { grid-template-columns: 1fr 1fr; gap: 8px; }
+    .stat-card { padding: 8px 10px; }
+    .stat-num { font-size: 1.1rem; }
+    .stat-label { font-size: 0.62rem; }
+    .page-title { font-size: 1.2rem; }
+    .page-sub { font-size: 0.78rem; }
+    .card { padding: 12px 14px; }
+    .table-wrap { font-size: 0.78rem; }
+    th, td { padding: 8px 10px; }
+  }
+
+  /* SECTIONS */
+  .section { display: none; animation: fadeUp 0.3s ease; }
+  .section.active { display: block; }
+
+  @keyframes fadeUp {
+    from { opacity:0; transform: translateY(12px); }
+    to   { opacity:1; transform: translateY(0); }
+  }
+
+  /* PAGE TITLE */
+  .page-title {
+    font-family: var(--font-display);
+    font-size: 1.8rem;
+    font-weight: 800;
+    margin-bottom: 6px;
+  }
+  .page-sub {
+    color: var(--muted);
+    font-size: 0.9rem;
+    margin-bottom: 28px;
+  }
+
+  /* CARDS */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 24px;
+    margin-bottom: 20px;
+  }
+  .card-title {
+    font-family: var(--font-display);
+    font-size: 1rem;
+    font-weight: 700;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .card-title .dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--accent);
+    display: inline-block;
+  }
+
+  /* STATS ROW */
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    gap: 14px;
+    margin-bottom: 24px;
+  }
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 18px 20px;
+    position: relative;
+    overflow: hidden;
+  }
+  .stat-card::after {
+    content:'';
+    position:absolute;
+    top:0; right:0;
+    width:60px; height:60px;
+    border-radius: 0 14px 0 60px;
+    opacity: 0.12;
+  }
+  .stat-card.blue::after  { background: var(--accent); }
+  .stat-card.green::after { background: var(--success); }
+  .stat-card.yellow::after{ background: var(--warning); }
+  .stat-card.red::after   { background: var(--danger); }
+
+  .stat-num {
+    font-family: var(--font-display);
+    font-size: 2rem;
+    font-weight: 800;
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+  .stat-label { font-size: 0.78rem; color: var(--muted); }
+  .stat-card.blue  .stat-num { color: var(--accent); }
+  .stat-card.green .stat-num { color: var(--success); }
+  .stat-card.yellow .stat-num { color: var(--warning); }
+  .stat-card.red   .stat-num { color: var(--danger); }
+
+  /* QR SCANNER */
+  #qr-reader {
+    position: relative;
+    width: 100%;
+    background: #000;
+    border-radius: 14px;
+    overflow: hidden;
+    aspect-ratio: 4/3;
+  }
+  #qr-video {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover;
+    display: block;
+    border-radius: 14px;
+  }
+  #qr-canvas { display: none; }
+  .qr-frame-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+    z-index: 10;
+  }
+  .qr-frame {
+    width: 200px;
+    height: 200px;
+    border: 3px solid var(--accent);
+    border-radius: 14px;
+    box-shadow: 0 0 0 9999px rgba(0,0,0,0.4);
+    position: relative;
+    animation: pulse-border 2s ease-in-out infinite;
+  }
+  @media(max-width:700px){
+    #qr-reader { aspect-ratio: 1/1; }
+    .qr-frame { width: 160px; height: 160px; }
+  }
+  .scanner-layout {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+  }
+  @media(max-width:700px){
+    .scanner-layout { grid-template-columns: 1fr; gap: 12px; }
+  }
+
+  
+
+  .scan-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+  }
+  .scan-frame {
+    width: 160px; height: 160px;
+    border: 2px solid var(--accent);
+    border-radius: 12px;
+    box-shadow: 0 0 0 9999px rgba(0,0,0,0.35);
+    position: relative;
+    animation: pulse-border 2s ease-in-out infinite;
+  }
+  .qr-frame.detected {
+    border-color: #4ade80 !important;
+    box-shadow: 0 0 0 9999px rgba(0,0,0,0.4), 0 0 24px rgba(74,222,128,0.8) !important;
+    animation: none !important;
+    transition: border-color 0.1s, box-shadow 0.1s;
+  }
+  @keyframes pulse-border {
+    0%,100%{ border-color: var(--accent); box-shadow: 0 0 0 9999px rgba(0,0,0,0.35), 0 0 16px rgba(56,189,248,0.4); }
+    50%    { border-color: var(--accent2); box-shadow: 0 0 0 9999px rgba(0,0,0,0.35), 0 0 28px rgba(129,140,248,0.5); }
+  }
+  .corner {
+    position: absolute;
+    width: 18px; height: 18px;
+    border-color: #fff;
+    border-style: solid;
+  }
+  .corner.tl { top:-2px; left:-2px; border-width:3px 0 0 3px; }
+  .corner.tr { top:-2px; right:-2px; border-width:3px 3px 0 0; }
+  .corner.bl { bottom:-2px; left:-2px; border-width:0 0 3px 3px; }
+  .corner.br { bottom:-2px; right:-2px; border-width:0 3px 3px 0; }
+
+  .scan-status {
+    text-align: center;
+    padding: 12px;
+    font-size: 0.85rem;
+    color: var(--muted);
+  }
+
+  /* RESULT CARD */
+  .result-box {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  @media(max-width:700px){
+    .result-box { padding: 12px; gap: 8px; }
+    .result-empty { height: 100px; font-size:0.8rem; }
+    .result-empty svg { width:28px; height:28px; }
+  }
+  .result-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 280px;
+    color: var(--muted);
+    font-size: 0.85rem;
+    gap: 10px;
+  }
+  .result-empty svg { opacity: 0.3; }
+
+  .result-student { display: none; }
+  .student-avatar {
+    width: 72px; height: 72px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--font-display);
+    font-size: 1.6rem;
+    font-weight: 800;
+    color: #fff;
+    flex-shrink: 0;
+  }
+  .student-info { flex: 1; min-width: 0; }
+  .student-name {
+    font-family: var(--font-display);
+    font-size: 1.1rem;
+    font-weight: 700;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .student-meta { font-size: 0.82rem; color: var(--muted); margin-top: 3px; }
+  .student-row { display: flex; align-items: center; gap: 14px; }
+  @media(max-width:700px){
+    .student-avatar { width: 44px; height: 44px; font-size: 1rem; }
+    .student-name { font-size: 0.92rem; }
+    .student-meta { font-size: 0.75rem; }
+    .student-row { gap: 10px; }
+  }
+
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 0.78rem;
+    font-weight: 600;
+  }
+  .badge.green { background: rgba(52,211,153,0.15); color: var(--success); border: 1px solid rgba(52,211,153,0.3); }
+  .badge.yellow { background: rgba(251,191,36,0.15); color: var(--warning); border: 1px solid rgba(251,191,36,0.3); }
+  .badge.red    { background: rgba(248,113,113,0.15); color: var(--danger);  border: 1px solid rgba(248,113,113,0.3); }
+  .badge.blue   { background: rgba(56,189,248,0.15);  color: var(--accent);  border: 1px solid rgba(56,189,248,0.3); }
+
+  .info-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .info-item { background: var(--surface); border-radius: 10px; padding: 10px 14px; }
+  .info-item label { font-size: 0.72rem; color: var(--muted); display: block; margin-bottom: 2px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .info-item span { font-size: 0.88rem; font-weight: 500; }
+  @media(max-width:700px){
+    .info-grid { gap: 6px; }
+    .info-item { padding: 7px 10px; border-radius: 8px; }
+    .info-item label { font-size: 0.65rem; }
+    .info-item span { font-size: 0.8rem; }
+  }
+
+  /* SCAN CONTROLS */
+  .scan-controls {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 12px;
+  }
+  @media(max-width:700px){
+    .scan-controls .btn { flex: 1; min-width: 80px; justify-content: center; font-size:0.78rem; padding: 7px 8px; }
+  }
+
+  /* BUTTONS */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 9px 18px;
+    border-radius: 10px;
+    border: none;
+    font-family: var(--font-body);
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.18s;
+  }
+  .btn-primary { background: var(--accent); color: #0a0e1a; }
+  .btn-primary:hover { background: #7dd3fc; transform: translateY(-1px); }
+  .btn-ghost { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+  .btn-ghost:hover { background: var(--surface); }
+  .btn-danger { background: rgba(248,113,113,0.15); color: var(--danger); border: 1px solid rgba(248,113,113,0.3); }
+  .btn-danger:hover { background: rgba(248,113,113,0.25); }
+  .btn-success { background: rgba(52,211,153,0.15); color: var(--success); border: 1px solid rgba(52,211,153,0.3); }
+  .btn-success:hover { background: rgba(52,211,153,0.25); }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none !important; }
+
+  /* FORM */
+  .form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+  }
+  @media(max-width:560px){ .form-grid { grid-template-columns: 1fr; } }
+  .form-full { grid-column: 1 / -1; }
+
+  .form-group { display: flex; flex-direction: column; gap: 6px; }
+  .form-group label { font-size: 0.8rem; color: var(--muted); font-weight: 500; }
+  .form-group input, .form-group select {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 14px;
+    color: var(--text);
+    font-family: var(--font-body);
+    font-size: 0.88rem;
+    transition: border-color 0.2s;
+    outline: none;
+    -webkit-appearance: auto;
+    appearance: auto;
+    width: 100%;
+  }
+  .form-group input:focus, .form-group select:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(56,189,248,0.1);
+  }
+  .form-group select option { background: var(--surface); }
+
+  /* TABLE */
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.84rem; }
+  thead th {
+    text-align: left;
+    padding: 10px 14px;
+    color: var(--muted);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 1px solid var(--border);
+    font-weight: 600;
+  }
+  tbody tr {
+    border-bottom: 1px solid rgba(31,45,69,0.6);
+    transition: background 0.15s;
+  }
+  tbody tr:hover { background: var(--surface2); }
+  tbody td { padding: 11px 14px; }
+  .td-name { font-weight: 600; }
+  .td-id { color: var(--muted); font-size: 0.78rem; }
+
+  /* TOAST */
+  #toast-container {
+    position: fixed;
+    bottom: 24px; right: 24px;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-width: 340px;
+  }
+  .toast {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 18px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    animation: slideIn 0.3s ease;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+  }
+  .toast.success { border-left: 3px solid var(--success); }
+  .toast.error   { border-left: 3px solid var(--danger); }
+  .toast.warning { border-left: 3px solid var(--warning); }
+  .toast-msg { font-size: 0.85rem; flex:1; }
+  @keyframes slideIn {
+    from { opacity:0; transform: translateX(20px); }
+    to   { opacity:1; transform: translateX(0); }
+  }
+
+  /* SEARCH BAR */
+  .search-wrap { position: relative; margin-bottom: 16px; }
+  .search-wrap input {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 14px 10px 40px;
+    color: var(--text);
+    font-family: var(--font-body);
+    font-size: 0.88rem;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .search-wrap input:focus { border-color: var(--accent); }
+  .search-wrap svg { position:absolute; left:12px; top:50%; transform:translateY(-50%); pointer-events:none; }
+
+  /* QR INPUT MANUAL */
+  .manual-input {
+    display: flex;
+    gap: 8px;
+    align-items: flex-end;
+    margin-bottom: 12px;
+  }
+  .manual-input .form-group { flex: 1; }
+  @media(max-width:700px){
+    .manual-input { margin-bottom: 10px; }
+    .manual-input .form-group label { font-size:0.75rem; }
+    .manual-input input { padding: 8px 10px; font-size:0.85rem; }
+  }
+
+  /* TIMESTAMP BADGE */
+  .ts { font-size: 0.78rem; color: var(--muted); }
+
+  /* EMPTY STATE */
+  .empty-state {
+    text-align: center;
+    padding: 48px 20px;
+    color: var(--muted);
+    font-size: 0.88rem;
+  }
+  .empty-state svg { margin: 0 auto 12px; display: block; opacity:0.3; }
+
+  /* QR Code display */
+  .qr-display { text-align: center; }
+  #qr-canvas { border-radius: 10px; background: white; padding: 10px; display: none; }
+
+  /* Modal */
+  .modal-bg {
+    position: fixed; inset:0;
+    background: rgba(0,0,0,0.7);
+    z-index: 200;
+    display: flex; align-items: center; justify-content: center;
+    padding: 20px;
+    backdrop-filter: blur(4px);
+    display: none;
+  }
+  .modal-bg.open { display: flex; animation: fadeIn 0.2s; }
+  @keyframes fadeIn { from{opacity:0} to{opacity:1} }
+  .modal {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 28px;
+    width: 100%;
+    max-width: 500px;
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+  .modal-title {
+    font-family: var(--font-display);
+    font-size: 1.2rem;
+    font-weight: 800;
+    margin-bottom: 20px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+
+  .divider { border:none; border-top: 1px solid var(--border); margin: 16px 0; }
+
+  /* ASISTENCIA TABLE COLORS */
+  .row-ingreso td:first-child { border-left: 3px solid var(--success); }
+  .row-salida  td:first-child { border-left: 3px solid var(--accent2); }
+  .row-tarde   td:first-child { border-left: 3px solid var(--warning); }
+  .row-ausente  td:first-child { border-left: 3px solid var(--danger); }
+  .row-ausente td:first-child { border-left: 3px solid var(--danger); }
+  .row-ausente { opacity: 0.7; }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  @media print {
+    body > *:not(#carnet-print) { display: none !important; }
+    #carnet-print {
+      position: fixed !important;
+      inset: 0 !important;
+      margin: auto !important;
+      border-radius: 0 !important;
+      width: 320px !important;
+      height: auto !important;
+      top: 50% !important;
+      transform: translateY(-50%) !important;
+    }
+  }
+
+  /* LOGIN */
+  #login-screen {
+    position: fixed; inset: 0; z-index: 9999;
+    background: var(--bg);
+    display: flex; align-items: center; justify-content: center;
+    padding: 20px;
+  }
+  #login-screen::before {
+    content:'';
+    position:fixed; inset:0;
+    background-image:
+      linear-gradient(rgba(56,189,248,0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(56,189,248,0.04) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events:none;
+  }
+  .login-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 36px 32px;
+    width: 100%; max-width: 380px;
+    position: relative; z-index: 1;
+    box-shadow: 0 24px 64px rgba(0,0,0,0.4);
+  }
+  .login-logo {
+    font-family: var(--font-display);
+    font-size: 1.8rem; font-weight: 800;
+    text-align: center; margin-bottom: 6px;
+  }
+  .login-logo span { color: var(--accent); }
+  .login-sub {
+    text-align: center; color: var(--muted);
+    font-size: 0.85rem; margin-bottom: 28px;
+  }
+  .login-error {
+    background: rgba(248,113,113,0.15);
+    border: 1px solid rgba(248,113,113,0.3);
+    color: var(--danger);
+    border-radius: 10px; padding: 10px 14px;
+    font-size: 0.83rem; margin-bottom: 14px;
+    display: none;
+  }
+  .rol-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 4px 12px; border-radius: 20px;
+    font-size: 0.75rem; font-weight: 600;
+    background: rgba(56,189,248,0.15);
+    color: var(--accent);
+    border: 1px solid rgba(56,189,248,0.3);
+    margin-left: 10px;
+  }
+
+
+
+  
+  
+
+  
+  
+  
+  /* Ocultar imagen fea pero mantener el recuadro verde de detección */
+  
+  /* Recuadro de escaneo animado */
+  
+  
+  
+    50%      { border-color: #38bdf8; box-shadow: 0 0 0 9999px rgba(0,0,0,0.4), 0 0 28px rgba(129,140,248,0.6); }
+  }
+  @media(max-width:700px){
+    
+  }
+  #qr-shaded-region div[style*="border-left"],
+  #qr-shaded-region div[style*="border-right"],
+  #qr-shaded-region div[style*="border-top"],
+  /* BOTTOM NAV - Mobile */
+  .bottom-nav {
+    display: none;
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    background: rgba(10,14,26,0.97);
+    border-top: 1px solid var(--border);
+    backdrop-filter: blur(16px);
+    z-index: 200;
+    padding: 4px 0 env(safe-area-inset-bottom);
+  }
+  .bottom-nav-inner {
+    display: flex;
+    align-items: center;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding: 0 4px;
+    gap: 0;
+  }
+  .bottom-nav-inner::-webkit-scrollbar { display: none; }
+  .bnav-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    padding: 4px 0;
+    border: none;
+    background: transparent;
+    color: var(--muted);
+    font-family: var(--font-body);
+    font-size: 0.60rem;
+    font-weight: 500;
+    cursor: pointer;
+    border-radius: 10px;
+    transition: all 0.15s;
+    flex: 0 0 calc(100vw / 7);
+    min-width: 46px;
+  }
+  .bnav-btn .bnav-icon { font-size: 1.25rem; line-height: 1; }
+  .bnav-btn.active { color: var(--accent); }
+  .bnav-btn.active .bnav-icon {
+    filter: drop-shadow(0 0 6px var(--accent));
+  }
+  @media(max-width:700px){
+    .bottom-nav { display: block; }
+    header nav.nav-tabs { display: none !important; }
+    header {
+      height: 52px;
+      flex-wrap: nowrap;
+      padding: 0 14px;
+    }
+    main { padding-bottom: 90px; }
+  }
+  @media(max-width:700px){
+    header {
+      height: auto;
+      flex-wrap: wrap;
+      padding: 8px 14px 0;
+      gap: 6px;
+    }
+    header nav.nav-tabs {
+      width: 100%;
+      border-radius: 0;
+      border: none;
+      border-top: 1px solid var(--border);
+      background: transparent;
+      padding: 4px 0 2px;
+      margin: 0 -14px;
+      padding-left: 14px;
+      padding-right: 14px;
+      width: calc(100% + 28px);
+    }
+    .logo { font-size: 1.1rem; }
+    #user-name-display { display: none !important; }
+    #btn-logout { font-size: 0.75rem; padding: 5px 10px; }
+    main { padding-top: 10px; }
+  }
+  @media(max-width:640px){
+    header { padding: 0 14px; }
+    .nav-tab { padding: 6px 11px; font-size: 0.78rem; }
+    .logo { font-size: 1.1rem; }
+    .page-title { font-size: 1.4rem; }
+  }
+</style>
+
+  <style>
+    .apo-tab-btn { transition: color .2s, border-color .2s; }
+    .apo-tab-btn:hover { color: var(--accent) !important; }
+    #portal-apoderado { display: block !important; }
+    body { overflow-x: hidden; }
+  </style>
+</head>
+<body>
+
+<!-- PORTAL COMPLETO APODERADO -->
+<div id="portal-apoderado" style="min-height:100vh;background:var(--bg);padding-bottom:80px;">
+
+  <!-- Header -->
+  <div style="background:var(--navy,#1a2b5e);padding:16px 20px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;box-shadow:0 2px 12px rgba(0,0,0,0.3);">
+    <div style="display:flex;align-items:center;gap:12px;">
+      <div style="width:40px;height:40px;border-radius:50%;background:#334155;overflow:hidden;flex-shrink:0;border:2px solid rgba(255,255,255,0.2);">
+        <img id="apo-foto-img" src="" style="width:100%;height:100%;object-fit:cover;" onerror="this.style.display='none'">
+      </div>
+      <div>
+        <div id="apo-nombre-header" style="font-weight:700;color:#fff;font-size:0.9rem;"></div>
+        <div id="apo-grado-header" style="color:rgba(255,255,255,0.6);font-size:0.75rem;"></div>
+      </div>
+    </div>
+    <button onclick="doLogoutApoderado()" style="background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);color:#fff;border-radius:8px;padding:6px 12px;cursor:pointer;font-size:0.8rem;">🚪 Salir</button>
+  </div>
+
+  <!-- Nav tabs -->
+  <div style="background:var(--surface);border-bottom:1px solid var(--border);display:flex;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;position:sticky;top:72px;z-index:99;">
+    <button class="apo-tab-btn" id="apo-tab-resumen" onclick="showApoTab('resumen')" style="flex-shrink:0;padding:12px 16px;border:none;background:none;cursor:pointer;font-size:0.82rem;font-weight:600;color:var(--accent);border-bottom:2px solid var(--accent);white-space:nowrap;">📊 Resumen</button>
+    <button class="apo-tab-btn" id="apo-tab-historial" onclick="showApoTab('historial')" style="flex-shrink:0;padding:12px 16px;border:none;background:none;cursor:pointer;font-size:0.82rem;font-weight:600;color:var(--muted);border-bottom:2px solid transparent;white-space:nowrap;">📅 Historial</button>
+    <button class="apo-tab-btn" id="apo-tab-incidentes" onclick="showApoTab('incidentes')" style="flex-shrink:0;padding:12px 16px;border:none;background:none;cursor:pointer;font-size:0.82rem;font-weight:600;color:var(--muted);border-bottom:2px solid transparent;white-space:nowrap;">🚨 Incidentes</button>
+    <button class="apo-tab-btn" id="apo-tab-carnet" onclick="showApoTab('carnet')" style="flex-shrink:0;padding:12px 16px;border:none;background:none;cursor:pointer;font-size:0.82rem;font-weight:600;color:var(--muted);border-bottom:2px solid transparent;white-space:nowrap;">🪪 Carnet</button>
+    <button class="apo-tab-btn" id="apo-tab-comunicados" onclick="showApoTab('comunicados')" style="flex-shrink:0;padding:12px 16px;border:none;background:none;cursor:pointer;font-size:0.82rem;font-weight:600;color:var(--muted);border-bottom:2px solid transparent;white-space:nowrap;">📢 Comunicados</button>
+    <button class="apo-tab-btn" id="apo-tab-contacto" onclick="showApoTab('contacto')" style="flex-shrink:0;padding:12px 16px;border:none;background:none;cursor:pointer;font-size:0.82rem;font-weight:600;color:var(--muted);border-bottom:2px solid transparent;white-space:nowrap;">📞 Contacto</button>
+  </div>
+
+  <!-- Modal cambiar contraseña obligatorio -->
+  <div id="modal-cambiar-pass" style="display:none;position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.7);align-items:center;justify-content:center;padding:16px;">
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:32px;width:100%;max-width:400px;box-shadow:0 24px 64px rgba(0,0,0,0.5);">
+      <div style="text-align:center;margin-bottom:20px;">
+        <div style="font-size:2.5rem;margin-bottom:8px;">🔐</div>
+        <div style="font-size:1.1rem;font-weight:800;color:var(--text);">Cambiar contraseña</div>
+        <div style="font-size:0.82rem;color:var(--muted);margin-top:6px;">Por seguridad debes crear una nueva contraseña antes de continuar</div>
+      </div>
+      <div id="cambiar-pass-error" style="display:none;background:rgba(248,113,113,0.15);border:1px solid rgba(248,113,113,0.3);color:var(--danger);border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:0.83rem;"></div>
+      <div class="form-group" style="margin-bottom:14px;">
+        <label>Nueva contraseña</label>
+        <input type="password" id="nueva-pass-1" placeholder="Mínimo 6 caracteres" style="width:100%;">
+      </div>
+      <div class="form-group" style="margin-bottom:14px;">
+        <label>Confirmar contraseña</label>
+        <input type="password" id="nueva-pass-2" placeholder="Repite la contraseña" style="width:100%;">
+      </div>
+      <div class="form-group" style="margin-bottom:22px;">
+        <label>Confirmar número de WhatsApp</label>
+        <input type="tel" id="nueva-pass-telefono" placeholder="Ej: 987654321" inputmode="numeric" style="width:100%;">
+        <div style="font-size:0.75rem;color:var(--muted);margin-top:4px;">Se usará para recuperar tu contraseña si la olvidas</div>
+      </div>
+      <button class="btn btn-primary" onclick="confirmarCambioPass()" style="width:100%;justify-content:center;padding:12px;">Guardar y continuar</button>
+    </div>
+  </div>
+
+  <div style="max-width:700px;margin:0 auto;padding:16px;" id="apo-contenido">
+    <!-- TAB RESUMEN -->
+    <div id="apo-panel-resumen">
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:20px;margin-bottom:16px;display:flex;gap:16px;align-items:center;">
+        <div style="width:64px;height:64px;border-radius:50%;background:#334155;overflow:hidden;flex-shrink:0;border:3px solid var(--accent);">
+          <img id="apo-foto-card-img" src="" style="width:100%;height:100%;object-fit:cover;" onerror="this.parentElement.innerHTML='<div style=&quot;display:flex;align-items:center;justify-content:center;width:100%;height:100%;font-size:1.8rem;&quot;>👤</div>'">
+        </div>
+        <div style="flex:1;">
+          <div id="apo-nombre-card" style="font-weight:800;font-size:1.05rem;color:var(--text);"></div>
+          <div id="apo-grado-card" style="color:var(--muted);font-size:0.83rem;margin-top:2px;"></div>
+          <div id="apo-dni-card" style="color:var(--muted);font-size:0.78rem;margin-top:2px;"></div>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:14px;align-items:center;">
+        <span style="font-size:0.82rem;color:var(--muted);white-space:nowrap;">📅 Mes:</span>
+        <select id="apo-filtro-mes" onchange="cargarResumenApoderado()" style="flex:1;padding:7px 10px;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:0.83rem;"></select>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:16px;">
+        <div style="background:rgba(16,185,129,0.12);border:1px solid rgba(16,185,129,0.3);border-radius:14px;padding:16px;text-align:center;">
+          <div id="apo-kpi-puntual" style="font-size:2rem;font-weight:900;color:#10b981;">—</div>
+          <div style="font-size:0.72rem;color:#10b981;margin-top:2px;">✅ Puntual</div>
+        </div>
+        <div style="background:rgba(245,158,11,0.12);border:1px solid rgba(245,158,11,0.3);border-radius:14px;padding:16px;text-align:center;">
+          <div id="apo-kpi-tardanza" style="font-size:2rem;font-weight:900;color:#f59e0b;">—</div>
+          <div style="font-size:0.72rem;color:#f59e0b;margin-top:2px;">⚠️ Tardanza</div>
+        </div>
+        <div style="background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.3);border-radius:14px;padding:16px;text-align:center;">
+          <div id="apo-kpi-ausente" style="font-size:2rem;font-weight:900;color:#ef4444;">—</div>
+          <div style="font-size:0.72rem;color:#ef4444;margin-top:2px;">❌ Ausente</div>
+        </div>
+      </div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden;">
+        <div style="padding:14px 16px;border-bottom:1px solid var(--border);font-weight:700;font-size:0.88rem;color:var(--text);">📋 Últimos registros</div>
+        <div id="apo-ultimos-registros" style="padding:8px 0;"><div style="padding:12px 16px;color:var(--muted);font-size:0.83rem;">Cargando...</div></div>
+      </div>
+    </div>
+    <!-- TAB HISTORIAL -->
+    <div id="apo-panel-historial" style="display:none;">
+      <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;">
+        <select id="apo-hist-mes" onchange="cargarHistorialApoderado()" style="flex:1;min-width:120px;padding:7px 10px;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:0.83rem;"></select>
+        <select id="apo-hist-tipo" onchange="cargarHistorialApoderado()" style="flex:1;min-width:120px;padding:7px 10px;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:0.83rem;">
+          <option value="">Todos los estados</option>
+          <option value="Puntual">✅ Puntuales</option>
+          <option value="Tardanza">⚠️ Tardanzas</option>
+          <option value="Ausente">❌ Ausentes</option>
+        </select>
+      </div>
+      <div id="apo-historial-list" style="display:flex;flex-direction:column;gap:6px;"><div style="color:var(--muted);font-size:0.83rem;padding:16px;text-align:center;">Cargando...</div></div>
+    </div>
+    <!-- TAB INCIDENTES -->
+    <div id="apo-panel-incidentes" style="display:none;">
+      <div id="apo-incidentes-list"><div style="color:var(--muted);font-size:0.83rem;padding:16px;text-align:center;">Cargando...</div></div>
+    </div>
+    <!-- TAB CARNET DIGITAL -->
+    <div id="apo-panel-carnet" style="display:none;text-align:center;">
+      <div style="font-size:0.83rem;color:var(--muted);margin-bottom:16px;">Muestra este código QR al portero para registrar ingreso o salida</div>
+      <div id="apo-carnet-visual" style="display:inline-block;background:linear-gradient(145deg,#0d1a3a,#1a2b5e);border-radius:18px;padding:22px;max-width:260px;width:100%;box-shadow:0 8px 32px rgba(0,0,0,0.5);">
+        <div id="apo-carnet-colegio-nombre" style="color:#c9a84c;font-size:0.68rem;font-weight:800;text-align:center;margin-bottom:12px;text-transform:uppercase;letter-spacing:1px;"></div>
+        <div style="width:80px;height:80px;border-radius:50%;background:#334155;overflow:hidden;margin:0 auto 12px;border:3px solid #c9a84c;">
+          <img id="apo-carnet-foto" src="" style="width:100%;height:100%;object-fit:cover;" onerror="this.parentElement.innerHTML='<div style=&quot;display:flex;align-items:center;justify-content:center;width:100%;height:100%;font-size:2rem;color:#c9a84c;&quot;>👤</div>'">
+        </div>
+        <div id="apo-carnet-nombre" style="color:#fff;font-weight:800;font-size:0.88rem;text-align:center;margin-bottom:3px;"></div>
+        <div id="apo-carnet-grado" style="color:#c9a84c;font-size:0.72rem;text-align:center;margin-bottom:14px;"></div>
+        <div style="background:#fff;border-radius:10px;padding:8px;margin:0 auto;width:fit-content;">
+          <img id="apo-carnet-qr-img" src="" style="width:140px;height:140px;display:block;">
+        </div>
+        <div id="apo-carnet-dni" style="color:rgba(255,255,255,0.5);font-size:0.68rem;text-align:center;margin-top:10px;letter-spacing:1px;"></div>
+        <div id="apo-carnet-year" style="color:rgba(255,255,255,0.4);font-size:0.65rem;text-align:center;margin-top:2px;"></div>
+      </div>
+      <div style="margin-top:16px;">
+        <button onclick="compartirCarnetDigital()" style="background:var(--navy,#1a2b5e);border:1px solid var(--border);color:#fff;border-radius:10px;padding:10px 20px;cursor:pointer;font-size:0.83rem;">📤 Compartir carnet</button>
+      </div>
+    </div>
+    <!-- TAB COMUNICADOS -->
+    <div id="apo-panel-comunicados" style="display:none;">
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:48px 20px;text-align:center;">
+        <div style="font-size:3rem;margin-bottom:12px;">📢</div>
+        <div style="font-weight:700;font-size:1rem;color:var(--text);margin-bottom:8px;">Comunicados del colegio</div>
+        <div style="color:var(--muted);font-size:0.85rem;max-width:280px;margin:0 auto;">Próximamente podrás ver aquí los comunicados y circulares del colegio</div>
+        <div style="display:inline-block;margin-top:16px;padding:6px 16px;border-radius:20px;background:rgba(99,102,241,0.15);color:#818cf8;border:1px solid rgba(99,102,241,0.3);font-size:0.78rem;font-weight:600;">🔮 Próximamente</div>
+      </div>
+    </div>
+    <!-- TAB CONTACTO -->
+    <div id="apo-panel-contacto" style="display:none;">
+      <div id="apo-contacto-content"><div style="color:var(--muted);font-size:0.83rem;padding:16px;text-align:center;">Cargando...</div></div>
+    </div>
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyBLI0I41vWjMK2q1ZjH1c1BK4SAFno7sfY",
+  authDomain: "asistencia-qr-a3346.firebaseapp.com",
+  projectId: "asistencia-qr-a3346",
+  storageBucket: "asistencia-qr-a3346.firebasestorage.app",
+  messagingSenderId: "617000910031",
+  appId: "1:617000910031:web:ccc2454260d8b4e7704bba"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+const auth = firebase.auth();
+
+
+
+const app  = firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db   = firebase.firestore();
+auth.setPersistence(firebase.auth.Auth.Persistence.SESSION);
+
+// ── Variables globales ──
+let _apoderadoAlumno = null;
+let _apoRegistros    = [];
+
+// ── Verificar sesión al cargar ──
+auth.onAuthStateChanged(async user => {
+  if(!user || !user.email.endsWith('@apoderado.marello.pe')) {
+    // No hay sesión de apoderado — redirigir al login
+    window.location.href = 'index.html';
+    return;
+  }
+  const dni = user.email.replace('@apoderado.marello.pe','');
+  try {
+    const alumnoSnap = await db.collection('alumnos').doc(dni).get();
+    if(!alumnoSnap.exists) { auth.signOut(); window.location.href = 'index.html'; return; }
+    _apoderadoAlumno = { id: dni, ...alumnoSnap.data() };
+
+    const apoSnap = await db.collection('apoderados').doc(dni).get();
+    const primerIngreso = apoSnap.exists ? apoSnap.data().primerIngreso : true;
+
+    llenarDatosAlumno(_apoderadoAlumno);
+    if(primerIngreso) {
+      document.getElementById('modal-cambiar-pass').style.display = 'flex';
+    } else {
+      showApoTab('resumen');
+      await cargarResumenApoderado();
+    }
+  } catch(e) {
+    console.error(e);
+    window.location.href = 'index.html';
+  }
+});
+
+function llenarDatosAlumno(alumno) {
+  const nombre = alumno.nombres + ' ' + alumno.apellidos;
+  const grado  = alumno.grado + ' ' + alumno.seccion + ' — ' + alumno.turno;
+  document.getElementById('apo-nombre-header').textContent = nombre;
+  document.getElementById('apo-grado-header').textContent  = grado;
+  document.getElementById('apo-nombre-card').textContent   = nombre;
+  document.getElementById('apo-grado-card').textContent    = grado;
+  document.getElementById('apo-dni-card').textContent      = 'DNI: ' + alumno.id;
+  if(alumno.foto) {
+    document.getElementById('apo-foto-img').src       = alumno.foto;
+    document.getElementById('apo-foto-card-img').src  = alumno.foto;
+  }
+  const mesOpts = generarOpcionesMeses();
+  document.getElementById('apo-filtro-mes').innerHTML = mesOpts;
+  document.getElementById('apo-hist-mes').innerHTML   = mesOpts;
+}
+
+function doLogoutApoderado() {
+  if(!confirm('¿Cerrar sesión?')) return;
+  auth.signOut().then(() => window.location.href = 'index.html');
+}
+
+// ══════════════════════════════════════════════════════════════
+// PORTAL APODERADO — FUNCIONES
+// ══════════════════════════════════════════════════════════════
+
+let _apoRegistros = []; // cache de registros del alumno
+
+function doLogoutApoderado() {
+  if(!confirm('¿Cerrar sesión?')) return;
+  _apoderadoUID = null;
+  _apoderadoAlumno = null;
+  _apoRegistros = [];
+  auth.signOut().then(() => {
+    document.getElementById('portal-apoderado').style.display = 'none';
+    document.getElementById('login-screen').style.display = 'flex';
+    document.getElementById('login-pass-apoderado').value = '';
+    document.getElementById('login-dni-apoderado').value = '';
+    document.getElementById('login-error').style.display = 'none';
+    switchLoginTab('apoderado');
+  });
+}
+
+function showApoTab(tab) {
+  const tabs = ['resumen','historial','incidentes','carnet','comunicados','contacto'];
+  tabs.forEach(t => {
+    document.getElementById('apo-panel-' + t).style.display = t === tab ? 'block' : 'none';
+    const btn = document.getElementById('apo-tab-' + t);
+    if(btn) {
+      btn.style.color = t === tab ? 'var(--accent)' : 'var(--muted)';
+      btn.style.borderBottomColor = t === tab ? 'var(--accent)' : 'transparent';
+    }
+  });
+  if(tab === 'historial') cargarHistorialApoderado();
+  if(tab === 'incidentes') cargarIncidentesApoderado();
+  if(tab === 'carnet') renderCarnetDigital();
+  if(tab === 'contacto') cargarContactoApoderado();
+}
+
+function generarOpcionesMeses() {
+  const meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  const ahora = new Date();
+  let opts = '<option value="">Todo el año</option>';
+  for(let i = 0; i <= ahora.getMonth(); i++) {
+    const val = String(i + 1).padStart(2,'0');
+    opts += `<option value="${val}">${meses[i]} ${ahora.getFullYear()}</option>`;
+  }
+  return opts;
+}
+
+async function mostrarPortalApoderado(alumno) {
+  // Ocultar todo lo demás
+  document.getElementById('login-screen').style.display = 'none';
+  document.querySelector('header') && (document.querySelector('header').style.display = 'none');
+  document.querySelector('.bottom-nav') && (document.querySelector('.bottom-nav').style.display = 'none');
+  document.querySelector('nav') && (document.querySelector('nav').style.display = 'none');
+
+  // Mostrar portal
+  document.getElementById('portal-apoderado').style.display = 'block';
+
+  // Llenar datos del alumno en header y card
+  const nombre = `${alumno.nombres} ${alumno.apellidos}`;
+  const grado = `${alumno.grado} ${alumno.seccion} — ${alumno.turno}`;
+
+  document.getElementById('apo-nombre-header').textContent = nombre;
+  document.getElementById('apo-grado-header').textContent = grado;
+  document.getElementById('apo-nombre-card').textContent = nombre;
+  document.getElementById('apo-grado-card').textContent = grado;
+  document.getElementById('apo-dni-card').textContent = `DNI: ${alumno.id}`;
+
+  if(alumno.foto) {
+    document.getElementById('apo-foto-img').src = alumno.foto;
+    document.getElementById('apo-foto-card-img').src = alumno.foto;
+  }
+
+  // Opciones de mes en filtros
+  const mesOpts = generarOpcionesMeses();
+  document.getElementById('apo-filtro-mes').innerHTML = mesOpts;
+  document.getElementById('apo-hist-mes').innerHTML = mesOpts;
+
+  // Mostrar tab resumen por defecto
+  showApoTab('resumen');
+  await cargarResumenApoderado();
+}
+
+async function obtenerRegistrosAlumno() {
+  if(_apoRegistros.length > 0) return _apoRegistros;
+  const snap = await db.collection('registros').where('alumnoId','==',_apoderadoAlumno.id).orderBy('fecha','desc').get();
+  // Agrupar por fecha (igual que el sistema principal)
+  const grupos = {};
+  snap.docs.forEach(d => {
+    const datos = d.data();
+    const key = `${datos.alumnoId}_${datos.fecha}`;
+    if(!grupos[key]) grupos[key] = { fecha: datos.fecha, estado: datos.estado, horaIngreso: null, horaSalida: null };
+    if(datos.tipo === 'ingreso' || datos.tipo === 'Ingreso' || !datos.tipo) {
+      if(!grupos[key].horaIngreso) grupos[key].horaIngreso = datos.hora;
+    } else {
+      grupos[key].horaSalida = datos.hora;
+    }
+    // Estado: si cualquier registro del día es tardanza, el estado es tardanza
+    if(datos.estado === 'Tardanza') grupos[key].estado = 'Tardanza';
+    else if(!grupos[key].estado && datos.estado) grupos[key].estado = datos.estado;
+  });
+  _apoRegistros = Object.values(grupos).sort((a,b) => b.fecha.localeCompare(a.fecha));
+  return _apoRegistros;
+}
+
+async function cargarResumenApoderado() {
+  const mes = document.getElementById('apo-filtro-mes')?.value || '';
+  try {
+    const todos = await obtenerRegistrosAlumno();
+    const filtrados = mes ? todos.filter(r => r.fecha && r.fecha.substring(5,7) === mes) : todos;
+
+    const puntual  = filtrados.filter(r => r.estado === 'Puntual').length;
+    const tardanza = filtrados.filter(r => r.estado === 'Tardanza').length;
+    const ausente  = filtrados.filter(r => r.estado === 'Ausente').length;
+
+    document.getElementById('apo-kpi-puntual').textContent  = puntual;
+    document.getElementById('apo-kpi-tardanza').textContent = tardanza;
+    document.getElementById('apo-kpi-ausente').textContent  = ausente;
+
+    // Últimos 8 registros
+    const ultimos = filtrados.slice(0, 8);
+    const cont = document.getElementById('apo-ultimos-registros');
+    if(ultimos.length === 0) {
+      cont.innerHTML = '<div style="padding:16px;text-align:center;color:var(--muted);font-size:0.83rem;">Sin registros en este período</div>';
+      return;
+    }
+    cont.innerHTML = ultimos.map(r => {
+      const [anio, mesN, dia] = (r.fecha||'').split('-');
+      const fechaStr = dia && mesN ? `${dia}/${mesN}/${anio}` : r.fecha;
+      const color = r.estado === 'Puntual' ? '#10b981' : r.estado === 'Tardanza' ? '#f59e0b' : '#ef4444';
+      const icono = r.estado === 'Puntual' ? '✅' : r.estado === 'Tardanza' ? '⚠️' : '❌';
+      return `<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-bottom:1px solid var(--border);">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <span style="font-size:1.1rem;">${icono}</span>
+          <div>
+            <div style="font-size:0.83rem;font-weight:600;color:var(--text);">${fechaStr}</div>
+            <div style="font-size:0.75rem;color:var(--muted);">${r.horaIngreso ? '🕐 ' + r.horaIngreso : ''} ${r.horaSalida ? '— 🚪 ' + r.horaSalida : ''}</div>
+          </div>
+        </div>
+        <span style="font-size:0.75rem;font-weight:700;color:${color};background:${color}22;padding:3px 8px;border-radius:6px;">${r.estado || '—'}</span>
+      </div>`;
+    }).join('');
+  } catch(e) {
+    console.error('Error resumen apoderado:', e);
+  }
+}
+
+async function cargarHistorialApoderado() {
+  const mes  = document.getElementById('apo-hist-mes')?.value || '';
+  const tipo = document.getElementById('apo-hist-tipo')?.value || '';
+  const cont = document.getElementById('apo-historial-list');
+  cont.innerHTML = '<div style="padding:16px;text-align:center;color:var(--muted);font-size:0.83rem;">Cargando...</div>';
+  try {
+    const todos = await obtenerRegistrosAlumno();
+    let filtrados = mes  ? todos.filter(r => r.fecha && r.fecha.substring(5,7) === mes)  : todos;
+    filtrados = tipo ? filtrados.filter(r => r.estado === tipo) : filtrados;
+
+    if(filtrados.length === 0) {
+      cont.innerHTML = '<div style="padding:24px;text-align:center;color:var(--muted);font-size:0.83rem;">Sin registros con esos filtros</div>';
+      return;
+    }
+    cont.innerHTML = filtrados.map(r => {
+      const [anio, mesN, dia] = (r.fecha||'').split('-');
+      const fechaStr = dia && mesN ? `${dia}/${mesN}/${anio}` : r.fecha;
+      const color = r.estado === 'Puntual' ? '#10b981' : r.estado === 'Tardanza' ? '#f59e0b' : '#ef4444';
+      const icono = r.estado === 'Puntual' ? '✅' : r.estado === 'Tardanza' ? '⚠️' : '❌';
+      const diasSemana = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+      const diaSemana = r.fecha ? diasSemana[new Date(r.fecha + 'T12:00:00').getDay()] : '';
+      return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;">
+        <div style="display:flex;align-items:center;gap:12px;">
+          <div style="text-align:center;min-width:40px;">
+            <div style="font-size:0.68rem;color:var(--muted);font-weight:600;">${diaSemana}</div>
+            <div style="font-size:1.2rem;font-weight:800;color:var(--text);">${dia || ''}</div>
+            <div style="font-size:0.68rem;color:var(--muted);">${mesN ? ['','Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'][parseInt(mesN)] : ''}</div>
+          </div>
+          <div style="width:1px;height:40px;background:var(--border);"></div>
+          <div>
+            <div style="font-size:0.82rem;color:var(--muted);">${r.horaIngreso ? '🕐 Ingreso: <strong style="color:var(--text)">' + r.horaIngreso + '</strong>' : '<span style="color:var(--muted)">Sin ingreso registrado</span>'}</div>
+            <div style="font-size:0.82rem;color:var(--muted);margin-top:2px;">${r.horaSalida ? '🚪 Salida: <strong style="color:var(--text)">' + r.horaSalida + '</strong>' : ''}</div>
+          </div>
+        </div>
+        <span style="font-size:1.4rem;">${icono}</span>
+      </div>`;
+    }).join('');
+  } catch(e) {
+    cont.innerHTML = '<div style="padding:16px;text-align:center;color:var(--danger);font-size:0.83rem;">Error al cargar</div>';
+  }
+}
+
+async function cargarIncidentesApoderado() {
+  const cont = document.getElementById('apo-incidentes-list');
+  cont.innerHTML = '<div style="padding:16px;text-align:center;color:var(--muted);font-size:0.83rem;">Cargando...</div>';
+  try {
+    const snap = await db.collection('incidentes').where('alumnoId','==',_apoderadoAlumno.id).orderBy('fecha','desc').get();
+    if(snap.empty) {
+      cont.innerHTML = '<div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:48px 20px;text-align:center;"><div style="font-size:3rem;margin-bottom:12px;">✅</div><div style="font-weight:700;color:var(--text);margin-bottom:8px;">Sin incidentes</div><div style="color:var(--muted);font-size:0.85rem;">No hay reportes de incidentes para este alumno</div></div>';
+      return;
+    }
+    cont.innerHTML = snap.docs.map(d => {
+      const inc = d.data();
+      const fecha = inc.fecha ? (() => { const [a,m,di] = inc.fecha.split('-'); return `${di}/${m}/${a}`; })() : '—';
+      const gravedad = inc.gravedad || 'leve';
+      const colorG = gravedad === 'grave' ? '#ef4444' : gravedad === 'moderado' ? '#f59e0b' : '#3b82f6';
+      const fotos = inc.fotos || [];
+      return `<div style="background:var(--surface);border:1px solid var(--border);border-left:4px solid ${colorG};border-radius:12px;padding:16px;margin-bottom:10px;">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">
+          <div>
+            <div style="font-weight:700;color:var(--text);font-size:0.9rem;">${inc.tipo || 'Incidente'}</div>
+            <div style="font-size:0.75rem;color:var(--muted);">📅 ${fecha} ${inc.hora ? '· 🕐 ' + inc.hora : ''}</div>
+          </div>
+          <span style="font-size:0.72rem;font-weight:700;color:${colorG};background:${colorG}22;padding:3px 8px;border-radius:6px;text-transform:capitalize;">${gravedad}</span>
+        </div>
+        <div style="font-size:0.83rem;color:var(--muted);line-height:1.5;">${inc.descripcion || ''}</div>
+        ${fotos.length > 0 ? `<div style="display:grid;grid-template-columns:repeat(${Math.min(fotos.length,2)},1fr);gap:6px;margin-top:10px;">${fotos.map(f => `<img src="${f}" style="width:100%;height:80px;object-fit:cover;border-radius:8px;border:1px solid var(--border);">`).join('')}</div>` : ''}
+      </div>`;
+    }).join('');
+  } catch(e) {
+    cont.innerHTML = '<div style="padding:16px;text-align:center;color:var(--danger);font-size:0.83rem;">Error al cargar incidentes</div>';
+  }
+}
+
+async function renderCarnetDigital() {
+  const alumno = _apoderadoAlumno;
+  if(!alumno) return;
+  document.getElementById('apo-carnet-foto').src = alumno.foto || '';
+  document.getElementById('apo-carnet-nombre').textContent = `${alumno.nombres} ${alumno.apellidos}`;
+  document.getElementById('apo-carnet-grado').textContent = `${alumno.grado} "${alumno.seccion}" · ${alumno.turno}`;
+  document.getElementById('apo-carnet-dni').textContent = `DNI: ${alumno.id}`;
+  document.getElementById('apo-carnet-year').textContent = `Año Escolar ${new Date().getFullYear()}`;
+  document.getElementById('apo-carnet-qr-img').src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${alumno.id}&color=000000&ecc=H`;
+  // Nombre del colegio
+  try {
+    const cfg = await db.collection('config').doc('general').get();
+    if(cfg.exists && cfg.data().nombre) {
+      document.getElementById('apo-carnet-colegio-nombre').textContent = cfg.data().nombre;
+    }
+  } catch(e) {}
+}
+
+async function cargarContactoApoderado() {
+  const cont = document.getElementById('apo-contacto-content');
+  try {
+    const cfg = await db.collection('config').doc('general').get();
+    const d = cfg.exists ? cfg.data() : {};
+    cont.innerHTML = `
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;overflow:hidden;">
+        ${d.logo ? `<div style="background:var(--navy,#1a2b5e);padding:24px;text-align:center;"><img src="${d.logo}" style="height:60px;object-fit:contain;border-radius:8px;"></div>` : ''}
+        <div style="padding:20px;">
+          <div style="font-size:1.1rem;font-weight:800;color:var(--text);margin-bottom:4px;">${d.nombre || 'I.E.P. San José Marello'}</div>
+          <div style="font-size:0.83rem;color:var(--muted);margin-bottom:20px;">Institución Educativa Privada</div>
+          ${d.direccion ? `<div style="display:flex;gap:12px;align-items:flex-start;margin-bottom:14px;"><span style="font-size:1.2rem;">📍</span><div><div style="font-size:0.78rem;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">Dirección</div><div style="font-size:0.88rem;color:var(--text);margin-top:2px;">${d.direccion}</div></div></div>` : ''}
+          ${d.telefono ? `<div style="display:flex;gap:12px;align-items:center;margin-bottom:14px;"><span style="font-size:1.2rem;">📞</span><div><div style="font-size:0.78rem;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">Teléfono</div><a href="tel:${d.telefono}" style="font-size:0.88rem;color:var(--accent);margin-top:2px;display:block;text-decoration:none;">${d.telefono}</a></div></div>` : ''}
+          ${d.email ? `<div style="display:flex;gap:12px;align-items:center;margin-bottom:14px;"><span style="font-size:1.2rem;">✉️</span><div><div style="font-size:0.78rem;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">Correo</div><a href="mailto:${d.email}" style="font-size:0.88rem;color:var(--accent);margin-top:2px;display:block;text-decoration:none;">${d.email}</div></div>` : ''}
+          ${d.horario ? `<div style="display:flex;gap:12px;align-items:flex-start;margin-bottom:14px;"><span style="font-size:1.2rem;">🕐</span><div><div style="font-size:0.78rem;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">Horario de atención</div><div style="font-size:0.88rem;color:var(--text);margin-top:2px;">${d.horario}</div></div></div>` : ''}
+          ${!d.direccion && !d.telefono && !d.email ? '<div style="text-align:center;color:var(--muted);font-size:0.85rem;padding:20px 0;">El administrador aún no ha configurado los datos de contacto</div>' : ''}
+        </div>
+      </div>`;
+  } catch(e) {
+    cont.innerHTML = '<div style="color:var(--muted);font-size:0.83rem;padding:16px;text-align:center;">Error al cargar datos de contacto</div>';
+  }
+}
+
+function compartirCarnetDigital() {
+  const alumno = _apoderadoAlumno;
+  if(!alumno) return;
+  const texto = `🪪 Carnet Digital\n${alumno.nombres} ${alumno.apellidos}\n${alumno.grado} ${alumno.seccion} — ${alumno.turno}\nDNI: ${alumno.id}`;
+  if(navigator.share) {
+    navigator.share({ title: 'Carnet Digital', text: texto }).catch(() => {});
+  } else {
+    navigator.clipboard?.writeText(texto).then(() => toast('Datos copiados al portapapeles','success'));
+  }
+}
+
+async function crearCuentasApoderadosMasivo() {
+  const statusEl = document.getElementById('apo-bulk-status');
+  statusEl.style.display = 'block';
+  statusEl.style.background = 'rgba(59,130,246,0.12)';
+  statusEl.style.border = '1px solid rgba(59,130,246,0.3)';
+  statusEl.style.color = '#60a5fa';
+  statusEl.textContent = '⏳ Obteniendo lista de alumnos...';
+
+  try {
+    const alumnos = await DB.getAlumnos();
+    let creados = 0, yaExistian = 0, errores = 0;
+    const total = alumnos.length;
+
+    for(let i = 0; i < alumnos.length; i++) {
+      const a = alumnos[i];
+      statusEl.textContent = `⏳ Procesando ${i+1}/${total}: ${a.nombres} ${a.apellidos}...`;
+      const resultado = await crearCuentaApoderado(a);
+      if(resultado === true) {
+        // Verificar si ya existía
+        const snap = await db.collection('apoderados').doc(a.id).get();
+        if(snap.exists && snap.data().creadoEn) yaExistian++;
+        else creados++;
+      } else {
+        errores++;
+      }
+      // Pequeña pausa para no saturar Firebase
+      await new Promise(r => setTimeout(r, 300));
+    }
+
+    statusEl.style.background = 'rgba(16,185,129,0.12)';
+    statusEl.style.border = '1px solid rgba(16,185,129,0.3)';
+    statusEl.style.color = '#10b981';
+    statusEl.textContent = `✅ Completado: ${creados} cuentas nuevas creadas, ${yaExistian} ya existían${errores ? `, ${errores} con error` : ''}.`;
+  } catch(e) {
+    statusEl.style.background = 'rgba(239,68,68,0.12)';
+    statusEl.style.border = '1px solid rgba(239,68,68,0.3)';
+    statusEl.style.color = '#ef4444';
+    statusEl.textContent = 'Error: ' + e.message;
+  }
+}
+
+// ── Integrar crearCuentaApoderado en saveAlumno e importaciones ──
+// Se llama desde saveAlumno, handleCSV y handleExcel después de guardar
+async function crearCuentaApoderadoSilencioso(alumno) {
+  try { await crearCuentaApoderado(alumno); } catch(e) { console.warn('crearCuentaApoderado silencioso:', e); }
+}
+
+// ══════════════════════════════════════════════════════════════
+// FIN PORTAL APODERADO
+// ══════════════════════════════════════════════════════════════
+
+</script>
+</body>
+</html>
