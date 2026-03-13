@@ -4611,7 +4611,7 @@ async function eliminarIncidente(id) {
 async function reimprimirIncidente(id) {
   const doc = await db.collection('incidentes').doc(id).get();
   if(!doc.exists) { toast('Reporte no encontrado','error'); return; }
-  await generarPDFIncidente({ ...doc.data(), fotoData: null });
+  await generarPDFIncidente({ ...doc.data(), fotoData: null, _descargar: true });
 }
 
 async function generarPDFIncidente(inc) {
@@ -4762,7 +4762,9 @@ async function generarPDFIncidente(inc) {
   doc.text('Documento generado por AsistenciaQR · ' + new Date().toLocaleString('es-PE'), W/2, 293, { align:'center' });
 
   const filename = 'incidente_' + (inc.alumnoNombre||'').replace(/\s+/g,'_') + '_' + (inc.fecha||'') + '.pdf';
-  doc.save(filename);
+
+  // Solo descargar si se llama manualmente (reimprimir), no al guardar automáticamente
+  if(inc._descargar) doc.save(filename);
 
   // Subir PDF y obtener link compartible — intenta varios servicios
   const pdfBlob = doc.output('blob');
