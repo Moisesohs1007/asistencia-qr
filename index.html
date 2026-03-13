@@ -130,6 +130,7 @@
   /* SECTIONS */
   .section { display: none; animation: fadeUp 0.3s ease; }
   .section.active { display: block; }
+  @media(max-width:700px){ #sec-scan.active { display: flex !important; } }
 
   @keyframes fadeUp {
     from { opacity:0; transform: translateY(12px); }
@@ -261,7 +262,6 @@
   /* MÓVIL: todo en pantalla sin scroll */
   @media(max-width:700px){
     #sec-scan {
-      display: flex;
       flex-direction: column;
       height: calc(100dvh - 52px - 62px - 28px); /* header + bottom-nav + padding main */
       overflow: hidden;
@@ -2389,6 +2389,7 @@ function aplicarPermisos(rol) {
 function showSectionDirect(id) {
   currentSection = id;
   document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.getElementById('scan-action-bar').style.display = 'none'; // Ocultar barra al cambiar sección
   document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
   const sec = document.getElementById('sec-'+id);
   const tab = document.getElementById('tab-'+id);
