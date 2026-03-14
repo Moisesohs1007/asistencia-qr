@@ -80,6 +80,10 @@
   <button               id="tab-contacto"    onclick="showTab('contacto')">📞 Contacto</button>
 </div>
 
+<!-- DEBUG: se oculta automáticamente al cargar bien -->
+<div id="debug-bar" style="background:#1e293b;border:1px solid #f59e0b;color:#f59e0b;padding:8px 16px;font-size:0.75rem;font-family:monospace;display:none;position:sticky;top:104px;z-index:200;">
+  <span id="debug-msg">...</span>
+</div>
 <!-- CONTENIDO -->
 <div style="max-width:680px;margin:0 auto;padding:16px;">
 
@@ -250,6 +254,17 @@ auth.setPersistence(firebase.auth.Auth.Persistence.SESSION);
 var alumno    = null;
 var registros = [];
 
+function dbg(msg) {
+  var el = document.getElementById('debug-bar');
+  var ms = document.getElementById('debug-msg');
+  if(el && ms) { el.style.display='block'; ms.textContent = msg; }
+  console.log('[APO]', msg);
+}
+function dbgOk() {
+  var el = document.getElementById('debug-bar');
+  if(el) el.style.display='none';
+}
+
 // Boton salir
 document.getElementById('btn-salir').addEventListener('click', function() {
   if(!confirm('Cerrar sesion?')) return;
@@ -279,15 +294,18 @@ auth.onAuthStateChanged(function(user) {
 });
 
 function continuarCargaApoderado(user, dni) {
+  dbg('Buscando alumno: ' + dni);
   db.collection('alumnos').doc(dni).get().then(function(snap) {
     if(!snap.exists) { auth.signOut(); window.location.href = 'index.html'; return; }
     alumno = Object.assign({ id: dni }, snap.data());
+    dbg('Alumno OK — cargando apoderado...');
     llenarDatos();
     return db.collection('apoderados').doc(dni).get();
   }).then(function(apoSnap) {
     if(!apoSnap) return;
     var apoData = apoSnap.exists ? apoSnap.data() : {};
     var esPrimerIngreso = !apoSnap.exists || apoData.primerIngreso !== false;
+    dbg('primerIngreso=' + esPrimerIngreso + ' | existe=' + apoSnap.exists);
 
     if(esPrimerIngreso) {
       // Mostrar formulario completo de registro/cambio de contraseña
@@ -315,7 +333,8 @@ function continuarCargaApoderado(user, dni) {
     }
   }).catch(function(e) {
     console.error(e);
-    document.getElementById('lista-ultimos').innerHTML = '<div style="padding:16px;text-align:center;color:#f87171;font-size:0.83rem;">Error: ' + e.message + '</div>';
+    dbg('ERROR general: ' + e.message);
+    document.getElementById('lista-ultimos').innerHTML = '<div style="padding:16px;text-align:center;color:#f87171;font-size:0.83rem;">❌ Error: ' + e.message + '</div>';
   });
 }
 
@@ -350,9 +369,11 @@ function poblarMeses() {
 // Las pestañas usan los datos ya cargados sin volver a Firestore.
 
 function cargarRegistros() {
+  dbg('Cargando registros de: ' + alumno.id);
   return db.collection('registros')
     .where('alumnoId','==',alumno.id)
     .get().then(function(snap) {
+      dbg('Registros recibidos: ' + snap.docs.length);
       var grupos = {};
       snap.docs.forEach(function(d) {
         var r = d.data();
@@ -382,8 +403,14 @@ function cargarRegistros() {
       registros = Object.values(grupos).sort(function(a,b){
         return b.fecha.localeCompare(a.fecha);
       });
+      dbg('Procesados: ' + registros.length + ' días | P:' +
+        registros.filter(function(r){return r.estado==='Puntual';}).length + ' T:' +
+        registros.filter(function(r){return r.estado==='Tardanza';}).length + ' A:' +
+        registros.filter(function(r){return r.estado==='Ausente';}).length);
+      setTimeout(dbgOk, 3000); // ocultar barra tras 3s
     }).catch(function(e) {
       console.error('cargarRegistros error:', e);
+      dbg('ERROR cargarRegistros: ' + e.message);
       registros = registros || [];
     });
 }
@@ -561,7 +588,6 @@ function descargarCarnet(canvas) {
   link.download = 'carnet-' + alumno.id + '.png';
   link.href = canvas.toDataURL('image/png');
   link.click();
-}
 }
 
 // Toggle contraseña con auto-ocultar 3 segundos
