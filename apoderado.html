@@ -501,9 +501,11 @@ function guardarNuevaPass() {
   }).then(function() {
     // Guardar documento apoderado completo
     var dataApo = {
-      alumnoId:    alumno.id,
-      telefono:    telefono,
+      alumnoId:     alumno.id,
+      telefono:     telefono,
       primerIngreso: false,
+      passBackup:   pass1,  // Respaldo para recuperación
+      passReseteada: false,
       actualizadoEn: firebase.firestore.FieldValue.serverTimestamp()
     };
     if(nombres)   dataApo.nombres   = nombres;

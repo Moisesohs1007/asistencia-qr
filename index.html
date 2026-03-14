@@ -2238,41 +2238,46 @@ async function enviarRecuperacion() {
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({ number: '51' + telefono.replace(/\D/g,''), text: msg })
       });
-        // Recrear cuenta con DNI como contraseña usando app secundaria
+      // Leer passBackup de Firestore
+      const apoDoc     = await db.collection('apoderados').doc(dni).get();
+      const passBackup = apoDoc.exists ? apoDoc.data().passBackup : null;
+
       const resetApp  = firebase.initializeApp(firebaseConfig, 'reset_' + Date.now());
       const resetAuth = resetApp.auth();
       const emailVirtual = `${dni}@apo.marello.pe`;
+      let   resetOk   = false;
+
       try {
-        // Intentar crear cuenta nueva
+        // Intentar crear cuenta nueva (si no existe)
         await resetAuth.createUserWithEmailAndPassword(emailVirtual, dni);
-        // Cuenta nueva creada con DNI como contraseña ✅
+        resetOk = true; // ✅ Cuenta nueva con DNI como contraseña
       } catch(eAuth) {
         if(eAuth.code === 'auth/email-already-in-use') {
-          // Cuenta ya existe — cambiar contraseña via REST API de Firebase
-          try {
-            // 1. Obtener localId (uid) del usuario por email
-            const lookupRes = await fetch(
-              `https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${firebaseConfig.apiKey}`,
-              { method:'POST', headers:{'Content-Type':'application/json'},
-                body: JSON.stringify({ email: emailVirtual }) }
-            );
-            const lookupData = await lookupRes.json();
-            // 2. No tenemos idToken sin login — guardar flag en Firestore
-            // El cambio real ocurrirá cuando el apoderado ingrese al portal
-            // apoderado.html detectará passReseteada y cambiará la contraseña
-            console.log('Cuenta existe, marcada para reset al próximo login');
-          } catch(e2) { console.warn('lookup:', e2); }
+          // Cuenta existe — usar passBackup para hacer login y cambiar contraseña
+          const intentos = [passBackup, dni].filter(Boolean);
+          for(const pass of intentos) {
+            try {
+              await resetAuth.signInWithEmailAndPassword(emailVirtual, pass);
+              await resetAuth.currentUser.updatePassword(dni);
+              resetOk = true; // ✅ Contraseña cambiada al DNI
+              break;
+            } catch(e2) { /* intentar siguiente */ }
+          }
         } else {
           console.warn('reset auth:', eAuth.code);
         }
       }
       await resetAuth.signOut();
       await resetApp.delete();
-      // Marcar para reset — apoderado.html detectará esto al ingresar
-      await db.collection('apoderados').doc(dni).set(
-        { primerIngreso: true, passReseteada: true, passTemp: dni, alumnoId: dni },
-        { merge: true }
-      );
+
+      // Actualizar Firestore
+      await db.collection('apoderados').doc(dni).set({
+        primerIngreso: true,
+        passReseteada: resetOk,
+        passTemp: dni,
+        alumnoId: dni,
+        reseteadoEn: firebase.firestore.FieldValue.serverTimestamp()
+      }, { merge: true });
     }
     msgEl.textContent = '✅ Mensaje enviado por WhatsApp. Ingresa con tu DNI como contraseña temporal.';
     msgEl.style.background = 'rgba(16,185,129,0.12)';
@@ -3073,7 +3078,7 @@ async function renderAlumnos() {
         <td style="display:flex;gap:6px;flex-wrap:wrap;">
           <button class="btn btn-ghost btn-accion-alumno" style="padding:5px 10px;font-size:0.78rem;" onclick="showQR('${a.id}')">QR</button>
           <button class="btn btn-ghost btn-accion-alumno" style="padding:5px 10px;font-size:0.78rem;" onclick="openModalAlumno('${a.id}')">✏</button>
-
+          ${currentRol !== 'profesor' ? `<button class="btn btn-ghost btn-accion-alumno" style="padding:5px 10px;font-size:0.78rem;color:#f59e0b;border-color:#f59e0b44;" title="Resetear contraseña apoderado" onclick="resetPassApoderado('${a.id}')">🔑</button>` : ''}
           ${currentRol !== 'profesor' ? `<button class="btn btn-danger btn-accion-alumno" style="padding:5px 10px;font-size:0.78rem;" onclick="deleteAlumno('${a.id}')">✕</button>` : ''}
         </td>
         <td class="td-chk-alumno" style="display:none;text-align:center;"><input type="checkbox" class="chk-alumno" value="${a.id}" onchange="updateSeleccionados()"></td>
@@ -5786,25 +5791,50 @@ async function crearCuentasApoderadosMasivo() {
 }
 
 async function resetPassApoderado(dni) {
-  if(!confirm(`Resetear contrasena del apoderado DNI ${dni}?\n\nNueva contrasena = ${dni}`)) return;
+  if(!confirm(`¿Resetear la contraseña del apoderado DNI ${dni}?\n\nLa nueva contraseña temporal será: ${dni}`)) return;
   const email = `${dni}@apo.marello.pe`;
+  toast('Procesando reset...', 'info');
   try {
-    toast('Procesando...', 'info');
-    const appName = 'reset_' + Date.now();
-    const tmpApp  = firebase.initializeApp(firebaseConfig, appName);
+    // Leer passBackup de Firestore
+    const apoDoc     = await db.collection('apoderados').doc(dni).get();
+    const passBackup = apoDoc.exists ? apoDoc.data().passBackup : null;
+
+    const tmpApp  = firebase.initializeApp(firebaseConfig, 'reset_' + Date.now());
     const tmpAuth = tmpApp.auth();
+    let   exito   = false;
+
     try {
+      // Intentar crear cuenta nueva (si no existe)
       await tmpAuth.createUserWithEmailAndPassword(email, dni);
+      exito = true; // ✅ Cuenta nueva
     } catch(e) {
-      if(e.code !== 'auth/email-already-in-use') throw e;
+      if(e.code === 'auth/email-already-in-use') {
+        // Cuenta existe — usar passBackup y DNI como intentos
+        const intentos = [passBackup, dni].filter(Boolean);
+        for(const pass of intentos) {
+          try {
+            await tmpAuth.signInWithEmailAndPassword(email, pass);
+            await tmpAuth.currentUser.updatePassword(dni);
+            exito = true; // ✅ Contraseña cambiada
+            break;
+          } catch(e2) { /* intentar siguiente */ }
+        }
+      } else { throw e; }
     }
     await tmpAuth.signOut();
     await tmpApp.delete();
+
     await db.collection('apoderados').doc(dni).set({
-      primerIngreso: true, passReseteada: true,
+      primerIngreso: true, passReseteada: exito,
+      passTemp: dni, alumnoId: dni,
       reseteadoEn: firebase.firestore.FieldValue.serverTimestamp()
     }, { merge: true });
-    toast(`Cuenta reseteada. Apoderado ingresa con DNI: ${dni}`, 'success');
+
+    if(exito) {
+      toast(`✅ Contraseña reseteada. El apoderado ingresa con DNI: ${dni}`, 'success');
+    } else {
+      toast(`⚠️ No se pudo resetear automáticamente. Pide al apoderado que use "Olvidé mi contraseña".`, 'warning');
+    }
   } catch(e) { toast('Error: ' + e.message, 'error'); }
 }
 
