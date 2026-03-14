@@ -396,9 +396,16 @@ function cargarRegistros() {
           grupos[key].estado = est;
         }
       });
-      // Días sin estado = Ausente
+      // Determinar estado final por día
       Object.values(grupos).forEach(function(g) {
-        if(!g.estado) g.estado = 'Ausente';
+        if(g.estado === 'Tardanza') return; // ya definido
+        if(g.horaIngreso) {
+          // Hay ingreso registrado → mínimo Puntual
+          if(!g.estado || g.estado === '') g.estado = 'Puntual';
+        } else {
+          // Sin ingreso → Ausente
+          g.estado = 'Ausente';
+        }
       });
       registros = Object.values(grupos).sort(function(a,b){
         return b.fecha.localeCompare(a.fecha);

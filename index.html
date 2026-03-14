@@ -122,11 +122,7 @@
     overflow-x: hidden;
     overflow-y: auto;
   }
-  /* Cuando sec-scan está activo, main no hace scroll */
-  body:has(#sec-scan.active) main {
-    overflow: hidden;
-    padding-bottom: 20px;
-  }
+  /* Cuando sec-scan está activo, main no hace scroll — controlado por JS */
   @media(max-width:700px){
     main { padding: 14px 12px 90px; }
     /* Ninguna sección puede tapar el bottom-nav */
@@ -276,15 +272,21 @@
      para no contaminar otras secciones
   ═══════════════════════════════════════════════════ */
 
-  /* Sección scanner: flex-col, altura exacta de ventana disponible */
+  /* Base: cuando está activo solo se muestra como flex */
   #sec-scan.active {
     display: flex !important;
     flex-direction: column;
-    /* 100vh - header(64) - padding main(28+20) */
-    height: calc(100vh - 112px);
-    overflow: hidden;
     padding-bottom: 0 !important;
     gap: 8px;
+  }
+  /* Altura fija SOLO cuando main está en modo scanner (clase añadida por JS) */
+  main.scanner-mode {
+    overflow: hidden !important;
+    padding-bottom: 0 !important;
+  }
+  main.scanner-mode #sec-scan.active {
+    height: calc(100vh - 112px);
+    overflow: hidden;
   }
 
   /* Fila superior: botones + stats en línea */
@@ -365,9 +367,16 @@
   @media(max-width:700px){
     #sec-scan.active {
       display: flex !important;
-      height: calc(100dvh - 52px - 62px - 28px);
       padding: 6px 10px 0 !important;
       gap: 6px;
+    }
+    main.scanner-mode {
+      overflow: hidden !important;
+      padding-bottom: 0 !important;
+    }
+    main.scanner-mode #sec-scan.active {
+      height: calc(100dvh - 52px - 62px - 28px);
+      overflow: hidden;
     }
     #sec-scan .scan-top-bar { flex-wrap: wrap; gap: 6px; }
     #sec-scan .stats-inline-bar { display: none; }
@@ -1085,8 +1094,8 @@
           <button type="button" onclick="togglePassApoderado()" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--muted);font-size:1.1rem;padding:4px;">👁</button>
         </div>
       </div>
-      <button class="btn btn-primary" onclick="window.doLoginApoderado && window.doLoginApoderado()" id="btn-login-apoderado" style="width:100%;justify-content:center;padding:12px;background:var(--navy,#1a2b5e);border-color:var(--navy,#1a2b5e);">
-        Ingresar como Apoderado
+      <button class="btn btn-primary" onclick="window.doLoginApoderado && window.doLoginApoderado()" id="btn-login-apoderado" style="width:100%;justify-content:center;padding:13px;font-size:0.95rem;font-weight:700;background:linear-gradient(135deg,#1d4ed8,#3b82f6);border-color:#3b82f6;box-shadow:0 4px 16px rgba(59,130,246,0.4);letter-spacing:0.2px;">
+        👨‍👩‍👧 Ingresar como Apoderado
       </button>
 
     </div>
@@ -2483,10 +2492,23 @@ function showSectionDirect(id) {
   const tab = document.getElementById('tab-'+id);
   if(sec) sec.classList.add('active');
   if(tab) tab.classList.add('active');
+
+  // ── Controlar altura del scanner: clase scanner-mode solo en pestaña Escanear ──
+  const mainEl = document.querySelector('main');
+  if(id === 'scan') {
+    mainEl.classList.add('scanner-mode');
+    mainEl.style.overflow = 'hidden';
+    mainEl.style.paddingBottom = '0';
+  } else {
+    mainEl.classList.remove('scanner-mode');
+    mainEl.style.overflow = '';
+    mainEl.style.paddingBottom = '';
+  }
+
   // Scroll al top siempre al cambiar sección
   window.scrollTo({ top: 0, behavior: 'instant' });
   if(id==='alumnos') { limpiarFiltrosAlumnos(); }
-  if(id==='registro') { limpiarFiltrosRegistro(); } // Sin setTimeout — ejecutar directo
+  if(id==='registro') { limpiarFiltrosRegistro(); }
   if(id==='reportes') renderReportes();
   if(id==='scan') updateStats();
   if(id==='usuarios') renderUsuarios();
