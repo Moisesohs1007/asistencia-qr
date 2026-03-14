@@ -259,10 +259,21 @@ function continuarCargaApoderado(user, dni) {
     return db.collection('apoderados').doc(dni).get();
   }).then(function(apoSnap) {
     if(!apoSnap) return;
-    var esPrimerIngreso = !apoSnap.exists || apoSnap.data().primerIngreso !== false;
+    var apoData = apoSnap.exists ? apoSnap.data() : {};
+    var esPrimerIngreso = !apoSnap.exists || apoData.primerIngreso !== false;
+
+    // Si hay un reset pendiente — cambiar contraseña automáticamente al DNI
+    if(apoData.passReseteada && apoData.passTemp) {
+      auth.currentUser.updatePassword(apoData.passTemp).then(function() {
+        return db.collection('apoderados').doc(dni).set(
+          { passReseteada: false, passTemp: null }, { merge: true }
+        );
+      }).catch(function(e) { console.warn('auto reset pass:', e); });
+    }
+
     if(esPrimerIngreso) {
       // Mostrar formulario completo de registro
-      var datosApo = apoSnap.exists ? apoSnap.data() : {};
+      var datosApo = apoData;
       // Pre-llenar si ya hay datos
       document.getElementById('inp-apo-nombres').value   = datosApo.nombres   || alumno.apoderadoNombres   || '';
       document.getElementById('inp-apo-apellidos').value = datosApo.apellidos  || alumno.apoderadoApellidos || '';

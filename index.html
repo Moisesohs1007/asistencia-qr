@@ -2243,20 +2243,34 @@ async function enviarRecuperacion() {
       const resetAuth = resetApp.auth();
       const emailVirtual = `${dni}@apo.marello.pe`;
       try {
-        // Intentar crear cuenta nueva (si ya existe, ignorar error)
+        // Intentar crear cuenta nueva
         await resetAuth.createUserWithEmailAndPassword(emailVirtual, dni);
+        // Cuenta nueva creada con DNI como contraseña ✅
       } catch(eAuth) {
-        if(eAuth.code !== 'auth/email-already-in-use') console.warn('reset auth:', eAuth.code);
-        // Si ya existe, iniciar sesión y cambiar contraseña
-        try {
-          // No podemos cambiar pass sin saber la actual — marcar para reset forzado
-        } catch(e2) {}
+        if(eAuth.code === 'auth/email-already-in-use') {
+          // Cuenta ya existe — cambiar contraseña via REST API de Firebase
+          try {
+            // 1. Obtener localId (uid) del usuario por email
+            const lookupRes = await fetch(
+              `https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${firebaseConfig.apiKey}`,
+              { method:'POST', headers:{'Content-Type':'application/json'},
+                body: JSON.stringify({ email: emailVirtual }) }
+            );
+            const lookupData = await lookupRes.json();
+            // 2. No tenemos idToken sin login — guardar flag en Firestore
+            // El cambio real ocurrirá cuando el apoderado ingrese al portal
+            // apoderado.html detectará passReseteada y cambiará la contraseña
+            console.log('Cuenta existe, marcada para reset al próximo login');
+          } catch(e2) { console.warn('lookup:', e2); }
+        } else {
+          console.warn('reset auth:', eAuth.code);
+        }
       }
       await resetAuth.signOut();
       await resetApp.delete();
-      // Marcar primerIngreso con set+merge (funciona aunque no exista el doc)
+      // Marcar para reset — apoderado.html detectará esto al ingresar
       await db.collection('apoderados').doc(dni).set(
-        { primerIngreso: true, passReseteada: true, alumnoId: dni },
+        { primerIngreso: true, passReseteada: true, passTemp: dni, alumnoId: dni },
         { merge: true }
       );
     }
