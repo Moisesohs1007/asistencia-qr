@@ -570,28 +570,20 @@ function descargarIncidente(idx) {
   if(!inc) return;
 
   var sev = inc.severidad || inc.gravedad || 'No especificada';
-  var lines = [
-    'REPORTE DE INCIDENTE',
-    'I.E.P. San José Marello',
-    '',
-    'ALUMNO: ' + (inc.alumnoNombre || (alumno.nombres + ' ' + alumno.apellidos)),
-    'GRADO:  ' + (inc.grado||alumno.grado) + ' ' + (inc.seccion||alumno.seccion) + ' — ' + (inc.turno||alumno.turno),
-    'DNI:    ' + alumno.id,
-    '',
-    'TIPO DE INCIDENTE: ' + (inc.tipo || ''),
-    'SEVERIDAD:         ' + sev,
-    'FECHA:             ' + fStr(inc.fecha),
-    'HORA:              ' + (inc.hora || ''),
-    '',
-    'DESCRIPCIÓN:',
-    (inc.descripcion || 'Sin descripción'),
-    '',
-    (inc.medidas ? 'MEDIDAS TOMADAS:
-' + inc.medidas : ''),
-    '',
-    'REPORTADO POR: ' + (inc.responsableNombre || inc.reportadoPor || ''),
-  ].join('
-');
+  var nl = '\n';
+  var lines = 'REPORTE DE INCIDENTE' + nl
+    + 'I.E.P. San Jose Marello' + nl + nl
+    + 'ALUMNO: ' + (inc.alumnoNombre || (alumno.nombres + ' ' + alumno.apellidos)) + nl
+    + 'GRADO:  ' + (inc.grado||alumno.grado) + ' ' + (inc.seccion||alumno.seccion) + ' - ' + (inc.turno||alumno.turno) + nl
+    + 'DNI:    ' + alumno.id + nl + nl
+    + 'TIPO DE INCIDENTE: ' + (inc.tipo || '') + nl
+    + 'SEVERIDAD:         ' + sev + nl
+    + 'FECHA:             ' + fStr(inc.fecha) + nl
+    + 'HORA:              ' + (inc.hora || '') + nl + nl
+    + 'DESCRIPCION:' + nl
+    + (inc.descripcion || 'Sin descripcion') + nl + nl
+    + (inc.medidas ? 'MEDIDAS TOMADAS: ' + inc.medidas + nl + nl : '')
+    + 'REPORTADO POR: ' + (inc.responsableNombre || inc.reportadoPor || '');
 
   // Generar PDF con jsPDF
   if(typeof window.jspdf !== 'undefined') {
