@@ -272,47 +272,104 @@
     .qr-frame { width: 160px; height: 160px; }
   }
   /* SCANNER DESKTOP — pantalla completa */
+  /* ─── SCANNER DESKTOP: todo en pantalla, sin scroll ─── */
   #sec-scan {
     display: flex;
     flex-direction: column;
-    height: calc(100vh - 64px - 48px); /* altura total - header - padding */
+    /* 100vh - header(64px) - padding top+bottom main(28+20px) */
+    height: calc(100vh - 112px);
     overflow: hidden;
     padding-bottom: 0 !important;
+    gap: 8px;
   }
-  #sec-scan .scan-controls { flex-shrink: 0; margin-bottom: 12px; }
-  #sec-scan .scanner-layout {
+
+  /* Fila superior: botones cámara + stats en línea */
+  .scan-top-bar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-shrink: 0;
+  }
+  .scan-controls { display: flex; gap: 8px; flex-shrink: 0; }
+
+  /* Stats compactas inline (desktop) */
+  .stats-inline-bar {
+    display: flex;
+    gap: 8px;
+    flex: 1;
+    justify-content: flex-end;
+  }
+  .sib-card {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 7px 14px;
+    white-space: nowrap;
+  }
+  .sib-num {
+    font-family: var(--font-display);
+    font-size: 1.15rem;
+    font-weight: 800;
+    line-height: 1;
+  }
+  .sib-label { font-size: 0.72rem; color: var(--muted); }
+  .sib-card.blue   .sib-num { color: var(--accent); }
+  .sib-card.green  .sib-num { color: var(--success); }
+  .sib-card.yellow .sib-num { color: var(--warning); }
+  .sib-card.red    .sib-num { color: var(--danger); }
+
+  /* Grid principal: cámara | tarjeta */
+  .scanner-layout {
+    display: grid;
+    grid-template-columns: 1.15fr 0.85fr;
+    gap: 14px;
     flex: 1;
     min-height: 0;
   }
-  #sec-scan .stats-row { flex-shrink: 0; margin-top: 12px; }
-  #qr-reader {
+
+  /* Columna izquierda: flex-col, cámara crece */
+  .scan-col-left {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-height: 0;
+    height: 100%;
+  }
+  .scan-col-left #qr-reader {
+    flex: 1;
+    min-height: 0;
     height: 100% !important;
     aspect-ratio: unset !important;
   }
-  /* La columna derecha siempre ocupa altura completa */
-  .result-box {
-    height: 100%;
-    overflow-y: auto;
-    min-height: 320px;
-  }
+  .scan-col-left .scan-status { flex-shrink: 0; }
+  .scan-col-left .manual-input { flex-shrink: 0; margin: 0; }
 
-  .scanner-layout {
-    display: grid;
-    grid-template-columns: 1.1fr 0.9fr;
-    gap: 20px;
-  }
+  /* Columna derecha ocupa toda la altura */
+  .result-box { height: 100%; overflow-y: auto; min-height: 0; }
+
+  /* Stats móvil: ocultas en desktop */
+  .stats-row-mobile { display: none !important; }
   /* MÓVIL: todo en pantalla sin scroll */
   @media(max-width:700px){
     #sec-scan {
       flex-direction: column;
-      height: calc(100dvh - 52px - 62px - 28px); /* header + bottom-nav + padding main */
+      height: calc(100dvh - 52px - 62px - 28px);
       overflow: hidden;
       padding: 6px 10px 0 !important;
       gap: 6px;
     }
-    .scan-controls {
-      flex-shrink: 0;
+    /* En móvil: ocultar top-bar de desktop, mostrar solo botones */
+    .scan-top-bar {
+      flex-wrap: wrap;
+      gap: 6px;
     }
+    .stats-inline-bar { display: none; }
+    .scan-controls { flex: 1; }
+    .scan-controls .btn { flex: 1; min-width: 80px; justify-content: center; font-size:0.78rem; padding: 7px 8px; }
+
     .scanner-layout {
       grid-template-columns: 1fr;
       gap: 6px;
@@ -321,11 +378,12 @@
       display: flex;
       flex-direction: column;
     }
-    .scanner-layout > div:first-child {
+    .scan-col-left {
       flex: 0 0 auto;
+      height: auto;
     }
-    #qr-reader {
-      aspect-ratio: unset !important;
+    .scan-col-left #qr-reader {
+      flex: none;
       height: 200px !important;
       min-height: 200px;
       position: relative !important;
@@ -345,35 +403,18 @@
       inset: 0;
       z-index: 1;
     }
-    .qr-frame-overlay {
-      z-index: 10;
-    }
-    .scan-status {
-      padding: 4px 8px !important;
-      font-size: 0.75rem !important;
-    }
+    .qr-frame-overlay { z-index: 10; }
+    .scan-status { padding: 4px 8px !important; font-size: 0.75rem !important; }
     .manual-input {
       display: flex;
       align-items: flex-end;
       gap: 8px;
       margin-top: 4px !important;
     }
-    .manual-input .form-group {
-      flex: 1;
-      margin: 0 !important;
-    }
-    .manual-input label {
-      font-size: 0.72rem !important;
-    }
-    .manual-input input {
-      padding: 7px 10px !important;
-      font-size: 0.85rem !important;
-    }
-    .manual-input button {
-      flex-shrink: 0;
-      padding: 7px 14px !important;
-      font-size: 0.8rem !important;
-    }
+    .manual-input .form-group { flex: 1; margin: 0 !important; }
+    .manual-input label { font-size: 0.72rem !important; }
+    .manual-input input { padding: 7px 10px !important; font-size: 0.85rem !important; }
+    .manual-input button { flex-shrink: 0; padding: 7px 14px !important; font-size: 0.8rem !important; }
     .result-box {
       flex: 1;
       min-height: 0;
@@ -381,18 +422,12 @@
       padding: 10px !important;
       gap: 6px !important;
     }
-    .result-empty {
-      height: 100% !important;
-      font-size: 0.8rem;
-    }
+    .result-empty { height: 100% !important; font-size: 0.8rem; }
     .student-name { font-size: 0.95rem !important; }
     .student-meta { font-size: 0.75rem !important; }
     .info-grid { gap: 6px !important; }
     .info-item label { font-size: 0.68rem !important; }
     .info-item span  { font-size: 0.82rem !important; }
-    /* Ocultar stats en móvil para ahorrar espacio */
-    #sec-scan .stats-row { display: none; }
-
     /* Barra de botones fija en móvil */
     #scan-action-bar {
       flex-shrink: 0;
@@ -400,7 +435,6 @@
       gap: 8px;
       padding: 6px 0 4px;
     }
-    /* Ocultar botones dentro del result-student en móvil (ya están en la barra) */
     #result-student .btn-action-group { display: none; }
   }
 
@@ -1169,23 +1203,47 @@
   <!-- ===== SCAN ===== -->
   <div class="section active" id="sec-scan">
 
-    <!-- CÁMARA + CONTROLES -->
-    <div class="scan-controls">
-      <button class="btn btn-primary" id="btn-start-scan" onclick="startScanner()">
-        <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9V5a2 2 0 012-2h4M3 15v4a2 2 0 002 2h4m6-18h4a2 2 0 012 2v4m0 6v4a2 2 0 01-2 2h-4"/></svg>
-        Iniciar Cámara
-      </button>
-      <button class="btn btn-ghost" id="btn-stop-scan" onclick="stopScanner()" disabled>
-        <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 10h6v4H9z"/></svg>
-        Detener
-      </button>
+    <!-- FILA SUPERIOR: controles + stats (desktop) -->
+    <div class="scan-top-bar">
+      <!-- Botones de cámara -->
+      <div class="scan-controls">
+        <button class="btn btn-primary" id="btn-start-scan" onclick="startScanner()">
+          <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9V5a2 2 0 012-2h4M3 15v4a2 2 0 002 2h4m6-18h4a2 2 0 012 2v4m0 6v4a2 2 0 01-2 2h-4"/></svg>
+          Iniciar Cámara
+        </button>
+        <button class="btn btn-ghost" id="btn-stop-scan" onclick="stopScanner()" disabled>
+          <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 10h6v4H9z"/></svg>
+          Detener
+        </button>
+      </div>
+      <!-- Stats compactas (solo desktop) -->
+      <div class="stats-inline-bar">
+        <div class="sib-card blue">
+          <span class="sib-num" id="stat-total">0</span>
+          <span class="sib-label">Alumnos</span>
+        </div>
+        <div class="sib-card green">
+          <span class="sib-num" id="stat-hoy">0</span>
+          <span class="sib-label">Ingresos hoy</span>
+        </div>
+        <div class="sib-card yellow">
+          <span class="sib-num" id="stat-tarde">0</span>
+          <span class="sib-label">Tardanzas</span>
+        </div>
+        <div class="sib-card red">
+          <span class="sib-num" id="stat-ausentes">0</span>
+          <span class="sib-label">Ausentes</span>
+        </div>
+      </div>
     </div>
 
+    <!-- LAYOUT PRINCIPAL: cámara | tarjeta alumno -->
     <div class="scanner-layout">
-      <!-- COLUMNA IZQUIERDA: cámara -->
-      <div>
+
+      <!-- COLUMNA IZQUIERDA: cámara + manual -->
+      <div class="scan-col-left">
         <div id="qr-reader">
-          <div class="result-empty" id="cam-placeholder" style="height:100%;min-height:260px;">
+          <div class="result-empty" id="cam-placeholder" style="height:100%;min-height:200px;">
             <svg width="48" height="48" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 9V5a2 2 0 012-2h4M3 15v4a2 2 0 002 2h4m6-18h4a2 2 0 012 2v4m0 6v4a2 2 0 01-2 2h-4"/></svg>
             Presiona "Iniciar Cámara" para escanear
           </div>
@@ -1201,7 +1259,7 @@
           </div>
         </div>
         <div class="scan-status" id="scan-status">Cámara inactiva</div>
-        <div class="manual-input" style="margin-top:10px;">
+        <div class="manual-input">
           <div class="form-group">
             <label>O ingresa ID manualmente</label>
             <input type="text" id="manual-id" placeholder="Ej: 12345678" maxlength="8" oninput="this.value=this.value.replace(/\D/g,'')" onkeydown="if(event.key==='Enter') manualRegister()">
@@ -1210,7 +1268,7 @@
         </div>
       </div>
 
-      <!-- COLUMNA DERECHA: datos alumno -->
+      <!-- COLUMNA DERECHA: tarjeta alumno -->
       <div class="result-box" id="result-box">
         <div class="result-empty" id="result-empty">
           <div class="result-empty-icon">🪪</div>
@@ -1242,30 +1300,18 @@
       </div>
     </div>
 
-    <!-- BARRA BOTONES FIJA (visible en móvil cuando hay alumno escaneado) -->
+    <!-- BARRA BOTONES FIJA (solo móvil) -->
     <div id="scan-action-bar" style="display:none;">
       <button class="btn btn-success" onclick="confirmRegister('INGRESO')" style="flex:1;justify-content:center;font-size:1rem;padding:14px;">✔ Ingreso</button>
       <button class="btn btn-ghost"   onclick="confirmRegister('SALIDA')"  style="flex:1;justify-content:center;font-size:1rem;padding:14px;">🚪 Salida</button>
     </div>
 
-    <!-- STATS ABAJO -->
-    <div class="stats-row" style="margin-top:16px;">
-      <div class="stat-card blue">
-        <div class="stat-num" id="stat-total">0</div>
-        <div class="stat-label">Alumnos registrados</div>
-      </div>
-      <div class="stat-card green">
-        <div class="stat-num" id="stat-hoy">0</div>
-        <div class="stat-label">Ingresos hoy</div>
-      </div>
-      <div class="stat-card yellow">
-        <div class="stat-num" id="stat-tarde">0</div>
-        <div class="stat-label">Tardanzas hoy</div>
-      </div>
-      <div class="stat-card red">
-        <div class="stat-num" id="stat-ausentes">0</div>
-        <div class="stat-label">Ausentes hoy</div>
-      </div>
+    <!-- STATS MÓVIL (ocultas en desktop — reemplazadas por stats-inline-bar) -->
+    <div class="stats-row stats-row-mobile">
+      <div class="stat-card blue"><div class="stat-num" id="stat-total-m">0</div><div class="stat-label">Alumnos</div></div>
+      <div class="stat-card green"><div class="stat-num" id="stat-hoy-m">0</div><div class="stat-label">Ingresos hoy</div></div>
+      <div class="stat-card yellow"><div class="stat-num" id="stat-tarde-m">0</div><div class="stat-label">Tardanzas</div></div>
+      <div class="stat-card red"><div class="stat-num" id="stat-ausentes-m">0</div><div class="stat-label">Ausentes</div></div>
     </div>
   </div>
 
@@ -4348,10 +4394,21 @@ async function updateStats() {
     ]);
     const ingresosHoy = new Set(regsHoy.filter(r=>r.tipo==='INGRESO').map(r=>r.alumnoId));
     const tardanzasHoy = regsHoy.filter(r=>r.estado==='Tardanza').length;
+    const ausentes = Math.max(0, alumnos.length - ingresosHoy.size);
+    // Desktop (stats inline bar)
     document.getElementById('stat-total').textContent = alumnos.length;
     document.getElementById('stat-hoy').textContent = ingresosHoy.size;
     document.getElementById('stat-tarde').textContent = tardanzasHoy;
-    document.getElementById('stat-ausentes').textContent = Math.max(0, alumnos.length - ingresosHoy.size);
+    document.getElementById('stat-ausentes').textContent = ausentes;
+    // Móvil (stats-row-mobile) — pueden no existir si se eliminaron
+    const tm = document.getElementById('stat-total-m');
+    const hm = document.getElementById('stat-hoy-m');
+    const tdm = document.getElementById('stat-tarde-m');
+    const am = document.getElementById('stat-ausentes-m');
+    if(tm) tm.textContent = alumnos.length;
+    if(hm) hm.textContent = ingresosHoy.size;
+    if(tdm) tdm.textContent = tardanzasHoy;
+    if(am) am.textContent = ausentes;
   } catch(e) { console.error('updateStats:', e); }
 }
 
