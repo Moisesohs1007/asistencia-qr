@@ -190,11 +190,17 @@
     </div>
     <div class="form-group">
       <label>Nueva contraseña <span style="color:var(--danger);">*</span></label>
-      <input type="password" id="inp-pass1" placeholder="Mínimo 6 caracteres">
+      <div style="position:relative;">
+        <input type="password" id="inp-pass1" placeholder="Mínimo 6 caracteres" style="padding-right:44px;width:100%;box-sizing:border-box;">
+        <button type="button" onclick="togglePassFieldApo('inp-pass1',this)" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--muted);font-size:1.1rem;padding:4px;">👁</button>
+      </div>
     </div>
     <div class="form-group" style="margin-bottom:20px;">
       <label>Confirmar contraseña <span style="color:var(--danger);">*</span></label>
-      <input type="password" id="inp-pass2" placeholder="Repite la contraseña">
+      <div style="position:relative;">
+        <input type="password" id="inp-pass2" placeholder="Repite la contraseña" style="padding-right:44px;width:100%;box-sizing:border-box;">
+        <button type="button" onclick="togglePassFieldApo('inp-pass2',this)" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--muted);font-size:1.1rem;padding:4px;">👁</button>
+      </div>
     </div>
     <button class="btn btn-primary" id="btn-guardar-pass" style="width:100%;justify-content:center;padding:12px;">Guardar y continuar</button>
     <button id="btn-cancelar-pass" style="width:100%;margin-top:10px;padding:10px;background:none;border:none;color:var(--muted);cursor:pointer;font-size:0.85rem;display:none;" onclick="cancelarPrimerIngreso()">
@@ -428,6 +434,26 @@ function compartirCarnet() {
   else if(navigator.clipboard) navigator.clipboard.writeText(texto).then(function(){alert('Datos copiados');});
 }
 
+// Toggle contraseña con auto-ocultar 3 segundos
+var _passTimersApo = {};
+function togglePassFieldApo(inputId, btnEl) {
+  var inp = document.getElementById(inputId);
+  if(!inp) return;
+  if(inp.type === 'password') {
+    inp.type = 'text';
+    if(btnEl) btnEl.textContent = '🙈';
+    if(_passTimersApo[inputId]) clearTimeout(_passTimersApo[inputId]);
+    _passTimersApo[inputId] = setTimeout(function() {
+      inp.type = 'password';
+      if(btnEl) btnEl.textContent = '👁';
+    }, 3000);
+  } else {
+    inp.type = 'password';
+    if(btnEl) btnEl.textContent = '👁';
+    if(_passTimersApo[inputId]) clearTimeout(_passTimersApo[inputId]);
+  }
+}
+
 function cancelarPrimerIngreso() {
   // Cierra el modal y deja al apoderado con su contraseña temporal (el DNI)
   document.getElementById('modal-cambiar-pass').style.display = 'none';
@@ -480,20 +506,7 @@ function guardarNuevaPass() {
   btn.disabled = true;
   btn.textContent = 'Guardando...';
 
-  // Re-autenticar para evitar requires-recent-login
-  var emailActual = auth.currentUser.email;
-  var dniActual   = emailActual.replace('@apo.marello.pe', '');
-  var credential  = firebase.auth.EmailAuthProvider.credential(emailActual, dniActual);
-
-  // Intentar reautenticar silenciosamente — si falla, igual intentamos el cambio
-  Promise.resolve().then(function() {
-    return auth.currentUser.reauthenticateWithCredential(credential);
-  }).catch(function() {
-    // Ignorar error de reautenticación — continuar con updatePassword
-    return Promise.resolve();
-  }).then(function() {
-    return auth.currentUser.updatePassword(pass1);
-  }).then(function() {
+  auth.currentUser.updatePassword(pass1).then(function() {
     // Actualizar datos del alumno con teléfono
     var updateAlumno = {
       telefono:           telefono,

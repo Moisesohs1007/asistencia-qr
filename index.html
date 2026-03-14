@@ -919,10 +919,7 @@
     </div>
 
     <div class="login-error" id="login-error"></div>
-    <!-- Bloqueo timer -->
-    <div id="login-blocked" style="display:none;text-align:center;background:rgba(248,113,113,0.12);border:1px solid rgba(248,113,113,0.3);border-radius:10px;padding:12px;margin-bottom:12px;color:var(--danger);font-size:0.85rem;">
-      🔒 Acceso bloqueado por <strong id="login-blocked-time">10:00</strong>
-    </div>
+
 
     <!-- PANEL PERSONAL -->
     <div id="panel-login-personal">
@@ -958,11 +955,7 @@
       <button class="btn btn-primary" onclick="window.doLoginApoderado && window.doLoginApoderado()" id="btn-login-apoderado" style="width:100%;justify-content:center;padding:12px;background:var(--navy,#1a2b5e);border-color:var(--navy,#1a2b5e);">
         Ingresar como Apoderado
       </button>
-      <div style="text-align:center;margin-top:14px;">
-        <button onclick="mostrarRecuperarPass()" style="background:none;border:none;color:var(--accent);cursor:pointer;font-size:0.82rem;text-decoration:underline;">
-          ¿Olvidé mi contraseña?
-        </button>
-      </div>
+
     </div>
 
     <div id="login-loading" style="text-align:center;color:var(--muted);font-size:0.85rem;margin-top:12px;display:none;">
@@ -1000,26 +993,7 @@
   </div>
 </div>
 
-<!-- MODAL: Recuperar contraseña por WhatsApp -->
-<div id="modal-recuperar-pass" style="display:none;position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.7);align-items:center;justify-content:center;padding:16px;">
-  <div style="background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:32px;width:100%;max-width:400px;box-shadow:0 24px 64px rgba(0,0,0,0.5);position:relative;">
-    <button onclick="closeModal('modal-recuperar-pass')" style="position:absolute;top:14px;right:14px;background:none;border:none;color:var(--muted);cursor:pointer;font-size:1.2rem;line-height:1;padding:4px 8px;border-radius:6px;">✕</button>
-    <div style="text-align:center;margin-bottom:20px;">
-      <div style="font-size:2.5rem;margin-bottom:8px;">📱</div>
-      <div style="font-size:1.1rem;font-weight:800;color:var(--text);">Recuperar contraseña</div>
-      <div style="font-size:0.82rem;color:var(--muted);margin-top:6px;">Ingresa el DNI del alumno y te enviaremos la contraseña por WhatsApp</div>
-    </div>
-    <div id="recuperar-pass-msg" style="display:none;border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:0.83rem;"></div>
-    <div class="form-group" style="margin-bottom:22px;">
-      <label>DNI del alumno</label>
-      <input type="text" id="recuperar-dni" placeholder="Ej: 74512389" maxlength="8" inputmode="numeric" style="width:100%;">
-    </div>
-    <button class="btn btn-primary" onclick="enviarRecuperacion()" style="width:100%;justify-content:center;padding:12px;background:#25d366;border-color:#25d366;">
-      📲 Enviar por WhatsApp
-    </button>
-    <button onclick="closeModal('modal-recuperar-pass')" style="width:100%;margin-top:10px;background:none;border:none;color:var(--muted);cursor:pointer;font-size:0.85rem;">Cancelar</button>
-  </div>
-</div>
+
 
 <header>
   <div class="logo">Asistencia<span>QR</span></div>
@@ -1520,12 +1494,7 @@
           <button class="btn btn-ghost" id="btn-configurar-privilegios" onclick="abrirModalPrivilegios()" style="padding:6px 12px;font-size:0.8rem;" disabled>⚙ Configurar</button>
         </div>
       </div>
-      <div id="u-recuperar-pass-group" style="display:none;margin-top:4px;">
-        <button onclick="enviarRecuperacionUsuario()" style="width:100%;padding:10px;border-radius:10px;border:1px solid #25d366;background:rgba(37,211,102,0.08);color:#25d366;cursor:pointer;font-size:0.85rem;font-weight:600;">
-          📲 Enviar nueva contraseña por WhatsApp
-        </button>
-        <div id="u-recuperar-msg" style="display:none;border-radius:8px;padding:8px 12px;margin-top:8px;font-size:0.8rem;"></div>
-      </div>
+
       <div style="display:flex;gap:10px;margin-top:20px;">
         <button class="btn btn-primary" onclick="saveUsuario()" style="flex:1;justify-content:center;">Guardar</button>
         <button class="btn btn-ghost" onclick="closeModal('modal-usuario')" style="flex:1;justify-content:center;">Cancelar</button>
@@ -1994,25 +1963,40 @@ function resetInactTimer() {
 // LOGIN / AUTH
 // ============================================================
 window.toggleUsuarioPass = function() {
-  const inp = document.getElementById('u-pass');
   const btn = document.getElementById('btn-toggle-upass');
-  if(!inp) return;
-  if(inp.type === 'password') { inp.type = 'text'; btn.textContent = '🙈'; }
-  else { inp.type = 'password'; btn.textContent = '👁'; }
+  togglePassField('u-pass', btn);
 };
 
+// Función central de toggle contraseña con auto-ocultar en 3 segundos
+let _passTimers = {};
+function togglePassField(inputId, btnEl) {
+  const inp = document.getElementById(inputId);
+  if(!inp) return;
+  if(inp.type === 'password') {
+    inp.type = 'text';
+    if(btnEl) btnEl.textContent = '🙈';
+    // Auto-ocultar después de 3 segundos
+    if(_passTimers[inputId]) clearTimeout(_passTimers[inputId]);
+    _passTimers[inputId] = setTimeout(() => {
+      inp.type = 'password';
+      if(btnEl) btnEl.textContent = '👁';
+    }, 3000);
+  } else {
+    inp.type = 'password';
+    if(btnEl) btnEl.textContent = '👁';
+    if(_passTimers[inputId]) clearTimeout(_passTimers[inputId]);
+  }
+}
+
 window.togglePass = function() {
-  const inp = document.getElementById('login-pass');
   const btn = document.getElementById('btn-toggle-pass');
-  if(inp.type === 'password') { inp.type = 'text'; btn.textContent = '🙈'; }
-  else { inp.type = 'password'; btn.textContent = '👁'; }
+  togglePassField('login-pass', btn);
 };
 
 // ══════════════════════════════════════════════
 // SISTEMA LOGIN APODERADO
 // ══════════════════════════════════════════════
 let _loginTab = 'personal'; // 'personal' | 'apoderado'
-let _loginBlockedUntil = 0;
 let _loginIntentos = 0;
 let _blockTimer = null;
 let _apoderadoUID = null; // UID Firebase del apoderado logueado
@@ -2050,34 +2034,10 @@ function switchLoginTab(tab) {
 }
 
 function togglePassApoderado() {
-  const inp = document.getElementById('login-pass-apoderado');
-  inp.type = inp.type === 'password' ? 'text' : 'password';
+  togglePassField('login-pass-apoderado', event.currentTarget);
 }
 
-function mostrarBloqueo(segundos) {
-  document.getElementById('login-blocked').style.display = 'block';
-  document.getElementById('btn-login-apoderado').disabled = true;
-  document.getElementById('login-dni-apoderado').disabled = true;
-  document.getElementById('login-pass-apoderado').disabled = true;
-  if(_blockTimer) clearInterval(_blockTimer);
-  let remaining = segundos;
-  const updateTimer = () => {
-    const m = Math.floor(remaining/60).toString().padStart(2,'0');
-    const s = (remaining%60).toString().padStart(2,'0');
-    document.getElementById('login-blocked-time').textContent = `${m}:${s}`;
-    if(remaining <= 0) {
-      clearInterval(_blockTimer);
-      document.getElementById('login-blocked').style.display = 'none';
-      document.getElementById('btn-login-apoderado').disabled = false;
-      document.getElementById('login-dni-apoderado').disabled = false;
-      document.getElementById('login-pass-apoderado').disabled = false;
-      _loginIntentos = 0;
-    }
-    remaining--;
-  };
-  updateTimer();
-  _blockTimer = setInterval(updateTimer, 1000);
-}
+
 
 window.doLoginApoderado = async function() {
   const dni   = document.getElementById('login-dni-apoderado').value.trim();
@@ -2085,7 +2045,6 @@ window.doLoginApoderado = async function() {
   const errEl = document.getElementById('login-error');
   errEl.style.display = 'none';
 
-  if(Date.now() < _loginBlockedUntil) return;
   if(!dni || !pass) { errEl.textContent = 'Ingresa el DNI y la contraseña'; errEl.style.display = 'block'; return; }
   if(!/^\d{8}$/.test(dni)) { errEl.textContent = 'El DNI debe tener 8 dígitos'; errEl.style.display = 'block'; return; }
 
@@ -2136,15 +2095,13 @@ window.doLoginApoderado = async function() {
     document.getElementById('login-loading').style.display  = 'none';
     document.getElementById('btn-login-apoderado').disabled = false;
     _loginIntentos++;
-    if(_loginIntentos >= 3) {
-      _loginBlockedUntil = Date.now() + 10 * 60 * 1000;
-      mostrarBloqueo(600);
-      errEl.textContent = 'Demasiados intentos. Acceso bloqueado por 10 minutos.';
-    } else if(err.code === 'alumno-no-encontrado') {
+    if(err.code === 'alumno-no-encontrado') {
       errEl.textContent = err.message;
-      _loginIntentos = 0; // No contar este como intento fallido
+      _loginIntentos = 0;
+    } else if(_loginIntentos % 3 === 0) {
+      errEl.textContent = 'DNI o contraseña incorrectos. Si no recuerdas tu contraseña, acércate a la administración del colegio.';
     } else if(err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
-      errEl.textContent = `DNI o contraseña incorrectos. Intento ${_loginIntentos}/3`;
+      errEl.textContent = 'DNI o contraseña incorrectos.';
     } else {
       errEl.textContent = 'Error: ' + (err.message || err.code);
     }
@@ -2193,149 +2150,6 @@ async function confirmarCambioPass() {
 }
 
 // Recuperar contraseña por WhatsApp
-function mostrarRecuperarPass() {
-  document.getElementById('recuperar-dni').value = '';
-  document.getElementById('recuperar-pass-msg').style.display = 'none';
-  document.getElementById('modal-recuperar-pass').style.display = 'flex';
-}
-
-async function enviarRecuperacion() {
-  const dni = document.getElementById('recuperar-dni').value.trim();
-  const msgEl = document.getElementById('recuperar-pass-msg');
-  if(!/^\d{8}$/.test(dni)) {
-    msgEl.textContent = 'Ingresa un DNI válido de 8 dígitos';
-    msgEl.style.background = 'rgba(248,113,113,0.15)';
-    msgEl.style.color = 'var(--danger)';
-    msgEl.style.display = 'block';
-    return;
-  }
-  try {
-    // Verificar que existe el alumno
-    const snap = await db.collection('alumnos').doc(dni).get();
-    if(!snap.exists) {
-      msgEl.textContent = 'No se encontró ningún alumno con ese DNI';
-      msgEl.style.background = 'rgba(248,113,113,0.15)';
-      msgEl.style.color = 'var(--danger)';
-      msgEl.style.display = 'block';
-      return;
-    }
-    const alumnoData = snap.data();
-    const telefono = alumnoData.telefono;
-    if(!telefono) {
-      msgEl.textContent = 'No hay número de teléfono registrado. Contacta al colegio.';
-      msgEl.style.background = 'rgba(248,113,113,0.15)';
-      msgEl.style.color = 'var(--danger)';
-      msgEl.style.display = 'block';
-      return;
-    }
-    // Leer config Factiliza
-    const cfg = await db.collection('config').doc('factiliza').get();
-    if(cfg.exists) {
-      const { token, instancia } = cfg.data();
-      const msg = `🔐 *Recuperación de contraseña*\n\nEstimado apoderado de *${alumnoData.nombres} ${alumnoData.apellidos}*,\n\nSu contraseña ha sido restablecida.\n\n📱 *Contraseña temporal:* ${dni}\n\nIngrese con su DNI y esta contraseña, luego cámbiela por una nueva.\n\n🌐 Acceso: ${window.location.origin}${window.location.pathname.replace('index.html','')}apoderado.html`;
-      await fetch(`https://apiwsp.factiliza.com/v1/message/sendtext/${instancia}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify({ number: '51' + telefono.replace(/\D/g,''), text: msg })
-      });
-      // Leer passBackup de Firestore
-      const apoDoc     = await db.collection('apoderados').doc(dni).get();
-      const passBackup = apoDoc.exists ? apoDoc.data().passBackup : null;
-
-      const resetApp  = firebase.initializeApp(firebaseConfig, 'reset_' + Date.now());
-      const resetAuth = resetApp.auth();
-      const emailVirtual = `${dni}@apo.marello.pe`;
-      let   resetOk   = false;
-
-      try {
-        // Intentar crear cuenta nueva (si no existe)
-        await resetAuth.createUserWithEmailAndPassword(emailVirtual, dni);
-        resetOk = true; // ✅ Cuenta nueva con DNI como contraseña
-      } catch(eAuth) {
-        if(eAuth.code === 'auth/email-already-in-use') {
-          // Cuenta existe — usar passBackup para hacer login y cambiar contraseña
-          const intentos = [passBackup, dni].filter(Boolean);
-          for(const pass of intentos) {
-            try {
-              await resetAuth.signInWithEmailAndPassword(emailVirtual, pass);
-              await resetAuth.currentUser.updatePassword(dni);
-              resetOk = true; // ✅ Contraseña cambiada al DNI
-              break;
-            } catch(e2) { /* intentar siguiente */ }
-          }
-        } else {
-          console.warn('reset auth:', eAuth.code);
-        }
-      }
-      await resetAuth.signOut();
-      await resetApp.delete();
-
-      // Actualizar Firestore
-      await db.collection('apoderados').doc(dni).set({
-        primerIngreso: true,
-        passReseteada: resetOk,
-        passTemp: dni,
-        alumnoId: dni,
-        reseteadoEn: firebase.firestore.FieldValue.serverTimestamp()
-      }, { merge: true });
-    }
-    msgEl.textContent = '✅ Mensaje enviado por WhatsApp. Ingresa con tu DNI como contraseña temporal.';
-    msgEl.style.background = 'rgba(16,185,129,0.12)';
-    msgEl.style.color = '#10b981';
-    msgEl.style.display = 'block';
-    // Cerrar modal automáticamente después de 3 segundos
-    setTimeout(() => closeModal('modal-recuperar-pass'), 3000);
-  } catch(e) {
-    console.error('enviarRecuperacion:', e);
-    // Si el error es de permisos en Firestore, igual el WhatsApp pudo enviarse
-    if(e.code === 'permission-denied' || e.message.includes('permission')) {
-      msgEl.textContent = '✅ Mensaje enviado. Ingresa con tu DNI como contraseña temporal.';
-      msgEl.style.background = 'rgba(16,185,129,0.12)';
-      msgEl.style.color = '#10b981';
-    } else {
-      msgEl.textContent = 'Error al procesar la solicitud: ' + e.message;
-      msgEl.style.background = 'rgba(248,113,113,0.15)';
-      msgEl.style.color = 'var(--danger)';
-    }
-    msgEl.style.display = 'block';
-  }
-}
-
-// ══════════════════════════════════════════════
-// FIN SISTEMA LOGIN APODERADO
-// ══════════════════════════════════════════════
-
-window.doLogin = function() {
-  const email = document.getElementById('login-email').value.trim();
-  const pass  = document.getElementById('login-pass').value;
-  const errEl = document.getElementById('login-error');
-  const loadEl= document.getElementById('login-loading');
-  errEl.style.display = 'none';
-  if(!email||!pass){ errEl.textContent='Completa todos los campos'; errEl.style.display='block'; return; }
-  document.getElementById('btn-login').disabled = true;
-  loadEl.style.display = 'block';
-  auth.signInWithEmailAndPassword(email, pass)
-    .then(cred => {
-      console.log('Auth OK, uid:', cred.user.uid);
-    })
-    .catch(err => {
-      loadEl.style.display = 'none';
-      document.getElementById('btn-login').disabled = false;
-      console.error('Login error:', err.code, err.message);
-      const msgs = {
-        'auth/invalid-email': 'Correo inválido',
-        'auth/user-not-found': 'Usuario no encontrado',
-        'auth/wrong-password': 'Contraseña incorrecta',
-        'auth/invalid-credential': 'Correo o contraseña incorrectos',
-        'auth/too-many-requests': 'Demasiados intentos, espera unos minutos',
-        'auth/network-request-failed': 'Error de conexión a internet',
-        'auth/user-disabled': 'Usuario desactivado',
-      };
-      errEl.textContent = msgs[err.code] || ('Error: ' + err.code);
-      errEl.style.display = 'block';
-    });
-};
-
 function doLogout() {
   clearTimeout(_inactTimer);
   clearTimeout(_inactWarning);
@@ -4420,7 +4234,6 @@ async function openModalUsuario(uid, nombre, rol, email) {
       // Cargar teléfono
       document.getElementById('u-telefono').value = uData.telefono || '';
       // Mostrar botón recuperar solo si tiene teléfono
-      document.getElementById('u-recuperar-pass-group').style.display = uData.telefono ? 'block' : 'none';
       document.getElementById('u-recuperar-msg').style.display = 'none';
       const cargoSel = document.getElementById('u-cargo-select');
       const cargoCustom = document.getElementById('u-cargo-custom');
@@ -4445,7 +4258,6 @@ async function openModalUsuario(uid, nombre, rol, email) {
     document.getElementById('u-email').readOnly = false;
     document.getElementById('u-email').style.opacity = '1';
     ['u-nombre','u-email','u-telefono'].forEach(x => document.getElementById(x).value = '');
-    document.getElementById('u-recuperar-pass-group').style.display = 'none';
     document.getElementById('u-rol').value = 'portero';
     document.getElementById('u-cargo-select').value = '';
     document.getElementById('u-cargo-custom').value = '';
@@ -4496,7 +4308,6 @@ async function saveUsuario() {
       const telefonoEdit = document.getElementById('u-telefono').value.trim();
       await db.collection('usuarios').doc(editingUsuarioId).update({ nombre, rol, cargo, telefono: telefonoEdit, restringir, asignaciones });
       // Mostrar/ocultar botón recuperar según teléfono
-      document.getElementById('u-recuperar-pass-group').style.display = telefonoEdit ? 'block' : 'none';
       // Si se ingresó nueva contraseña, cambiarla
       if(pass && pass.length >= 6) {
         // Re-autenticar como admin no es posible en client SDK para otros usuarios
@@ -4517,78 +4328,6 @@ async function saveUsuario() {
   }
 }
 
-async function enviarRecuperacionUsuario() {
-  const msgEl = document.getElementById('u-recuperar-msg');
-  const telefono = document.getElementById('u-telefono').value.trim();
-  const nombre   = document.getElementById('u-nombre').value.trim();
-  const email    = document.getElementById('u-email').value.trim();
-  msgEl.style.display = 'none';
-
-  if(!telefono || !/^\d{9}$/.test(telefono)) {
-    msgEl.textContent = 'Guarda primero el teléfono del usuario';
-    msgEl.style.background = 'rgba(248,113,113,0.15)';
-    msgEl.style.color = 'var(--danger)';
-    msgEl.style.display = 'block';
-    return;
-  }
-
-  // Generar contraseña temporal aleatoria de 8 caracteres
-  const nuevaPass = Math.random().toString(36).slice(2,6).toUpperCase() + Math.floor(1000+Math.random()*9000);
-
-  try {
-    // Cambiar contraseña usando app secundaria
-    const tmpApp  = firebase.initializeApp(firebaseConfig, 'reset_usr_' + Date.now());
-    const tmpAuth = tmpApp.auth();
-    // Iniciar sesión con credenciales actuales no es posible sin saber la contraseña
-    // Recrear la cuenta con nueva contraseña tampoco sin Admin SDK
-    // Solución: guardar la nueva pass en Firestore y enviarla por WhatsApp
-    // El usuario deberá usar "¿Olvidé mi contraseña?" con el email en Firebase
-    await tmpAuth.signOut();
-    await tmpApp.delete();
-
-    // Enviar por WhatsApp
-    const cfg = await getFactilizaConfig();
-    if(!cfg?.token || !cfg?.instancia) {
-      msgEl.textContent = 'WhatsApp no configurado. Ve a Configuración → WhatsApp.';
-      msgEl.style.background = 'rgba(248,113,113,0.15)';
-      msgEl.style.color = 'var(--danger)';
-      msgEl.style.display = 'block';
-      return;
-    }
-    const msg = `🔐 *Recuperación de contraseña — Sistema de Asistencia*
-
-Hola *${nombre}*,
-
-Se ha solicitado el restablecimiento de tu contraseña.
-
-📧 *Usuario:* ${email}
-
-Para restablecer tu contraseña ingresa a:
-🌐 ${window.location.origin}${window.location.pathname}
-
-Y usa la opción *"¿Olvidé mi contraseña?"* con tu correo registrado.
-
-Si no solicitaste este cambio, ignora este mensaje.`;
-
-    const num = '51' + telefono.replace(/\D/g,'');
-    const res = await fetch(`https://apiwsp.factiliza.com/v1/message/sendtext/${cfg.instancia}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${cfg.token}` },
-      body: JSON.stringify({ number: num, text: msg })
-    });
-
-    msgEl.textContent = '✅ Instrucciones enviadas por WhatsApp';
-    msgEl.style.background = 'rgba(16,185,129,0.12)';
-    msgEl.style.color = '#10b981';
-    msgEl.style.display = 'block';
-    setTimeout(() => { msgEl.style.display = 'none'; }, 4000);
-  } catch(e) {
-    msgEl.textContent = 'Error: ' + e.message;
-    msgEl.style.background = 'rgba(248,113,113,0.15)';
-    msgEl.style.color = 'var(--danger)';
-    msgEl.style.display = 'block';
-  }
-}
 
 async function deleteUsuario(uid) {
   if(uid === currentUser.uid){ toast('No puedes eliminar tu propia cuenta','warning'); return; }
@@ -5791,49 +5530,52 @@ async function crearCuentasApoderadosMasivo() {
 }
 
 async function resetPassApoderado(dni) {
-  if(!confirm(`¿Resetear la contraseña del apoderado DNI ${dni}?\n\nLa nueva contraseña temporal será: ${dni}`)) return;
+  if(!confirm(`¿Resetear la contraseña del apoderado DNI ${dni}?\n\nLa nueva contraseña será el DNI: ${dni}`)) return;
   const email = `${dni}@apo.marello.pe`;
-  toast('Procesando reset...', 'info');
+  toast('Procesando...', 'info');
   try {
-    // Leer passBackup de Firestore
-    const apoDoc     = await db.collection('apoderados').doc(dni).get();
-    const passBackup = apoDoc.exists ? apoDoc.data().passBackup : null;
-
     const tmpApp  = firebase.initializeApp(firebaseConfig, 'reset_' + Date.now());
     const tmpAuth = tmpApp.auth();
     let   exito   = false;
-
     try {
-      // Intentar crear cuenta nueva (si no existe)
       await tmpAuth.createUserWithEmailAndPassword(email, dni);
-      exito = true; // ✅ Cuenta nueva
+      exito = true; // Cuenta nueva creada con DNI
     } catch(e) {
       if(e.code === 'auth/email-already-in-use') {
-        // Cuenta existe — usar passBackup y DNI como intentos
+        // Usar REST API para cambiar contraseña
+        const apoDoc = await db.collection('apoderados').doc(dni).get();
+        const passBackup = apoDoc.exists ? apoDoc.data().passBackup : null;
         const intentos = [passBackup, dni].filter(Boolean);
         for(const pass of intentos) {
           try {
-            await tmpAuth.signInWithEmailAndPassword(email, pass);
-            await tmpAuth.currentUser.updatePassword(dni);
-            exito = true; // ✅ Contraseña cambiada
-            break;
-          } catch(e2) { /* intentar siguiente */ }
+            const loginRes = await fetch(
+              `https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${firebaseConfig.apiKey}`,
+              { method:'POST', headers:{'Content-Type':'application/json'},
+                body: JSON.stringify({ email, password: pass, returnSecureToken: true }) }
+            );
+            const loginData = await loginRes.json();
+            if(!loginData.idToken) continue;
+            const updateRes = await fetch(
+              `https://identitytoolkit.googleapis.com/v1/accounts:update?key=${firebaseConfig.apiKey}`,
+              { method:'POST', headers:{'Content-Type':'application/json'},
+                body: JSON.stringify({ idToken: loginData.idToken, password: dni, returnSecureToken: true }) }
+            );
+            const updateData = await updateRes.json();
+            if(updateData.idToken) { exito = true; break; }
+          } catch(e2) {}
         }
       } else { throw e; }
     }
     await tmpAuth.signOut();
     await tmpApp.delete();
-
     await db.collection('apoderados').doc(dni).set({
-      primerIngreso: true, passReseteada: exito,
-      passTemp: dni, alumnoId: dni,
+      primerIngreso: true, alumnoId: dni,
       reseteadoEn: firebase.firestore.FieldValue.serverTimestamp()
     }, { merge: true });
-
     if(exito) {
-      toast(`✅ Contraseña reseteada. El apoderado ingresa con DNI: ${dni}`, 'success');
+      toast(`✅ Reseteado. El apoderado ingresa con DNI: ${dni}`, 'success');
     } else {
-      toast(`⚠️ No se pudo resetear automáticamente. Pide al apoderado que use "Olvidé mi contraseña".`, 'warning');
+      toast(`⚠️ No se pudo resetear. Borra la cuenta manualmente en Firebase Console.`, 'warning');
     }
   } catch(e) { toast('Error: ' + e.message, 'error'); }
 }
