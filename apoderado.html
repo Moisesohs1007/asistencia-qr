@@ -306,8 +306,12 @@ function continuarCargaApoderado(user, dni) {
       // Mostrar cancelar solo si es primer ingreso (puede posponer el cambio)
       document.getElementById('btn-cancelar-pass').style.display = tieneDatos ? 'none' : 'block';
     } else {
-      invalidarCacheRegistros(); // siempre datos frescos al iniciar
-      cargarRegistros().then(function() { renderResumen(); });
+      cargarRegistros().then(function() {
+        renderResumen();
+      }).catch(function(e) {
+        document.getElementById('lista-ultimos').innerHTML =
+          '<div style="padding:16px;text-align:center;color:#f87171;font-size:0.83rem;">Error al cargar registros: ' + e.message + '</div>';
+      });
     }
   }).catch(function(e) {
     console.error(e);
@@ -341,20 +345,18 @@ function poblarMeses() {
   document.getElementById('sel-mes-hist').value    = mesActual;
 }
 
+// ── CARGA DE REGISTROS ──
+// Se hace UNA sola vez al iniciar sesión y se guarda en memoria.
+// Las pestañas usan los datos ya cargados sin volver a Firestore.
+
 function cargarRegistros() {
-  // Cache válido: reusar solo si tiene datos
-  if(window._regCache && window._regCache.length > 0) {
-    registros = window._regCache;
-    return Promise.resolve();
-  }
-  // Sin orderBy para evitar requerir índice compuesto en Firestore
   return db.collection('registros')
     .where('alumnoId','==',alumno.id)
     .get().then(function(snap) {
       var grupos = {};
       snap.docs.forEach(function(d) {
         var r = d.data();
-        if(!r.fecha) return; // ignorar docs sin fecha
+        if(!r.fecha) return;
         var key = r.alumnoId + '_' + r.fecha;
         if(!grupos[key]) grupos[key] = { fecha: r.fecha, estado: '', horaIngreso: null, horaSalida: null };
         var esIngreso = !r.tipo || r.tipo.toLowerCase() === 'ingreso';
@@ -363,7 +365,7 @@ function cargarRegistros() {
         } else {
           grupos[key].horaSalida = r.hora;
         }
-        // Prioridad de estado: Tardanza > Puntual > otros
+        // Prioridad: Tardanza > Puntual > otros
         var est = (r.estado || '').trim();
         if(est === 'Tardanza') {
           grupos[key].estado = 'Tardanza';
@@ -373,31 +375,27 @@ function cargarRegistros() {
           grupos[key].estado = est;
         }
       });
-      // Asignar 'Ausente' a días sin estado definido
+      // Días sin estado = Ausente
       Object.values(grupos).forEach(function(g) {
-        if(!g.estado || g.estado === '') g.estado = 'Ausente';
+        if(!g.estado) g.estado = 'Ausente';
       });
-      // Ordenar por fecha descendente en JS
       registros = Object.values(grupos).sort(function(a,b){
         return b.fecha.localeCompare(a.fecha);
       });
-      // Solo cachear si hay datos reales
-      if(registros.length > 0) window._regCache = registros;
     }).catch(function(e) {
       console.error('cargarRegistros error:', e);
-      registros = [];
+      registros = registros || [];
     });
 }
-
-// Invalidar cache (llamar al refrescar o al cambiar alumno)
-function invalidarCacheRegistros() { window._regCache = null; registros = []; }
 
 function showTab(tab) {
   ['resumen','historial','incidentes','carnet','comunicados','contacto'].forEach(function(t) {
     document.getElementById('panel-'+t).style.display = t === tab ? 'block' : 'none';
     document.getElementById('tab-'+t).classList.toggle('active', t === tab);
   });
-  if(tab === 'historial')  { invalidarCacheRegistros(); cargarRegistros().then(renderHistorial); }
+  // Usar registros ya en memoria — sin nueva query a Firestore
+  if(tab === 'resumen')    renderResumen();
+  if(tab === 'historial')  renderHistorial();
   if(tab === 'incidentes') renderIncidentes();
   if(tab === 'carnet')     renderCarnet();
   if(tab === 'contacto')   renderContacto();
@@ -422,7 +420,7 @@ function ico(estado) {
 
 function renderResumen() {
   var mes  = document.getElementById('sel-mes-resumen').value;
-  var list = filtrarMes(registros, mes);
+  var list = filtrarMes(registros || [], mes);
   document.getElementById('kpi-puntual').textContent  = list.filter(function(r){return r.estado==='Puntual';}).length;
   document.getElementById('kpi-tardanza').textContent = list.filter(function(r){return r.estado==='Tardanza';}).length;
   document.getElementById('kpi-ausente').textContent  = list.filter(function(r){return r.estado==='Ausente';}).length;
@@ -439,14 +437,7 @@ function renderHistorial() {
   var tipo = document.getElementById('sel-tipo-hist').value;
   var cont = document.getElementById('lista-historial');
 
-  // Si aún no hay registros cargados, traerlos
-  if(!registros || registros.length === 0) {
-    cont.innerHTML = '<div style="padding:24px;text-align:center;color:var(--muted);font-size:0.83rem;">⏳ Cargando...</div>';
-    cargarRegistros().then(function() { renderHistorial(); });
-    return;
-  }
-
-  var list = filtrarMes(registros, mes);
+  var list = filtrarMes(registros || [], mes);
 
   // Filtro por estado — comparación normalizada
   if(tipo) {
