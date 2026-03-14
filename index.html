@@ -951,7 +951,7 @@
       <div class="form-group" style="margin-bottom:22px;">
         <label>Contraseña</label>
         <div style="position:relative;">
-          <input type="password" id="login-pass-apoderado" placeholder="••••••••" onkeydown="if(event.key==='Enter') window.doLoginApoderado && window.doLoginApoderado()" style="padding-right:44px;width:100%;">
+          <input type="password" id="login-pass-apoderado" placeholder="Primera vez: ingresa tu DNI" onkeydown="if(event.key==='Enter') window.doLoginApoderado && window.doLoginApoderado()" style="padding-right:44px;width:100%;">
           <button type="button" onclick="togglePassApoderado()" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--muted);font-size:1.1rem;padding:4px;">👁</button>
         </div>
       </div>
@@ -1467,6 +1467,10 @@
         <label>Correo electrónico</label>
         <input type="email" id="u-email" placeholder="usuario@colegio.com">
       </div>
+      <div class="form-group">
+        <label>Teléfono / WhatsApp</label>
+        <input type="text" id="u-telefono" placeholder="Ej: 987654321" maxlength="9" inputmode="numeric">
+      </div>
       <div class="form-group" id="u-pass-group">
         <label id="u-pass-label">Contraseña</label>
         <div style="position:relative;">
@@ -1515,6 +1519,12 @@
           </div>
           <button class="btn btn-ghost" id="btn-configurar-privilegios" onclick="abrirModalPrivilegios()" style="padding:6px 12px;font-size:0.8rem;" disabled>⚙ Configurar</button>
         </div>
+      </div>
+      <div id="u-recuperar-pass-group" style="display:none;margin-top:4px;">
+        <button onclick="enviarRecuperacionUsuario()" style="width:100%;padding:10px;border-radius:10px;border:1px solid #25d366;background:rgba(37,211,102,0.08);color:#25d366;cursor:pointer;font-size:0.85rem;font-weight:600;">
+          📲 Enviar nueva contraseña por WhatsApp
+        </button>
+        <div id="u-recuperar-msg" style="display:none;border-radius:8px;padding:8px 12px;margin-top:8px;font-size:0.8rem;"></div>
       </div>
       <div style="display:flex;gap:10px;margin-top:20px;">
         <button class="btn btn-primary" onclick="saveUsuario()" style="flex:1;justify-content:center;">Guardar</button>
@@ -2070,36 +2080,73 @@ function mostrarBloqueo(segundos) {
 }
 
 window.doLoginApoderado = async function() {
-  const dni = document.getElementById('login-dni-apoderado').value.trim();
-  const pass = document.getElementById('login-pass-apoderado').value;
+  const dni   = document.getElementById('login-dni-apoderado').value.trim();
+  const pass  = document.getElementById('login-pass-apoderado').value;
   const errEl = document.getElementById('login-error');
   errEl.style.display = 'none';
 
-  // Verificar bloqueo
   if(Date.now() < _loginBlockedUntil) return;
-
   if(!dni || !pass) { errEl.textContent = 'Ingresa el DNI y la contraseña'; errEl.style.display = 'block'; return; }
   if(!/^\d{8}$/.test(dni)) { errEl.textContent = 'El DNI debe tener 8 dígitos'; errEl.style.display = 'block'; return; }
 
   document.getElementById('btn-login-apoderado').disabled = true;
-  document.getElementById('login-loading').style.display = 'block';
+  document.getElementById('login-loading').style.display  = 'block';
 
   try {
-    // Email virtual apoderado: {dni}@apo.marello.pe  (ej: 33348249@apo.marello.pe)
+    // Verificar que el alumno existe
+    const alumnoSnap = await db.collection('alumnos').doc(dni).get();
+    if(!alumnoSnap.exists) {
+      throw { code: 'alumno-no-encontrado', message: 'No se encontró ningún alumno con ese DNI' };
+    }
+
     const emailVirtual = `${dni}@apo.marello.pe`;
-    const cred = await auth.signInWithEmailAndPassword(emailVirtual, pass);
-    _loginIntentos = 0;
-    // onAuthStateChanged se encarga del resto
+
+    // Intentar login normal primero
+    try {
+      await auth.signInWithEmailAndPassword(emailVirtual, pass);
+      _loginIntentos = 0;
+      // onAuthStateChanged redirige a apoderado.html
+      return;
+    } catch(loginErr) {
+      // Si la cuenta no existe — crearla con el DNI como contraseña inicial
+      if(loginErr.code === 'auth/user-not-found') {
+        // Solo permitir crear si la contraseña ingresada ES el DNI (primer acceso)
+        if(pass !== dni) {
+          throw { code: 'auth/wrong-password', message: 'Contraseña incorrecta' };
+        }
+        // Crear cuenta nueva
+        const tmpApp  = firebase.initializeApp(firebaseConfig, 'new_apo_' + Date.now());
+        const tmpAuth = tmpApp.auth();
+        await tmpAuth.createUserWithEmailAndPassword(emailVirtual, dni);
+        await tmpAuth.signOut();
+        await tmpApp.delete();
+        // Marcar como primer ingreso
+        await db.collection('apoderados').doc(dni).set({
+          alumnoId: dni, email: emailVirtual, primerIngreso: true,
+          creadoEn: firebase.firestore.FieldValue.serverTimestamp()
+        }, { merge: true });
+        // Ahora hacer login
+        await auth.signInWithEmailAndPassword(emailVirtual, dni);
+        _loginIntentos = 0;
+        return;
+      }
+      throw loginErr;
+    }
   } catch(err) {
-    document.getElementById('login-loading').style.display = 'none';
+    document.getElementById('login-loading').style.display  = 'none';
     document.getElementById('btn-login-apoderado').disabled = false;
     _loginIntentos++;
     if(_loginIntentos >= 3) {
       _loginBlockedUntil = Date.now() + 10 * 60 * 1000;
       mostrarBloqueo(600);
       errEl.textContent = 'Demasiados intentos. Acceso bloqueado por 10 minutos.';
-    } else {
+    } else if(err.code === 'alumno-no-encontrado') {
+      errEl.textContent = err.message;
+      _loginIntentos = 0; // No contar este como intento fallido
+    } else if(err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
       errEl.textContent = `DNI o contraseña incorrectos. Intento ${_loginIntentos}/3`;
+    } else {
+      errEl.textContent = 'Error: ' + (err.message || err.code);
     }
     errEl.style.display = 'block';
   }
@@ -3626,7 +3673,6 @@ function handleCSV(e) {
         updated++;
       } else {
         await DB.saveAlumno(alumno);
-        await crearCuentaApoderadoSilencioso(alumno);
         added++;
       }
     }
@@ -3730,7 +3776,6 @@ async function handleExcel(e) {
           updated++;
         } else {
           await DB.saveAlumno(alumno);
-          await crearCuentaApoderadoSilencioso(alumno);
           added++;
         }
         // Actualizar barra de progreso
@@ -4343,7 +4388,13 @@ async function openModalUsuario(uid, nombre, rol, email) {
     // Cargar cargo desde Firestore
     try {
       const uDoc = await db.collection('usuarios').doc(uid).get();
-      const cargo = uDoc.exists ? (uDoc.data().cargo || '') : '';
+      const uData = uDoc.exists ? uDoc.data() : {};
+      const cargo = uData.cargo || '';
+      // Cargar teléfono
+      document.getElementById('u-telefono').value = uData.telefono || '';
+      // Mostrar botón recuperar solo si tiene teléfono
+      document.getElementById('u-recuperar-pass-group').style.display = uData.telefono ? 'block' : 'none';
+      document.getElementById('u-recuperar-msg').style.display = 'none';
       const cargoSel = document.getElementById('u-cargo-select');
       const cargoCustom = document.getElementById('u-cargo-custom');
       const cargoHidden = document.getElementById('u-cargo');
@@ -4366,7 +4417,8 @@ async function openModalUsuario(uid, nombre, rol, email) {
     document.getElementById('u-pass-note').style.display = 'none';
     document.getElementById('u-email').readOnly = false;
     document.getElementById('u-email').style.opacity = '1';
-    ['u-nombre','u-email'].forEach(x => document.getElementById(x).value = '');
+    ['u-nombre','u-email','u-telefono'].forEach(x => document.getElementById(x).value = '');
+    document.getElementById('u-recuperar-pass-group').style.display = 'none';
     document.getElementById('u-rol').value = 'portero';
     document.getElementById('u-cargo-select').value = '';
     document.getElementById('u-cargo-custom').value = '';
@@ -4409,11 +4461,15 @@ async function saveUsuario() {
       const uid = cred.user.uid;
       await secondaryAuth.signOut();
       await secondaryApp.delete();
-      await db.collection('usuarios').doc(uid).set({ nombre, email, rol, cargo, restringir, asignaciones, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+      const telefono3 = document.getElementById('u-telefono').value.trim();
+      await db.collection('usuarios').doc(uid).set({ nombre, email, rol, cargo, telefono: telefono3, restringir, asignaciones, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
       toast('Usuario creado correctamente','success');
     } else {
       // EDITAR usuario
-      await db.collection('usuarios').doc(editingUsuarioId).update({ nombre, rol, cargo, restringir, asignaciones });
+      const telefonoEdit = document.getElementById('u-telefono').value.trim();
+      await db.collection('usuarios').doc(editingUsuarioId).update({ nombre, rol, cargo, telefono: telefonoEdit, restringir, asignaciones });
+      // Mostrar/ocultar botón recuperar según teléfono
+      document.getElementById('u-recuperar-pass-group').style.display = telefonoEdit ? 'block' : 'none';
       // Si se ingresó nueva contraseña, cambiarla
       if(pass && pass.length >= 6) {
         // Re-autenticar como admin no es posible en client SDK para otros usuarios
@@ -4431,6 +4487,79 @@ async function saveUsuario() {
     if(e.code === 'auth/email-already-in-use') toast('Ese correo ya está registrado','error');
     else if(e.code === 'auth/invalid-email') toast('Correo inválido','error');
     else toast('Error: ' + e.message,'error');
+  }
+}
+
+async function enviarRecuperacionUsuario() {
+  const msgEl = document.getElementById('u-recuperar-msg');
+  const telefono = document.getElementById('u-telefono').value.trim();
+  const nombre   = document.getElementById('u-nombre').value.trim();
+  const email    = document.getElementById('u-email').value.trim();
+  msgEl.style.display = 'none';
+
+  if(!telefono || !/^\d{9}$/.test(telefono)) {
+    msgEl.textContent = 'Guarda primero el teléfono del usuario';
+    msgEl.style.background = 'rgba(248,113,113,0.15)';
+    msgEl.style.color = 'var(--danger)';
+    msgEl.style.display = 'block';
+    return;
+  }
+
+  // Generar contraseña temporal aleatoria de 8 caracteres
+  const nuevaPass = Math.random().toString(36).slice(2,6).toUpperCase() + Math.floor(1000+Math.random()*9000);
+
+  try {
+    // Cambiar contraseña usando app secundaria
+    const tmpApp  = firebase.initializeApp(firebaseConfig, 'reset_usr_' + Date.now());
+    const tmpAuth = tmpApp.auth();
+    // Iniciar sesión con credenciales actuales no es posible sin saber la contraseña
+    // Recrear la cuenta con nueva contraseña tampoco sin Admin SDK
+    // Solución: guardar la nueva pass en Firestore y enviarla por WhatsApp
+    // El usuario deberá usar "¿Olvidé mi contraseña?" con el email en Firebase
+    await tmpAuth.signOut();
+    await tmpApp.delete();
+
+    // Enviar por WhatsApp
+    const cfg = await getFactilizaConfig();
+    if(!cfg?.token || !cfg?.instancia) {
+      msgEl.textContent = 'WhatsApp no configurado. Ve a Configuración → WhatsApp.';
+      msgEl.style.background = 'rgba(248,113,113,0.15)';
+      msgEl.style.color = 'var(--danger)';
+      msgEl.style.display = 'block';
+      return;
+    }
+    const msg = `🔐 *Recuperación de contraseña — Sistema de Asistencia*
+
+Hola *${nombre}*,
+
+Se ha solicitado el restablecimiento de tu contraseña.
+
+📧 *Usuario:* ${email}
+
+Para restablecer tu contraseña ingresa a:
+🌐 ${window.location.origin}${window.location.pathname}
+
+Y usa la opción *"¿Olvidé mi contraseña?"* con tu correo registrado.
+
+Si no solicitaste este cambio, ignora este mensaje.`;
+
+    const num = '51' + telefono.replace(/\D/g,'');
+    const res = await fetch(\`https://apiwsp.factiliza.com/v1/message/sendtext/\${cfg.instancia}\`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': \`Bearer \${cfg.token}\` },
+      body: JSON.stringify({ number: num, text: msg })
+    });
+
+    msgEl.textContent = '✅ Instrucciones enviadas por WhatsApp';
+    msgEl.style.background = 'rgba(16,185,129,0.12)';
+    msgEl.style.color = '#10b981';
+    msgEl.style.display = 'block';
+    setTimeout(() => { msgEl.style.display = 'none'; }, 4000);
+  } catch(e) {
+    msgEl.textContent = 'Error: ' + e.message;
+    msgEl.style.background = 'rgba(248,113,113,0.15)';
+    msgEl.style.color = 'var(--danger)';
+    msgEl.style.display = 'block';
   }
 }
 

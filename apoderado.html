@@ -157,21 +157,44 @@
 
 </div>
 
-<!-- MODAL: Cambiar contrasena -->
+<!-- MODAL: Primer ingreso / Registro apoderado -->
 <div id="modal-cambiar-pass" class="modal-overlay">
-  <div class="modal-box">
+  <div class="modal-box" style="max-height:90vh;overflow-y:auto;">
     <div style="text-align:center;margin-bottom:18px;">
-      <div style="font-size:2.2rem;margin-bottom:8px;">&#128274;</div>
-      <div style="font-size:1rem;font-weight:800;">Cambiar contrasena</div>
-      <div style="font-size:0.8rem;color:var(--muted);margin-top:6px;">Por seguridad debes crear una nueva contrasena antes de continuar</div>
+      <div style="font-size:2.2rem;margin-bottom:8px;">👋</div>
+      <div style="font-size:1rem;font-weight:800;" id="modal-pass-titulo">Bienvenido</div>
+      <div style="font-size:0.8rem;color:var(--muted);margin-top:6px;" id="modal-pass-subtitulo">Completa tus datos para activar tu cuenta</div>
     </div>
     <div id="err-cambiar-pass" style="display:none;background:rgba(248,113,113,0.12);border:1px solid rgba(248,113,113,0.3);color:var(--danger);border-radius:10px;padding:10px 14px;margin-bottom:12px;font-size:0.82rem;"></div>
-    <div class="form-group"><label>Nueva contrasena</label><input type="password" id="inp-pass1" placeholder="Minimo 6 caracteres"></div>
-    <div class="form-group"><label>Confirmar contrasena</label><input type="password" id="inp-pass2" placeholder="Repite la contrasena"></div>
+    <!-- Datos del apoderado (solo en primer ingreso) -->
+    <div id="grupo-datos-apo">
+      <div class="form-group">
+        <label>Tus nombres</label>
+        <input type="text" id="inp-apo-nombres" placeholder="Ej: María Rosa">
+      </div>
+      <div class="form-group">
+        <label>Tus apellidos</label>
+        <input type="text" id="inp-apo-apellidos" placeholder="Ej: García López">
+      </div>
+      <div class="form-group">
+        <label>Celular / WhatsApp <span style="color:var(--danger);">*</span></label>
+        <input type="tel" id="inp-telefono" placeholder="Ej: 987654321" inputmode="numeric" maxlength="9">
+        <div style="font-size:0.73rem;color:var(--muted);margin-top:4px;">Para recuperar tu contraseña si la olvidas</div>
+      </div>
+      <div class="form-group">
+        <label>Correo electrónico <span style="color:var(--muted);font-weight:400;">(opcional)</span></label>
+        <input type="email" id="inp-apo-correo" placeholder="tu@correo.com">
+        <div style="font-size:0.73rem;color:var(--muted);margin-top:4px;">Para comunicaciones del colegio</div>
+      </div>
+      <hr style="border:none;border-top:1px solid var(--border);margin:16px 0;">
+    </div>
+    <div class="form-group">
+      <label>Nueva contraseña <span style="color:var(--danger);">*</span></label>
+      <input type="password" id="inp-pass1" placeholder="Mínimo 6 caracteres">
+    </div>
     <div class="form-group" style="margin-bottom:20px;">
-      <label>Numero de WhatsApp</label>
-      <input type="tel" id="inp-telefono" placeholder="Ej: 987654321" inputmode="numeric">
-      <div style="font-size:0.73rem;color:var(--muted);margin-top:4px;">Se usara para recuperar tu contrasena si la olvidas</div>
+      <label>Confirmar contraseña <span style="color:var(--danger);">*</span></label>
+      <input type="password" id="inp-pass2" placeholder="Repite la contraseña">
     </div>
     <button class="btn btn-primary" id="btn-guardar-pass" style="width:100%;justify-content:center;padding:12px;">Guardar y continuar</button>
   </div>
@@ -208,11 +231,24 @@ document.getElementById('btn-guardar-pass').addEventListener('click', guardarNue
 
 // Verificar sesion
 auth.onAuthStateChanged(function(user) {
-  if(!user || user.email.indexOf('@apo.marello.pe') === -1) {
-    window.location.href = 'index.html';
+  if(!user) { window.location.href = 'index.html'; return; }
+  // Aceptar email virtual O correo real (si el apoderado registró su correo)
+  var dni = null;
+  if(user.email.indexOf('@apo.marello.pe') !== -1) {
+    dni = user.email.replace('@apo.marello.pe', '');
+  } else {
+    // Correo real — buscar DNI en colección apoderados por email
+    db.collection('apoderados').where('emailReal', '==', user.email).limit(1).get().then(function(snap) {
+      if(snap.empty) { auth.signOut(); window.location.href = 'index.html'; return; }
+      var dniReal = snap.docs[0].id;
+      continuarCargaApoderado(user, dniReal);
+    }).catch(function() { auth.signOut(); window.location.href = 'index.html'; });
     return;
   }
-  var dni = user.email.replace('@apo.marello.pe', '');
+  continuarCargaApoderado(user, dni);
+});
+
+function continuarCargaApoderado(user, dni) {
   db.collection('alumnos').doc(dni).get().then(function(snap) {
     if(!snap.exists) { auth.signOut(); window.location.href = 'index.html'; return; }
     alumno = Object.assign({ id: dni }, snap.data());
@@ -220,9 +256,20 @@ auth.onAuthStateChanged(function(user) {
     return db.collection('apoderados').doc(dni).get();
   }).then(function(apoSnap) {
     if(!apoSnap) return;
-    var primerIngreso = !apoSnap.exists || apoSnap.data().primerIngreso !== false;
-    if(primerIngreso) {
-      document.getElementById('inp-telefono').value = alumno.telefono || '';
+    var esPrimerIngreso = !apoSnap.exists || apoSnap.data().primerIngreso !== false;
+    if(esPrimerIngreso) {
+      // Mostrar formulario completo de registro
+      var datosApo = apoSnap.exists ? apoSnap.data() : {};
+      // Pre-llenar si ya hay datos
+      document.getElementById('inp-apo-nombres').value   = datosApo.nombres   || alumno.apoderadoNombres   || '';
+      document.getElementById('inp-apo-apellidos').value = datosApo.apellidos  || alumno.apoderadoApellidos || '';
+      document.getElementById('inp-telefono').value      = datosApo.telefono   || alumno.telefono           || '';
+      document.getElementById('inp-apo-correo').value    = datosApo.emailReal  || '';
+      // Mostrar/ocultar sección de datos según si ya los tiene
+      var tieneDatos = datosApo.nombres && datosApo.apellidos && datosApo.telefono;
+      document.getElementById('grupo-datos-apo').style.display = tieneDatos ? 'none' : 'block';
+      document.getElementById('modal-pass-titulo').textContent   = tieneDatos ? 'Cambia tu contraseña' : 'Bienvenido';
+      document.getElementById('modal-pass-subtitulo').textContent = tieneDatos ? 'Por seguridad crea una nueva contraseña' : 'Completa tus datos para activar tu cuenta';
       document.getElementById('modal-cambiar-pass').style.display = 'flex';
     } else {
       cargarRegistros().then(function() { renderResumen(); });
@@ -231,7 +278,7 @@ auth.onAuthStateChanged(function(user) {
     console.error(e);
     document.getElementById('lista-ultimos').innerHTML = '<div style="padding:16px;text-align:center;color:#f87171;font-size:0.83rem;">Error: ' + e.message + '</div>';
   });
-});
+}
 
 function llenarDatos() {
   var nombre = alumno.nombres + ' ' + alumno.apellidos;
@@ -379,22 +426,70 @@ function guardarNuevaPass() {
   var pass2    = document.getElementById('inp-pass2').value;
   var telefono = document.getElementById('inp-telefono').value.trim();
   var errEl    = document.getElementById('err-cambiar-pass');
+  var hayGrupoDatos = document.getElementById('grupo-datos-apo').style.display !== 'none';
   errEl.style.display = 'none';
-  if(pass1.length < 6) { errEl.textContent='La contrasena debe tener al menos 6 caracteres'; errEl.style.display='block'; return; }
-  if(pass1 !== pass2)  { errEl.textContent='Las contrasenas no coinciden'; errEl.style.display='block'; return; }
-  if(!telefono || !/^\d{9}$/.test(telefono)) { errEl.textContent='Ingresa un numero de celular de 9 digitos'; errEl.style.display='block'; return; }
+
+  // Validaciones
+  if(pass1.length < 6) { errEl.textContent='La contraseña debe tener al menos 6 caracteres'; errEl.style.display='block'; return; }
+  if(pass1 !== pass2)  { errEl.textContent='Las contraseñas no coinciden'; errEl.style.display='block'; return; }
+  if(!telefono || !/^\d{9}$/.test(telefono)) { errEl.textContent='Ingresa un celular de 9 dígitos'; errEl.style.display='block'; return; }
+
+  var nombres   = '';
+  var apellidos = '';
+  var correo    = '';
+  if(hayGrupoDatos) {
+    nombres   = document.getElementById('inp-apo-nombres').value.trim();
+    apellidos = document.getElementById('inp-apo-apellidos').value.trim();
+    correo    = document.getElementById('inp-apo-correo').value.trim();
+    if(!nombres)   { errEl.textContent='Ingresa tus nombres'; errEl.style.display='block'; return; }
+    if(!apellidos) { errEl.textContent='Ingresa tus apellidos'; errEl.style.display='block'; return; }
+    if(correo && !/^[^@]+@[^@]+\.[^@]+$/.test(correo)) { errEl.textContent='El correo no es válido'; errEl.style.display='block'; return; }
+  }
+
+  var btn = document.getElementById('btn-guardar-pass');
+  btn.disabled = true;
+  btn.textContent = 'Guardando...';
+
   auth.currentUser.updatePassword(pass1).then(function() {
-    return db.collection('alumnos').doc(alumno.id).update({ telefono: telefono });
+    // Actualizar datos del alumno con teléfono
+    return db.collection('alumnos').doc(alumno.id).update({ telefono: telefono,
+      apoderadoNombres:   nombres   || alumno.apoderadoNombres   || '',
+      apoderadoApellidos: apellidos || alumno.apoderadoApellidos || ''
+    });
   }).then(function() {
-    return db.collection('apoderados').doc(alumno.id).set({ primerIngreso: false, telefono: telefono }, { merge: true });
+    // Guardar documento apoderado completo
+    var dataApo = {
+      alumnoId:    alumno.id,
+      telefono:    telefono,
+      primerIngreso: false,
+      actualizadoEn: firebase.firestore.FieldValue.serverTimestamp()
+    };
+    if(nombres)   dataApo.nombres   = nombres;
+    if(apellidos) dataApo.apellidos = apellidos;
+    if(correo)    dataApo.emailReal = correo;
+    return db.collection('apoderados').doc(alumno.id).set(dataApo, { merge: true });
+  }).then(function() {
+    // Si tiene correo real, actualizar también en Firebase Auth (display name)
+    var user = auth.currentUser;
+    var promises = [];
+    if(nombres || apellidos) {
+      promises.push(user.updateProfile({ displayName: (nombres + ' ' + apellidos).trim() }));
+    }
+    return Promise.all(promises);
   }).then(function() {
     document.getElementById('modal-cambiar-pass').style.display = 'none';
-    alumno.telefono = telefono;
+    alumno.telefono          = telefono;
+    alumno.apoderadoNombres  = nombres   || alumno.apoderadoNombres;
+    alumno.apoderadoApellidos= apellidos || alumno.apoderadoApellidos;
+    btn.disabled = false;
+    btn.textContent = 'Guardar y continuar';
     return cargarRegistros();
   }).then(function() {
     renderResumen();
   }).catch(function(e) {
-    errEl.textContent = 'Error: '+e.message;
+    btn.disabled = false;
+    btn.textContent = 'Guardar y continuar';
+    errEl.textContent = 'Error: ' + e.message;
     errEl.style.display = 'block';
   });
 }
