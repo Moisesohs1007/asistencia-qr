@@ -2488,18 +2488,26 @@ function showSectionDirect(id) {
 // ============================================================
 const DB = {
   // ALUMNOS
+  _alumnosCache: null,
   async getAlumnos() {
+    if(this._alumnosCache) return this._alumnosCache;
     const snap = await db.collection('alumnos').get();
-    return snap.docs.map(d => ({id: d.id, ...d.data()}));
+    this._alumnosCache = snap.docs.map(d => ({id: d.id, ...d.data()}));
+    return this._alumnosCache;
+  },
+  invalidarAlumnos() {
+    this._alumnosCache = null;
   },
   async saveAlumno(alumno) {
     // Siempre guardar el ID limpio sin espacios
     const cleanId = (alumno.id||'').trim().replace(/\s+/g,'');
     const cleanAlumno = { ...alumno, id: cleanId };
     await db.collection('alumnos').doc(cleanId).set(cleanAlumno);
+    this._alumnosCache = null; // Invalidar cache
   },
   async deleteAlumno(id) {
     await db.collection('alumnos').doc(id).delete();
+    this._alumnosCache = null; // Invalidar cache
   },
   async updateAlumnoId(oldId, newData) {
     const batch = db.batch();
@@ -3051,7 +3059,7 @@ async function renderAlumnos() {
         <td style="display:flex;gap:6px;flex-wrap:wrap;">
           <button class="btn btn-ghost btn-accion-alumno" style="padding:5px 10px;font-size:0.78rem;" onclick="showQR('${a.id}')">QR</button>
           <button class="btn btn-ghost btn-accion-alumno" style="padding:5px 10px;font-size:0.78rem;" onclick="openModalAlumno('${a.id}')">✏</button>
-          ${currentRol !== 'profesor' ? `<button class="btn btn-ghost btn-accion-alumno" style="padding:5px 10px;font-size:0.78rem;color:#f59e0b;border-color:#f59e0b44;" title="Resetear contraseña apoderado" onclick="resetPassApoderado('${a.id}')">🔑</button>` : ''}
+
           ${currentRol !== 'profesor' ? `<button class="btn btn-danger btn-accion-alumno" style="padding:5px 10px;font-size:0.78rem;" onclick="deleteAlumno('${a.id}')">✕</button>` : ''}
         </td>
         <td class="td-chk-alumno" style="display:none;text-align:center;"><input type="checkbox" class="chk-alumno" value="${a.id}" onchange="updateSeleccionados()"></td>
@@ -3789,6 +3797,7 @@ async function handleExcel(e) {
       // Quitar barra de progreso
       const cont = document.getElementById('import-progress-container');
       if(cont) cont.remove();
+      DB.invalidarAlumnos(); // Refrescar cache
 
       renderAlumnos();
       updateStats();
@@ -5850,6 +5859,7 @@ async function resetearTodoElSistema() {
     statusEl.style.background = 'rgba(16,185,129,0.12)';
     statusEl.style.border = '1px solid rgba(16,185,129,0.3)';
     statusEl.style.color = '#10b981';
+    DB.invalidarAlumnos();
     statusEl.textContent = 'Sistema reseteado correctamente. Eliminados: ' + nAlumnos + ' alumnos, ' + nRegistros + ' registros, ' + nIncidentes + ' incidentes, ' + nApoderados + ' apoderados, ' + nUsuarios + ' usuarios.';
 
     // Limpiar cache local
