@@ -2550,29 +2550,91 @@ const DB = {
     await batch.commit();
   },
   // REGISTROS
+  // Cache por clave: 'todos' | 'fecha:YYYY-MM-DD' | 'alumno:ID'
+  _registrosCache: {},
+  _registrosCacheTime: {},
+  _CACHE_TTL: 5 * 60 * 1000, // 5 minutos
+
+  _cacheKey(filtros) {
+    if(filtros.fecha && filtros.alumnoId) return 'fecha_alumno:' + filtros.fecha + '_' + filtros.alumnoId;
+    if(filtros.fecha)    return 'fecha:' + filtros.fecha;
+    if(filtros.alumnoId) return 'alumno:' + filtros.alumnoId;
+    return 'todos';
+  },
+
+  _cacheValido(key) {
+    const t = this._registrosCacheTime[key];
+    return t && (Date.now() - t) < this._CACHE_TTL;
+  },
+
   async getRegistros(filtros={}) {
+    const key = this._cacheKey(filtros);
+
+    // Retornar cache si es válido
+    if(this._registrosCache[key] && this._cacheValido(key)) {
+      return this._registrosCache[key];
+    }
+
     try {
       let q = db.collection('registros');
-      if(filtros.fecha) q = q.where('fecha','==',filtros.fecha);
+      if(filtros.fecha)    q = q.where('fecha','==',filtros.fecha);
       if(filtros.alumnoId) q = q.where('alumnoId','==',filtros.alumnoId);
       const snap = await q.limit(500).get();
       const docs = snap.docs.map(d => d.data());
-      // Sort by hora descending in memory
-      return docs.sort((a,b) => (b.hora||'').localeCompare(a.hora||''));
+      const resultado = docs.sort((a,b) => (b.hora||'').localeCompare(a.hora||''));
+
+      // Guardar en cache
+      this._registrosCache[key] = resultado;
+      this._registrosCacheTime[key] = Date.now();
+
+      // Si cargamos 'todos', también llenar cache por fecha para consultas futuras
+      if(key === 'todos') {
+        const porFecha = {};
+        docs.forEach(r => {
+          if(!r.fecha) return;
+          if(!porFecha[r.fecha]) porFecha[r.fecha] = [];
+          porFecha[r.fecha].push(r);
+        });
+        Object.entries(porFecha).forEach(([fecha, regs]) => {
+          const k = 'fecha:' + fecha;
+          this._registrosCache[k] = regs.sort((a,b) => (b.hora||'').localeCompare(a.hora||''));
+          this._registrosCacheTime[k] = Date.now();
+        });
+      }
+
+      return resultado;
     } catch(e) {
       console.error('getRegistros error:', e);
       return [];
     }
   },
+
+  invalidarRegistros(fecha=null) {
+    if(fecha) {
+      // Solo invalidar la fecha específica y 'todos'
+      delete this._registrosCache['fecha:' + fecha];
+      delete this._registrosCacheTime['fecha:' + fecha];
+      delete this._registrosCache['todos'];
+      delete this._registrosCacheTime['todos'];
+    } else {
+      // Invalidar todo
+      this._registrosCache = {};
+      this._registrosCacheTime = {};
+    }
+  },
+
   async saveRegistro(reg) {
     reg.timestamp = firebase.firestore.FieldValue.serverTimestamp();
     await db.collection('registros').add(reg);
+    // Invalidar cache del día correspondiente
+    this.invalidarRegistros(reg.fecha);
   },
   async deleteRegistrosByFecha(fecha) {
     const snap = await db.collection('registros').where('fecha','==',fecha).get();
     const batch = db.batch();
     snap.docs.forEach(d => batch.delete(d.ref));
     await batch.commit();
+    this.invalidarRegistros(fecha); // Invalidar cache
   },
 };
 
@@ -2872,7 +2934,7 @@ async function confirmRegister(tipo) {
     };
 
     await DB.saveRegistro(reg);
-    await updateStats();
+    await updateStatsForce(); // Forzar actualización inmediata tras registro
     pendingStudent = null;
     document.getElementById('result-empty').style.display = 'flex';
     document.getElementById('result-student').style.display = 'none';
@@ -3299,7 +3361,10 @@ async function renderRegistro() {
     tbody.innerHTML = '';
     empty.style.display = 'block';
     empty.querySelector('p').textContent = 'Selecciona una fecha u otro filtro para ver los registros';
-    DB.getRegistros({}).then(r => count.textContent = r.length + ' registro' + (r.length!==1?'s':'') + ' en total').catch(()=>{});
+    // Usar cache si existe para mostrar el contador sin nueva consulta
+    const cached = DB._registrosCache['todos'];
+    if(cached) count.textContent = cached.length + ' registro' + (cached.length!==1?'s':'') + ' en total';
+    else DB.getRegistros({}).then(r => count.textContent = r.length + ' registro' + (r.length!==1?'s':'') + ' en total').catch(()=>{});
     return;
   }
 
@@ -4363,7 +4428,16 @@ async function renderReportes() {
 // ============================================================
 // STATS
 // ============================================================
+let _updateStatsTime = 0;
+async function updateStatsForce() {
+  _updateStatsTime = 0; // Resetear throttle para forzar ejecución
+  await updateStats();
+}
 async function updateStats() {
+  // Throttle: no ejecutar más de 1 vez cada 30 segundos
+  const now = Date.now();
+  if(now - _updateStatsTime < 30000) return;
+  _updateStatsTime = now;
   try {
     const [alumnos, regsHoy] = await Promise.all([
       DB.getAlumnos(),

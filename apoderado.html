@@ -255,6 +255,20 @@ auth.setPersistence(firebase.auth.Auth.Persistence.SESSION);
 
 var alumno    = null;
 var registros = [];
+var _configCache   = null; // config/general cacheada
+var _incidentesCache = null; // incidentes del alumno cacheados
+
+// Cargar config una sola vez
+function getConfigCache() {
+  if(_configCache) return Promise.resolve(_configCache);
+  return db.collection('config').doc('general').get().then(function(snap) {
+    _configCache = snap.exists ? snap.data() : {};
+    return _configCache;
+  }).catch(function() {
+    _configCache = {};
+    return _configCache;
+  });
+}
 
 function dbg(msg) {
   var el = document.getElementById('debug-bar');
@@ -508,143 +522,156 @@ function renderHistorial() {
 }
 
 function renderIncidentes() {
+  // Usar cache si ya está cargado — sin nueva consulta a Firestore
+  if(_incidentesCache !== null) {
+    _renderIncidentesLista(_incidentesCache);
+    return;
+  }
   var cont = document.getElementById('lista-incidentes');
   cont.innerHTML = '<div style="padding:16px;text-align:center;color:var(--muted);font-size:0.83rem;">Cargando...</div>';
   db.collection('incidentes').where('alumnoId','==',alumno.id).get().then(function(snap) {
-    if(snap.empty) {
-      cont.innerHTML = '<div style="padding:48px 20px;text-align:center;color:var(--muted);font-size:0.85rem;">'
-        + '<div style="font-size:2.5rem;margin-bottom:10px;">✅</div>'
-        + '<div style="font-weight:700;margin-bottom:4px;">Sin incidentes registrados</div>'
-        + '<div style="font-size:0.78rem;">No hay reportes de incidencia para este alumno</div>'
-        + '</div>';
-      return;
-    }
-    var lista = snap.docs.map(function(d){ return Object.assign({_id: d.id}, d.data()); })
+    _incidentesCache = snap.docs.map(function(d){ return Object.assign({_id: d.id}, d.data()); })
       .sort(function(a,b){ return (b.fecha||'').localeCompare(a.fecha||''); });
-
-    cont.innerHTML = lista.map(function(inc, idx) {
-      // Color según severidad
-      var sev = (inc.severidad || inc.gravedad || '').toLowerCase();
-      var sevColor = sev.includes('alta') || sev.includes('grave') ? '#f87171'
-                   : sev.includes('media') || sev.includes('moderada') ? '#f59e0b'
-                   : '#94a3b8';
-      var sevBg = sev.includes('alta') || sev.includes('grave') ? 'rgba(248,113,113,0.1)'
-                : sev.includes('media') || sev.includes('moderada') ? 'rgba(245,158,11,0.1)'
-                : 'rgba(148,163,184,0.1)';
-      var sevLabel = inc.severidad || inc.gravedad || 'No especificada';
-
-      return '<div class="card" style="padding:14px 16px;margin-bottom:10px;border-left:3px solid '+sevColor+';">'
-        // Fila superior: tipo | fecha y hora
-        + '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:10px;">'
-        +   '<div style="font-size:0.88rem;font-weight:800;color:#f87171;">🚨 '+(inc.tipo||'Incidente')+'</div>'
-        +   '<div style="font-size:0.74rem;color:var(--muted);text-align:right;white-space:nowrap;">'
-        +     '<div>📅 Fecha: <strong style="color:var(--text);">'+fStr(inc.fecha)+'</strong></div>'
-        +     (inc.hora ? '<div>🕐 Hora: <strong style="color:var(--text);">'+inc.hora+'</strong></div>' : '')
-        +   '</div>'
-        + '</div>'
-        // Fila inferior: severidad | botón descarga
-        + '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">'
-        +   '<div style="display:inline-flex;align-items:center;gap:5px;background:'+sevBg+';border:1px solid '+sevColor+'40;border-radius:20px;padding:3px 10px;">'
-        +     '<span style="font-size:0.68rem;font-weight:700;color:'+sevColor+';text-transform:uppercase;letter-spacing:0.5px;">⚡ '+sevLabel+'</span>'
-        +   '</div>'
-        +   '<button onclick="descargarIncidente('+idx+')" style="background:rgba(59,130,246,0.12);border:1px solid rgba(59,130,246,0.3);color:#60a5fa;border-radius:8px;padding:4px 10px;cursor:pointer;font-size:0.72rem;font-weight:600;font-family:var(--font-body);white-space:nowrap;">⬇ PDF</button>'
-        + '</div>'
-        + '</div>';
-    }).join('');
-
-    // Guardar lista para descarga
-    window._incidentesData = lista;
+    _renderIncidentesLista(_incidentesCache);
   }).catch(function(e){
     cont.innerHTML='<div style="padding:16px;text-align:center;color:#f87171;font-size:0.83rem;">Error: '+e.message+'</div>';
   });
 }
 
+function _renderIncidentesLista(lista) {
+  var cont = document.getElementById('lista-incidentes');
+  window._incidentesData = lista;
+  if(!lista.length) {
+    cont.innerHTML = '<div style="padding:48px 20px;text-align:center;color:var(--muted);font-size:0.85rem;">'
+      + '<div style="font-size:2.5rem;margin-bottom:10px;">✅</div>'
+      + '<div style="font-weight:700;margin-bottom:4px;">Sin incidentes registrados</div>'
+      + '<div style="font-size:0.78rem;">No hay reportes de incidencia para este alumno</div>'
+      + '</div>';
+    return;
+  }
+  cont.innerHTML = lista.map(function(inc, idx) {
+    var sev = (inc.severidad || inc.gravedad || '').toLowerCase();
+    var sevColor = sev.includes('alta') || sev.includes('grave') ? '#f87171'
+                 : sev.includes('media') || sev.includes('moderada') ? '#f59e0b'
+                 : '#94a3b8';
+    var sevBg = sev.includes('alta') || sev.includes('grave') ? 'rgba(248,113,113,0.1)'
+              : sev.includes('media') || sev.includes('moderada') ? 'rgba(245,158,11,0.1)'
+              : 'rgba(148,163,184,0.1)';
+    var sevLabel = inc.severidad || inc.gravedad || 'No especificada';
+    return '<div class="card" style="padding:14px 16px;margin-bottom:10px;border-left:3px solid '+sevColor+';">'
+      + '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:10px;">'
+      +   '<div style="font-size:0.88rem;font-weight:800;color:#f87171;">🚨 '+(inc.tipo||'Incidente')+'</div>'
+      +   '<div style="font-size:0.74rem;color:var(--muted);text-align:right;white-space:nowrap;">'
+      +     '<div>📅 Fecha: <strong style="color:var(--text);">'+fStr(inc.fecha)+'</strong></div>'
+      +     (inc.hora ? '<div>🕐 Hora: <strong style="color:var(--text);">'+inc.hora+'</strong></div>' : '')
+      +   '</div>'
+      + '</div>'
+      + '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">'
+      +   '<div style="display:inline-flex;align-items:center;gap:5px;background:'+sevBg+';border:1px solid '+sevColor+'40;border-radius:20px;padding:3px 10px;">'
+      +     '<span style="font-size:0.68rem;font-weight:700;color:'+sevColor+';text-transform:uppercase;letter-spacing:0.5px;">⚡ '+sevLabel+'</span>'
+      +   '</div>'
+      +   '<button onclick="descargarIncidente('+idx+')" style="background:rgba(59,130,246,0.12);border:1px solid rgba(59,130,246,0.3);color:#60a5fa;border-radius:8px;padding:4px 10px;cursor:pointer;font-size:0.72rem;font-weight:600;font-family:var(--font-body);white-space:nowrap;">⬇ PDF</button>'
+      + '</div>'
+      + '</div>';
+  }).join('');
+}
+
 function descargarIncidente(idx) {
   var inc = window._incidentesData && window._incidentesData[idx];
   if(!inc) return;
+  if(typeof window.jspdf === 'undefined') { alert('PDF no disponible, intenta nuevamente'); return; }
 
-  var sev = inc.severidad || inc.gravedad || 'No especificada';
-  var nl = '\n';
-  var lines = 'REPORTE DE INCIDENTE' + nl
-    + 'I.E.P. San Jose Marello' + nl + nl
-    + 'ALUMNO: ' + (inc.alumnoNombre || (alumno.nombres + ' ' + alumno.apellidos)) + nl
-    + 'GRADO:  ' + (inc.grado||alumno.grado) + ' ' + (inc.seccion||alumno.seccion) + ' - ' + (inc.turno||alumno.turno) + nl
-    + 'DNI:    ' + alumno.id + nl + nl
-    + 'TIPO DE INCIDENTE: ' + (inc.tipo || '') + nl
-    + 'SEVERIDAD:         ' + sev + nl
-    + 'FECHA:             ' + fStr(inc.fecha) + nl
-    + 'HORA:              ' + (inc.hora || '') + nl + nl
-    + 'DESCRIPCION:' + nl
-    + (inc.descripcion || 'Sin descripcion') + nl + nl
-    + (inc.medidas ? 'MEDIDAS TOMADAS: ' + inc.medidas + nl + nl : '')
-    + 'REPORTADO POR: ' + (inc.responsableNombre || inc.reportadoPor || '');
+  var jsPDF = window.jspdf.jsPDF;
+  var doc   = new jsPDF({ unit:'mm', format:'a4' });
+  var W = 210, mg = 20, y = 0;
 
-  // Generar PDF con jsPDF
-  if(typeof window.jspdf !== 'undefined') {
-    var doc = new window.jspdf.jsPDF({ unit:'mm', format:'a4' });
-    var mg = 20; var y = 20; var lh = 7;
-    // Cabecera
-    doc.setFillColor(26,43,94); doc.rect(0,0,210,28,'F');
-    doc.setTextColor(255,255,255);
-    doc.setFont('helvetica','bold'); doc.setFontSize(14);
-    doc.text('I.E.P. San José Marello', mg, 12);
-    doc.setFontSize(10); doc.setFont('helvetica','normal');
-    doc.text('Reporte de Incidente', mg, 20);
-    y = 38;
-    // Datos alumno
-    doc.setTextColor(30,30,30);
-    doc.setFillColor(245,247,250); doc.rect(mg-2,y-5,170,22,'F');
-    doc.setFont('helvetica','bold'); doc.setFontSize(11);
-    doc.text((inc.alumnoNombre||(alumno.nombres+' '+alumno.apellidos)), mg, y);
-    doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(100,100,100);
-    doc.text((inc.grado||alumno.grado)+' '+(inc.seccion||alumno.seccion)+' — '+(inc.turno||alumno.turno), mg, y+6);
-    doc.text('DNI: '+alumno.id, mg, y+12);
-    y += 28;
-    // Datos incidente
-    var campos = [
-      ['Tipo de incidente', inc.tipo||''],
-      ['Severidad',         inc.severidad||inc.gravedad||'No especificada'],
-      ['Fecha',             fStr(inc.fecha)],
-      ['Hora',              inc.hora||''],
-      ['Reportado por',     inc.responsableNombre||inc.reportadoPor||''],
-    ];
-    campos.forEach(function(c) {
-      doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(80,80,80);
-      doc.text(c[0]+':', mg, y);
-      doc.setFont('helvetica','normal'); doc.setTextColor(30,30,30);
-      doc.text(c[1], mg+45, y);
-      y += lh;
-    });
-    y += 4;
-    // Descripción
-    doc.setFont('helvetica','bold'); doc.setFontSize(10); doc.setTextColor(60,60,60);
-    doc.text('Descripción:', mg, y); y += 6;
-    doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(30,30,30);
-    var descLines = doc.splitTextToSize(inc.descripcion||'Sin descripción', 170);
-    doc.text(descLines, mg, y); y += descLines.length * 5 + 6;
-    // Medidas
-    if(inc.medidas) {
-      doc.setFont('helvetica','bold'); doc.setFontSize(10); doc.setTextColor(60,60,60);
-      doc.text('Medidas tomadas:', mg, y); y += 6;
-      doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(30,30,30);
-      var medLines = doc.splitTextToSize(inc.medidas, 170);
-      doc.text(medLines, mg, y);
-    }
-    doc.save('incidente_'+alumno.id+'_'+(inc.fecha||'sin-fecha')+'.pdf');
-  } else {
-    // Fallback texto
-    var blob = new Blob([lines], { type: 'text/plain;charset=utf-8' });
-    var url  = URL.createObjectURL(blob);
-    var a    = document.createElement('a');
-    a.href = url; a.download = 'incidente_'+alumno.id+'_'+(inc.fecha||'sin-fecha')+'.txt';
-    a.click(); URL.revokeObjectURL(url);
+  // ── Cabecera roja ──
+  doc.setFillColor(239,68,68);
+  doc.rect(0,0,W,28,'F');
+  doc.setTextColor(255,255,255);
+  doc.setFont('helvetica','bold'); doc.setFontSize(13);
+  doc.text((inc.alumnoNombre ? inc.alumnoNombre.split(' ').slice(0,2).join(' ') : 'I.E.P. San José Marello').toUpperCase(), W/2, 11, {align:'center'});
+  doc.setFontSize(9); doc.setFont('helvetica','normal');
+  doc.text('REPORTE DE INCIDENTE', W/2, 19, {align:'center'});
+  doc.text(new Date().getFullYear().toString(), W/2, 25, {align:'center'});
+  y = 38;
+
+  // ── Datos alumno ──
+  doc.setFillColor(248,250,252); doc.setDrawColor(226,232,240);
+  doc.roundedRect(mg,y,W-mg*2,28,3,3,'FD');
+  doc.setTextColor(100,116,139); doc.setFont('helvetica','bold'); doc.setFontSize(7);
+  doc.text('ALUMNO', mg+4, y+6);
+  doc.text('DNI', mg+90, y+6);
+  doc.text('GRADO / SECCIÓN', mg+125, y+6);
+  doc.setTextColor(30,41,59); doc.setFont('helvetica','normal'); doc.setFontSize(9);
+  doc.text(inc.alumnoNombre || (alumno.nombres+' '+alumno.apellidos), mg+4, y+13);
+  doc.text(inc.alumnoId || alumno.id, mg+90, y+13);
+  doc.text((inc.grado||alumno.grado)+' — Secc. '+(inc.seccion||alumno.seccion), mg+125, y+13);
+  doc.setTextColor(100,116,139); doc.setFont('helvetica','bold'); doc.setFontSize(7);
+  doc.text('FECHA', mg+4, y+21);
+  doc.text('HORA', mg+55, y+21);
+  doc.text('TIPO', mg+90, y+21);
+  doc.text('SEVERIDAD', mg+145, y+21);
+  doc.setTextColor(30,41,59); doc.setFont('helvetica','normal'); doc.setFontSize(9);
+  doc.text(inc.fecha||'-', mg+4, y+27);
+  doc.text(inc.hora||'-', mg+55, y+27);
+  doc.text(inc.tipo||'-', mg+90, y+27);
+  var sev = inc.severidad || inc.gravedad || '-';
+  var sevRGB = sev==='Grave'?[239,68,68]:sev==='Moderado'?[245,158,11]:[16,185,129];
+  doc.setTextColor(sevRGB[0],sevRGB[1],sevRGB[2]);
+  doc.setFont('helvetica','bold');
+  doc.text(sev, mg+145, y+27);
+  y += 36;
+
+  // ── Descripción ──
+  doc.setTextColor(100,116,139); doc.setFont('helvetica','bold'); doc.setFontSize(7);
+  doc.text('DESCRIPCIÓN DEL INCIDENTE', mg, y); y += 4;
+  doc.setFillColor(248,250,252); doc.setDrawColor(226,232,240);
+  var descLines = doc.splitTextToSize(inc.descripcion||'-', W-mg*2-8);
+  var descH = Math.max(18, descLines.length*5+8);
+  doc.roundedRect(mg,y,W-mg*2,descH,2,2,'FD');
+  doc.setTextColor(51,65,85); doc.setFont('helvetica','normal'); doc.setFontSize(9);
+  doc.text(descLines, mg+4, y+6);
+  y += descH + 6;
+
+  // ── Medidas ──
+  if(inc.medidas) {
+    doc.setTextColor(100,116,139); doc.setFont('helvetica','bold'); doc.setFontSize(7);
+    doc.text('MEDIDAS TOMADAS', mg, y); y += 4;
+    var medLines = doc.splitTextToSize(inc.medidas, W-mg*2-8);
+    var medH = Math.max(14, medLines.length*5+8);
+    doc.setFillColor(248,250,252); doc.setDrawColor(226,232,240);
+    doc.roundedRect(mg,y,W-mg*2,medH,2,2,'FD');
+    doc.setTextColor(51,65,85); doc.setFont('helvetica','normal'); doc.setFontSize(9);
+    doc.text(medLines, mg+4, y+6);
+    y += medH + 6;
   }
+
+  // ── Firmas ──
+  y = Math.max(y, 230);
+  doc.setDrawColor(148,163,184);
+  doc.line(mg, y, mg+70, y);
+  doc.line(W-mg-70, y, W-mg, y);
+  doc.setTextColor(100,116,139); doc.setFont('helvetica','normal'); doc.setFontSize(8);
+  doc.text(inc.responsableNombre||inc.reportadoPor||'Responsable', mg+35, y+5, {align:'center'});
+  doc.text('Director(a) / V°B°', W-mg-35, y+5, {align:'center'});
+  doc.setFontSize(7);
+  doc.text(inc.responsableCargo||'Responsable', mg+35, y+9, {align:'center'});
+  doc.text('Firma y sello', W-mg-35, y+9, {align:'center'});
+
+  // ── Footer ──
+  doc.setFillColor(239,68,68);
+  doc.rect(0,287,W,10,'F');
+  doc.setTextColor(255,255,255); doc.setFontSize(7);
+  doc.text('Documento generado por AsistenciaQR · '+new Date().toLocaleString('es-PE'), W/2, 293, {align:'center'});
+
+  doc.save('incidente_'+(inc.alumnoId||alumno.id)+'_'+(inc.fecha||'sin-fecha')+'.pdf');
 }
 
 function renderCarnet() {
-  db.collection('config').doc('general').get().then(function(cfg) {
-    document.getElementById('carnet-colegio').textContent = cfg.exists ? (cfg.data().nombreColegio||'I.E.P. San Jose Marello') : 'I.E.P. San Jose Marello';
-  }).catch(function(){document.getElementById('carnet-colegio').textContent='I.E.P. San Jose Marello';});
+  getConfigCache().then(function(cfg) {
+    document.getElementById('carnet-colegio').textContent = cfg.nombreColegio || 'I.E.P. San Jose Marello';
+  }).catch(function(){ document.getElementById('carnet-colegio').textContent='I.E.P. San Jose Marello'; });
   if(alumno.foto) document.getElementById('carnet-foto').src = alumno.foto;
   document.getElementById('carnet-nombre').textContent = alumno.nombres+' '+alumno.apellidos;
   document.getElementById('carnet-grado').textContent  = alumno.grado+' '+alumno.seccion+' - '+alumno.turno;
@@ -655,8 +682,7 @@ function renderCarnet() {
 
 function renderContacto() {
   var cont = document.getElementById('contenido-contacto');
-  db.collection('config').doc('general').get().then(function(snap) {
-    var d = snap.exists ? snap.data() : {};
+  getConfigCache().then(function(d) {
     cont.innerHTML = '<div class="card" style="padding:20px;">'
       +(d.nombreColegio?'<div style="margin-bottom:12px;"><div style="font-size:0.74rem;color:var(--muted);font-weight:600;text-transform:uppercase;margin-bottom:3px;">Institucion</div><div style="font-size:0.88rem;">'+d.nombreColegio+'</div></div>':'')
       +(d.telefono?'<div style="margin-bottom:12px;"><div style="font-size:0.74rem;color:var(--muted);font-weight:600;text-transform:uppercase;margin-bottom:3px;">Telefono</div><a href="tel:'+d.telefono+'" style="font-size:0.88rem;color:var(--accent);text-decoration:none;">'+d.telefono+'</a></div>':'')
