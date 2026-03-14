@@ -122,7 +122,7 @@
     overflow-x: hidden;
     overflow-y: auto;
   }
-  /* Cuando sec-scan está activo en desktop, no hacer scroll en main */
+  /* Cuando sec-scan está activo, main no hace scroll */
   body:has(#sec-scan.active) main {
     overflow: hidden;
     padding-bottom: 20px;
@@ -146,8 +146,7 @@
   /* SECTIONS */
   .section { display: none; animation: fadeUp 0.3s ease; }
   .section.active { display: block; }
-  #sec-scan.active { display: flex !important; } /* Siempre flex en scanner */
-  @media(max-width:700px){ #sec-scan.active { display: flex !important; } }
+  /* #sec-scan.active: display:flex definido en bloque scanner más abajo */
 
   @keyframes fadeUp {
     from { opacity:0; transform: translateY(12px); }
@@ -278,10 +277,11 @@
   ═══════════════════════════════════════════════════ */
 
   /* Sección scanner: flex-col, altura exacta de ventana disponible */
-  #sec-scan {
-    display: flex;
+  #sec-scan.active {
+    display: flex !important;
     flex-direction: column;
-    height: calc(100vh - 112px); /* 100vh - header(64) - padding main(28+20) */
+    /* 100vh - header(64) - padding main(28+20) */
+    height: calc(100vh - 112px);
     overflow: hidden;
     padding-bottom: 0 !important;
     gap: 8px;
@@ -363,7 +363,8 @@
 
   /* ── MÓVIL ── */
   @media(max-width:700px){
-    #sec-scan {
+    #sec-scan.active {
+      display: flex !important;
       height: calc(100dvh - 52px - 62px - 28px);
       padding: 6px 10px 0 !important;
       gap: 6px;
