@@ -534,21 +534,20 @@ function renderIncidentes() {
       var sevLabel = inc.severidad || inc.gravedad || 'No especificada';
 
       return '<div class="card" style="padding:14px 16px;margin-bottom:10px;border-left:3px solid '+sevColor+';">'
-        // Fila principal: tipo | fecha y hora del incidente
-        + '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:10px;">'
+        // Fila superior: tipo | fecha y hora
+        + '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:10px;">'
         +   '<div style="font-size:0.88rem;font-weight:800;color:#f87171;">🚨 '+(inc.tipo||'Incidente')+'</div>'
-        +   '<div style="font-size:0.75rem;color:var(--muted);text-align:right;white-space:nowrap;">'
-        +     '<div>📅 Fecha del incidente: <strong style="color:var(--text);">'+fStr(inc.fecha)+'</strong></div>'
-        +     (inc.hora ? '<div>🕐 Hora del incidente: <strong style="color:var(--text);">'+inc.hora+'</strong></div>' : '')
+        +   '<div style="font-size:0.74rem;color:var(--muted);text-align:right;white-space:nowrap;">'
+        +     '<div>📅 Fecha: <strong style="color:var(--text);">'+fStr(inc.fecha)+'</strong></div>'
+        +     (inc.hora ? '<div>🕐 Hora: <strong style="color:var(--text);">'+inc.hora+'</strong></div>' : '')
         +   '</div>'
         + '</div>'
-        // Severidad
-        + '<div style="display:inline-flex;align-items:center;gap:5px;background:'+sevBg+';border:1px solid '+sevColor+'40;border-radius:20px;padding:3px 10px;margin-bottom:10px;">'
-        +   '<span style="font-size:0.68rem;font-weight:700;color:'+sevColor+';text-transform:uppercase;letter-spacing:0.5px;">⚡ Severidad: '+sevLabel+'</span>'
-        + '</div>'
-        // Botón descarga
-        + '<div style="margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.06);">'
-        +   '<button onclick="descargarIncidente('+idx+')" style="width:100%;background:rgba(59,130,246,0.12);border:1px solid rgba(59,130,246,0.3);color:#60a5fa;border-radius:8px;padding:7px;cursor:pointer;font-size:0.78rem;font-weight:600;font-family:var(--font-body);">⬇ Descargar PDF del reporte</button>'
+        // Fila inferior: severidad | botón descarga
+        + '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">'
+        +   '<div style="display:inline-flex;align-items:center;gap:5px;background:'+sevBg+';border:1px solid '+sevColor+'40;border-radius:20px;padding:3px 10px;">'
+        +     '<span style="font-size:0.68rem;font-weight:700;color:'+sevColor+';text-transform:uppercase;letter-spacing:0.5px;">⚡ '+sevLabel+'</span>'
+        +   '</div>'
+        +   '<button onclick="descargarIncidente('+idx+')" style="background:rgba(59,130,246,0.12);border:1px solid rgba(59,130,246,0.3);color:#60a5fa;border-radius:8px;padding:4px 10px;cursor:pointer;font-size:0.72rem;font-weight:600;font-family:var(--font-body);white-space:nowrap;">⬇ PDF</button>'
         + '</div>'
         + '</div>';
     }).join('');
