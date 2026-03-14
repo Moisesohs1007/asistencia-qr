@@ -289,14 +289,16 @@
     height: 100% !important;
     aspect-ratio: unset !important;
   }
+  /* La columna derecha siempre ocupa altura completa */
   .result-box {
     height: 100%;
     overflow-y: auto;
+    min-height: 320px;
   }
 
   .scanner-layout {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1.1fr 0.9fr;
     gap: 20px;
   }
   /* MÓVIL: todo en pantalla sin scroll */
@@ -457,86 +459,192 @@
   .result-box {
     background: var(--surface2);
     border: 1px solid var(--border);
-    border-radius: 14px;
-    padding: 20px;
+    border-radius: 16px;
+    padding: 24px;
     display: flex;
     flex-direction: column;
-    gap: 14px;
+    gap: 16px;
+    position: relative;
+    overflow: hidden;
+  }
+  /* Sutil glow en la esquina superior */
+  .result-box::before {
+    content: '';
+    position: absolute;
+    top: -40px; right: -40px;
+    width: 160px; height: 160px;
+    background: radial-gradient(circle, rgba(56,189,248,0.07) 0%, transparent 70%);
+    pointer-events: none;
   }
   @media(max-width:700px){
     .result-box { padding: 12px; gap: 8px; }
     .result-empty { height: 100px; font-size:0.8rem; }
     .result-empty svg { width:28px; height:28px; }
   }
+
+  /* ── ESTADO DE ESPERA (sin alumno) ── */
   .result-empty {
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    height: 280px;
+    height: 100%;
+    min-height: 260px;
     color: var(--muted);
-    font-size: 0.85rem;
-    gap: 10px;
+    font-size: 0.88rem;
+    gap: 16px;
+    text-align: center;
   }
-  .result-empty svg { opacity: 0.3; }
+  .result-empty svg { opacity: 0.15; }
+  .result-empty-icon {
+    width: 90px; height: 90px;
+    border-radius: 50%;
+    background: rgba(56,189,248,0.06);
+    border: 2px dashed rgba(56,189,248,0.2);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 2.4rem;
+    animation: pulse-ring 2.5s ease-in-out infinite;
+  }
+  @keyframes pulse-ring {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(56,189,248,0.15); }
+    50%       { box-shadow: 0 0 0 12px rgba(56,189,248,0); }
+  }
+  .result-empty-title {
+    font-family: var(--font-display);
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--text);
+    opacity: 0.5;
+  }
+  .result-empty-sub {
+    font-size: 0.8rem;
+    color: var(--muted);
+    max-width: 200px;
+    line-height: 1.5;
+  }
 
+  /* ── CARD DEL ALUMNO ── */
   .result-student { display: none; }
+
+  /* Foto / avatar grande */
   .student-avatar {
-    width: 72px; height: 72px;
+    width: 88px; height: 88px;
     border-radius: 50%;
     background: linear-gradient(135deg, var(--accent), var(--accent2));
     display: flex; align-items: center; justify-content: center;
     font-family: var(--font-display);
-    font-size: 1.6rem;
+    font-size: 2rem;
     font-weight: 800;
     color: #fff;
     flex-shrink: 0;
+    box-shadow: 0 0 0 4px rgba(56,189,248,0.2), 0 8px 24px rgba(0,0,0,0.35);
+    overflow: hidden;
   }
+  .student-avatar img { width:100%; height:100%; object-fit:cover; border-radius:50%; }
+
   .student-info { flex: 1; min-width: 0; }
   .student-name {
     font-family: var(--font-display);
-    font-size: 1.1rem;
-    font-weight: 700;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    font-size: 1.25rem;
+    font-weight: 800;
+    line-height: 1.2;
+    word-break: break-word;
   }
-  .student-meta { font-size: 0.82rem; color: var(--muted); margin-top: 3px; }
-  .student-row { display: flex; align-items: center; gap: 14px; }
+  .student-meta {
+    font-size: 0.84rem;
+    color: var(--muted);
+    margin-top: 5px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .student-meta::before {
+    content: '';
+    display: inline-block;
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+    flex-shrink: 0;
+  }
+  .student-row {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  /* Móvil: avatar más pequeño */
   @media(max-width:700px){
-    .student-avatar { width: 44px; height: 44px; font-size: 1rem; }
-    .student-name { font-size: 0.92rem; }
+    .student-avatar { width: 52px; height: 52px; font-size: 1.2rem; }
+    .student-name { font-size: 0.97rem; }
     .student-meta { font-size: 0.75rem; }
-    .student-row { gap: 10px; }
+    .student-row { gap: 12px; padding-bottom: 10px; }
   }
 
   .badge {
     display: inline-flex;
     align-items: center;
     gap: 5px;
-    padding: 5px 12px;
+    padding: 6px 14px;
     border-radius: 20px;
-    font-size: 0.78rem;
-    font-weight: 600;
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: 0.2px;
   }
-  .badge.green { background: rgba(52,211,153,0.15); color: var(--success); border: 1px solid rgba(52,211,153,0.3); }
-  .badge.yellow { background: rgba(251,191,36,0.15); color: var(--warning); border: 1px solid rgba(251,191,36,0.3); }
-  .badge.red    { background: rgba(248,113,113,0.15); color: var(--danger);  border: 1px solid rgba(248,113,113,0.3); }
-  .badge.blue   { background: rgba(56,189,248,0.15);  color: var(--accent);  border: 1px solid rgba(56,189,248,0.3); }
+  .badge.green  { background: rgba(52,211,153,0.15);  color: var(--success); border: 1px solid rgba(52,211,153,0.35); }
+  .badge.yellow { background: rgba(251,191,36,0.15);  color: var(--warning); border: 1px solid rgba(251,191,36,0.35); }
+  .badge.red    { background: rgba(248,113,113,0.15); color: var(--danger);  border: 1px solid rgba(248,113,113,0.35); }
+  .badge.blue   { background: rgba(56,189,248,0.15);  color: var(--accent);  border: 1px solid rgba(56,189,248,0.35); }
 
+  /* Info grid 2x2 */
   .info-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 8px;
+    gap: 10px;
   }
-  .info-item { background: var(--surface); border-radius: 10px; padding: 10px 14px; }
-  .info-item label { font-size: 0.72rem; color: var(--muted); display: block; margin-bottom: 2px; text-transform: uppercase; letter-spacing: 0.5px; }
-  .info-item span { font-size: 0.88rem; font-weight: 500; }
+  .info-item {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 12px 16px;
+    transition: border-color 0.2s;
+  }
+  .info-item:hover { border-color: rgba(56,189,248,0.25); }
+  .info-item label {
+    font-size: 0.68rem;
+    color: var(--muted);
+    display: block;
+    margin-bottom: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.7px;
+    font-weight: 600;
+  }
+  .info-item span { font-size: 0.95rem; font-weight: 600; }
   @media(max-width:700px){
     .info-grid { gap: 6px; }
     .info-item { padding: 7px 10px; border-radius: 8px; }
     .info-item label { font-size: 0.65rem; }
-    .info-item span { font-size: 0.8rem; }
+    .info-item span { font-size: 0.82rem; }
+  }
+
+  /* Botones de acción en desktop: más grandes y con color */
+  @media(min-width:701px){
+    .btn-action-group .btn-success {
+      background: rgba(52,211,153,0.18);
+      color: var(--success);
+      border: 1px solid rgba(52,211,153,0.4);
+      padding: 12px 22px;
+      font-size: 0.92rem;
+    }
+    .btn-action-group .btn-success:hover {
+      background: rgba(52,211,153,0.28);
+      transform: translateY(-1px);
+    }
+    .btn-action-group .btn-ghost {
+      padding: 12px 22px;
+      font-size: 0.92rem;
+    }
   }
 
   /* SCAN CONTROLS */
@@ -1105,8 +1213,11 @@
       <!-- COLUMNA DERECHA: datos alumno -->
       <div class="result-box" id="result-box">
         <div class="result-empty" id="result-empty">
-          <svg width="40" height="40" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
-          Escanea un QR para ver el alumno
+          <div class="result-empty-icon">🪪</div>
+          <div>
+            <div class="result-empty-title">Sin alumno registrado</div>
+            <div class="result-empty-sub">Escanea un código QR o ingresa el ID manualmente</div>
+          </div>
         </div>
         <div class="result-student" id="result-student">
           <div class="student-row">
