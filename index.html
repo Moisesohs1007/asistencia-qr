@@ -4588,11 +4588,13 @@ async function saveUsuario() {
       await secondaryApp.delete();
       const telefono3 = document.getElementById('u-telefono').value.trim();
       await db.collection('usuarios').doc(uid).set({ nombre, email, rol, cargo, telefono: telefono3, restringir, asignaciones, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+      _invalidarUsuarios();
       toast('Usuario creado correctamente','success');
     } else {
       // EDITAR usuario
       const telefonoEdit = document.getElementById('u-telefono').value.trim();
       await db.collection('usuarios').doc(editingUsuarioId).update({ nombre, rol, cargo, telefono: telefonoEdit, restringir, asignaciones });
+      _invalidarUsuarios();
       // Mostrar/ocultar botón recuperar según teléfono
       // Si se ingresó nueva contraseña, cambiarla
       if(pass && pass.length >= 6) {
@@ -4620,28 +4622,38 @@ async function deleteUsuario(uid) {
   if(!confirm('¿Eliminar este usuario? No podrá ingresar al sistema.')) return;
   try {
     await db.collection('usuarios').doc(uid).delete();
+    _invalidarUsuarios();
     toast('Usuario eliminado','info');
     renderUsuarios();
   } catch(e) { toast('Error al eliminar','error'); }
 }
 
+// Cache de usuarios
+let _usuariosCacheData = null;
+async function _cargarUsuariosCache() {
+  if(_usuariosCacheData) return _usuariosCacheData;
+  const snap = await db.collection('usuarios').get();
+  _usuariosCacheData = snap.docs.map(d => ({ uid: d.id, ...d.data() }));
+  return _usuariosCacheData;
+}
+function _invalidarUsuarios() { _usuariosCacheData = null; }
+
 async function renderUsuarios() {
   const tbody = document.getElementById('usuarios-tbody');
   if(!tbody) return;
   try {
-    const snap = await db.collection('usuarios').get();
+    const usuarios = await _cargarUsuariosCache();
     const rolLabels = { admin:'⚙️ Admin', director:'🏫 Director', coordinador:'📊 Coordinador', profesor:'📋 Profesor', portero:'🚪 Portero' };
     const rolColors = { admin:'var(--accent)', director:'#a78bfa', coordinador:'#60a5fa', profesor:'#34d399', portero:'#fb923c' };
-    tbody.innerHTML = snap.docs.map(d => {
-      const u = d.data();
-      const esYo = d.id === currentUser.uid ? ' (tú)' : '';
+    tbody.innerHTML = usuarios.map(u => {
+      const esYo = u.uid === currentUser.uid ? ' (tú)' : '';
       return `<tr>
         <td style="font-weight:500;">${u.nombre}${esYo}</td>
         <td style="color:var(--muted);font-size:0.85rem;">${u.email}</td>
         <td><span style="color:${rolColors[u.rol]||'#fff'};font-weight:600;">${rolLabels[u.rol]||u.rol}</span>${u.cargo?`<br><span style="font-size:0.72rem;color:var(--muted);">${u.cargo}</span>`:''} ${u.rol==='profesor'&&u.restringir?`<br><span style="font-size:0.72rem;color:var(--accent);">Restringido: ${Object.keys(u.asignaciones||{}).join(', ')||'sin asignar'}</span>`:''}</td>
         <td style="display:flex;gap:6px;">
-          <button class="btn btn-ghost" style="padding:5px 10px;font-size:0.78rem;" onclick="openModalUsuario('${d.id}','${u.nombre}','${u.rol}','${u.email}')">✏</button>
-          ${d.id !== currentUser.uid ? `<button class="btn btn-danger" style="padding:5px 10px;font-size:0.78rem;" onclick="deleteUsuario('${d.id}')">✕</button>` : ''}
+          <button class="btn btn-ghost" style="padding:5px 10px;font-size:0.78rem;" onclick="openModalUsuario('${u.uid}','${u.nombre}','${u.rol}','${u.email}')">✏</button>
+          ${u.uid !== currentUser.uid ? `<button class="btn btn-danger" style="padding:5px 10px;font-size:0.78rem;" onclick="deleteUsuario('${u.uid}')">✕</button>` : ''}
         </td>
       </tr>`;
     }).join('');
@@ -5352,6 +5364,7 @@ async function guardarIncidente() {
 
   try {
     await db.collection('incidentes').add(incidente);
+    _invalidarIncidentes(); // Invalidar cache para recargar con el nuevo
     toast('Reporte guardado','success');
     closeModal('modal-incidente');
     renderIncidentes();
@@ -5415,30 +5428,43 @@ function mostrarBotonLlamada(telefono, nombreApoderado) {
   modal.addEventListener('click', e => { if(e.target === modal) modal.remove(); });
 }
 
+// Cache de incidentes — se carga UNA vez, filtros se aplican en memoria
+let _incidentesCacheIdx = null;
+
+async function _cargarIncidentesCache() {
+  if(_incidentesCacheIdx) return _incidentesCacheIdx;
+  const snap = await db.collection('incidentes').limit(200).get();
+  _incidentesCacheIdx = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  return _incidentesCacheIdx;
+}
+
+function _invalidarIncidentes() { _incidentesCacheIdx = null; }
+
 async function renderIncidentes() {
   const tbody = document.getElementById('incidentes-tbody');
   const empty = document.getElementById('incidentes-empty');
   if(!tbody) return;
   try {
-    let snap = await db.collection('incidentes').limit(200).get();
-    let docs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    // Cargar desde cache — sin nueva consulta a Firestore
+    let docs = await _cargarIncidentesCache();
 
-    // Filtro profesor
+    // Filtro por rol
     if(currentRol === 'profesor' && currentPrivilegios.restringir) {
       docs = docs.filter(d => aplicarFiltroProfesor([{ grado: d.grado, seccion: d.seccion }]).length > 0);
     }
-    // Si es profesor, solo sus reportes
     if(currentRol === 'profesor') {
       docs = docs.filter(d => d.responsableId === currentUser.uid);
     }
 
-    // Filtros UI
+    // Filtros UI — todo en memoria, sin tocar Firestore
     const fecha = document.getElementById('inc-filter-fecha')?.value;
     const q = (document.getElementById('inc-filter-search')?.value||'').toLowerCase();
     if(fecha) docs = docs.filter(d => d.fecha === fecha);
-    if(q) docs = docs.filter(d => d.alumnoNombre.toLowerCase().includes(q) || d.alumnoId.includes(q));
+    if(q) docs = docs.filter(d =>
+      (d.alumnoNombre||'').toLowerCase().includes(q) ||
+      (d.alumnoId||'').includes(q)
+    );
 
-    // Sort by fecha desc
     docs.sort((a,b) => (b.fecha||'').localeCompare(a.fecha||''));
 
     if(!docs.length) {
@@ -5470,6 +5496,7 @@ async function renderIncidentes() {
 async function eliminarIncidente(id) {
   if(!confirm('¿Eliminar este reporte?')) return;
   await db.collection('incidentes').doc(id).delete();
+  _invalidarIncidentes(); // Invalidar cache tras eliminar
   toast('Reporte eliminado','info');
   renderIncidentes();
 }
