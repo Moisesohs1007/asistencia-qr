@@ -3661,10 +3661,10 @@ function handleCSV(e) {
       if(idx === 0 && (line.toLowerCase().includes('dni') || line.toLowerCase().includes('nombres'))) continue;
       const cols = line.split(',').map(c => c.replace(/"/g,'').trim());
       if(cols.length < 4) continue;
-      const [id, nombres, apellidos, turno, grado, seccion, foto, apoderadoNombres, apoderadoApellidos, telefono] = cols;
+      const [id, nombres, apellidos, turno, grado, seccion, foto, apoderadoNombres, apoderadoApellidos, telefono, correoApoderado] = cols;
       if(!id || !/^\d{8}$/.test(id)) continue;
       const limite = await getLimiteByNivel(turno||'Primaria');
-      const alumno = { id, nombres, apellidos, grado: grado||'', seccion: seccion||'A', turno: turno||'Primaria', limite, foto: foto||'', apoderadoNombres: apoderadoNombres||'', apoderadoApellidos: apoderadoApellidos||'', telefono: telefono||'' };
+      const alumno = { id, nombres, apellidos, grado: grado||'', seccion: seccion||'A', turno: turno||'Primaria', limite, foto: foto||'', apoderadoNombres: apoderadoNombres||'', apoderadoApellidos: apoderadoApellidos||'', telefono: telefono||'', correoApoderado: correoApoderado||'' };
       if(existingIds.has(id)) {
         // Actualizar alumno existente preservando foto si CSV no trae una
         const existente = alumnosExistentes.find(a => a.id === id);
@@ -3754,7 +3754,7 @@ async function handleExcel(e) {
 
       for(let i = 0; i < filasValidas.length; i++) {
         const cols = filasValidas[i];
-        const [id, nombres, apellidos, turno, grado, seccion, foto, apoderadoNombres, apoderadoApellidos, telefono] = cols;
+        const [id, nombres, apellidos, turno, grado, seccion, foto, apoderadoNombres, apoderadoApellidos, telefono, correoApoderado] = cols;
         const limite = await getLimiteByNivel(turno || 'Primaria');
         const alumno = {
           id,
@@ -3767,7 +3767,8 @@ async function handleExcel(e) {
           foto:               foto || '',
           apoderadoNombres:   apoderadoNombres || '',
           apoderadoApellidos: apoderadoApellidos || '',
-          telefono:           telefono || ''
+          telefono:           telefono || '',
+          correoApoderado:    correoApoderado || ''
         };
         if(existingIds.has(id)) {
           const existente = alumnosExistentes.find(a => a.id === id);
@@ -4544,9 +4545,9 @@ Y usa la opción *"¿Olvidé mi contraseña?"* con tu correo registrado.
 Si no solicitaste este cambio, ignora este mensaje.`;
 
     const num = '51' + telefono.replace(/\D/g,'');
-    const res = await fetch(\`https://apiwsp.factiliza.com/v1/message/sendtext/\${cfg.instancia}\`, {
+    const res = await fetch(`https://apiwsp.factiliza.com/v1/message/sendtext/${cfg.instancia}`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': \`Bearer \${cfg.token}\` },
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${cfg.token}` },
       body: JSON.stringify({ number: num, text: msg })
     });
 

@@ -452,10 +452,13 @@ function guardarNuevaPass() {
 
   auth.currentUser.updatePassword(pass1).then(function() {
     // Actualizar datos del alumno con teléfono
-    return db.collection('alumnos').doc(alumno.id).update({ telefono: telefono,
+    var updateAlumno = {
+      telefono:           telefono,
       apoderadoNombres:   nombres   || alumno.apoderadoNombres   || '',
       apoderadoApellidos: apellidos || alumno.apoderadoApellidos || ''
-    });
+    };
+    if(correo) updateAlumno.correoApoderado = correo;
+    return db.collection('alumnos').doc(alumno.id).update(updateAlumno);
   }).then(function() {
     // Guardar documento apoderado completo
     var dataApo = {
