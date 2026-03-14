@@ -2039,6 +2039,37 @@ function togglePassApoderado() {
 
 
 
+window.doLogin = function() {
+  const email  = document.getElementById('login-email').value.trim();
+  const pass   = document.getElementById('login-pass').value;
+  const errEl  = document.getElementById('login-error');
+  const loadEl = document.getElementById('login-loading');
+  errEl.style.display = 'none';
+  if(!email || !pass) { errEl.textContent = 'Completa todos los campos'; errEl.style.display = 'block'; return; }
+  document.getElementById('btn-login').disabled = true;
+  loadEl.style.display = 'block';
+  auth.signInWithEmailAndPassword(email, pass)
+    .then(cred => {
+      console.log('Auth OK, uid:', cred.user.uid);
+    })
+    .catch(err => {
+      loadEl.style.display = 'none';
+      document.getElementById('btn-login').disabled = false;
+      console.error('Login error:', err.code, err.message);
+      const msgs = {
+        'auth/invalid-email':        'Correo inválido',
+        'auth/user-not-found':       'Usuario no encontrado',
+        'auth/wrong-password':       'Contraseña incorrecta',
+        'auth/invalid-credential':   'Correo o contraseña incorrectos',
+        'auth/too-many-requests':    'Demasiados intentos, espera unos minutos',
+        'auth/network-request-failed':'Error de conexión a internet',
+        'auth/user-disabled':        'Usuario desactivado',
+      };
+      errEl.textContent = msgs[err.code] || ('Error: ' + err.code);
+      errEl.style.display = 'block';
+    });
+};
+
 window.doLoginApoderado = async function() {
   const dni   = document.getElementById('login-dni-apoderado').value.trim();
   const pass  = document.getElementById('login-pass-apoderado').value;
