@@ -2518,6 +2518,52 @@ function showSectionDirect(id) {
 }
 
 // ============================================================
+// CACHE PERSISTENTE — localStorage con TTL
+// Reduce lecturas Firestore entre sesiones del mismo día
+// ============================================================
+const LSC = {
+  TTL_ALUMNOS:    60 * 60 * 1000,  // 1 hora
+  TTL_CONFIG:     60 * 60 * 1000,  // 1 hora
+  TTL_REGISTROS:  10 * 60 * 1000,  // 10 minutos
+  TTL_INCIDENTES: 15 * 60 * 1000,  // 15 minutos
+  TTL_USUARIOS:   30 * 60 * 1000,  // 30 minutos
+
+  set(key, data, ttl) {
+    try {
+      localStorage.setItem('asmqr_' + key, JSON.stringify({
+        data, ts: Date.now(), ttl
+      }));
+    } catch(e) { /* Storage lleno — ignorar */ }
+  },
+
+  get(key) {
+    try {
+      const raw = localStorage.getItem('asmqr_' + key);
+      if(!raw) return null;
+      const obj = JSON.parse(raw);
+      if(Date.now() - obj.ts > obj.ttl) {
+        localStorage.removeItem('asmqr_' + key);
+        return null;
+      }
+      return obj.data;
+    } catch(e) { return null; }
+  },
+
+  del(key) {
+    try { localStorage.removeItem('asmqr_' + key); } catch(e) {}
+  },
+
+  // Limpiar todas las claves del sistema
+  clear() {
+    try {
+      Object.keys(localStorage)
+        .filter(k => k.startsWith('asmqr_'))
+        .forEach(k => localStorage.removeItem(k));
+    } catch(e) {}
+  }
+};
+
+// ============================================================
 // DB — Firebase Firestore (reemplaza localStorage)
 // ============================================================
 const DB = {
@@ -2525,12 +2571,18 @@ const DB = {
   _alumnosCache: null,
   async getAlumnos() {
     if(this._alumnosCache) return this._alumnosCache;
+    // Intentar desde localStorage
+    const lsData = LSC.get('alumnos');
+    if(lsData) { this._alumnosCache = lsData; return lsData; }
+    // Consultar Firestore
     const snap = await db.collection('alumnos').get();
     this._alumnosCache = snap.docs.map(d => ({id: d.id, ...d.data()}));
+    LSC.set('alumnos', this._alumnosCache, LSC.TTL_ALUMNOS);
     return this._alumnosCache;
   },
   invalidarAlumnos() {
     this._alumnosCache = null;
+    LSC.del('alumnos');
   },
   async saveAlumno(alumno) {
     // Siempre guardar el ID limpio sin espacios
@@ -2570,9 +2622,18 @@ const DB = {
   async getRegistros(filtros={}) {
     const key = this._cacheKey(filtros);
 
-    // Retornar cache si es válido
+    // Retornar cache en memoria si es válido
     if(this._registrosCache[key] && this._cacheValido(key)) {
       return this._registrosCache[key];
+    }
+    // Intentar desde localStorage (solo 'todos' y por fecha)
+    if(key === 'todos' || key.startsWith('fecha:')) {
+      const lsData = LSC.get('reg_' + key);
+      if(lsData) {
+        this._registrosCache[key] = lsData;
+        this._registrosCacheTime[key] = Date.now();
+        return lsData;
+      }
     }
 
     try {
@@ -2583,11 +2644,15 @@ const DB = {
       const docs = snap.docs.map(d => d.data());
       const resultado = docs.sort((a,b) => (b.hora||'').localeCompare(a.hora||''));
 
-      // Guardar en cache
+      // Guardar en cache memoria
       this._registrosCache[key] = resultado;
       this._registrosCacheTime[key] = Date.now();
+      // Guardar en localStorage
+      if(key === 'todos' || key.startsWith('fecha:')) {
+        LSC.set('reg_' + key, resultado, LSC.TTL_REGISTROS);
+      }
 
-      // Si cargamos 'todos', también llenar cache por fecha para consultas futuras
+      // Si cargamos 'todos', también llenar cache por fecha
       if(key === 'todos') {
         const porFecha = {};
         docs.forEach(r => {
@@ -2599,6 +2664,7 @@ const DB = {
           const k = 'fecha:' + fecha;
           this._registrosCache[k] = regs.sort((a,b) => (b.hora||'').localeCompare(a.hora||''));
           this._registrosCacheTime[k] = Date.now();
+          LSC.set('reg_' + k, this._registrosCache[k], LSC.TTL_REGISTROS);
         });
       }
 
@@ -2611,15 +2677,21 @@ const DB = {
 
   invalidarRegistros(fecha=null) {
     if(fecha) {
-      // Solo invalidar la fecha específica y 'todos'
       delete this._registrosCache['fecha:' + fecha];
       delete this._registrosCacheTime['fecha:' + fecha];
       delete this._registrosCache['todos'];
       delete this._registrosCacheTime['todos'];
+      LSC.del('reg_fecha:' + fecha);
+      LSC.del('reg_todos');
     } else {
-      // Invalidar todo
       this._registrosCache = {};
       this._registrosCacheTime = {};
+      // Limpiar todos los registros de localStorage
+      try {
+        Object.keys(localStorage)
+          .filter(k => k.startsWith('asmqr_reg_'))
+          .forEach(k => localStorage.removeItem(k));
+      } catch(e) {}
     }
   },
 
@@ -3145,23 +3217,59 @@ async function renderAlumnos() {
       return (a.nombres||'').localeCompare(b.nombres||'');
     });
     alumnos = aplicarFiltroProfesor(alumnos);
-    tbody.innerHTML = alumnos.map(a => {
-      return `<tr>
-        <td class="td-id">${a.id}</td>
-        <td class="td-name">${a.nombres} ${a.apellidos}</td>
-        <td>${a.grado}</td>
-        <td>${a.seccion}</td>
-        <td>${a.turno}</td>
-        <td style="display:flex;gap:6px;flex-wrap:wrap;">
-          <button class="btn btn-ghost btn-accion-alumno" style="padding:5px 10px;font-size:0.78rem;" onclick="showQR('${a.id}')">QR</button>
-          <button class="btn btn-ghost btn-accion-alumno" style="padding:5px 10px;font-size:0.78rem;" onclick="openModalAlumno('${a.id}')">✏</button>
-          ${currentRol !== 'profesor' ? `<button class="btn btn-ghost btn-accion-alumno" style="padding:5px 10px;font-size:0.78rem;color:#f59e0b;border-color:#f59e0b44;" title="Resetear contraseña apoderado" onclick="resetPassApoderado('${a.id}')">🔑</button>` : ''}
-          ${currentRol !== 'profesor' ? `<button class="btn btn-danger btn-accion-alumno" style="padding:5px 10px;font-size:0.78rem;" onclick="deleteAlumno('${a.id}')">✕</button>` : ''}
-        </td>
-        <td class="td-chk-alumno" style="display:none;text-align:center;"><input type="checkbox" class="chk-alumno" value="${a.id}" onchange="updateSeleccionados()"></td>
-      </tr>`;
-    }).join('');
+
+    // Paginación: mostrar de a 50
+    const PAGE_SIZE = 50;
+    window._alumnosPaginados = alumnos;
+    window._alumnosPagina = 1;
+    _renderAlumnosPagina();
+
   } catch(e) { console.error('renderAlumnos:', e); toast('Error al cargar alumnos','error'); }
+}
+
+function _filaAlumno(a) {
+  return `<tr>
+    <td class="td-id">${a.id}</td>
+    <td class="td-name">${a.nombres} ${a.apellidos}</td>
+    <td>${a.grado}</td>
+    <td>${a.seccion}</td>
+    <td>${a.turno}</td>
+    <td style="display:flex;gap:6px;flex-wrap:wrap;">
+      <button class="btn btn-ghost btn-accion-alumno" style="padding:5px 10px;font-size:0.78rem;" onclick="showQR('${a.id}')">QR</button>
+      <button class="btn btn-ghost btn-accion-alumno" style="padding:5px 10px;font-size:0.78rem;" onclick="openModalAlumno('${a.id}')">✏</button>
+      ${currentRol !== 'profesor' ? `<button class="btn btn-ghost btn-accion-alumno" style="padding:5px 10px;font-size:0.78rem;color:#f59e0b;border-color:#f59e0b44;" title="Resetear contraseña apoderado" onclick="resetPassApoderado('${a.id}')">🔑</button>` : ''}
+      ${currentRol !== 'profesor' ? `<button class="btn btn-danger btn-accion-alumno" style="padding:5px 10px;font-size:0.78rem;" onclick="deleteAlumno('${a.id}')">✕</button>` : ''}
+    </td>
+    <td class="td-chk-alumno" style="display:none;text-align:center;"><input type="checkbox" class="chk-alumno" value="${a.id}" onchange="updateSeleccionados()"></td>
+  </tr>`;
+}
+
+function _renderAlumnosPagina() {
+  const todos   = window._alumnosPaginados || [];
+  const pagina  = window._alumnosPagina || 1;
+  const PAGE_SIZE = 50;
+  const hasta   = pagina * PAGE_SIZE;
+  const tbody   = document.getElementById('alumnos-tbody');
+  const visible = todos.slice(0, hasta);
+
+  tbody.innerHTML = visible.map(_filaAlumno).join('');
+
+  // Botón "Ver más" si quedan alumnos
+  const quedan = todos.length - hasta;
+  const existente = document.getElementById('btn-ver-mas-alumnos');
+  if(existente) existente.remove();
+  if(quedan > 0) {
+    const wrap = tbody.closest('table')?.parentElement;
+    if(wrap) {
+      const btn = document.createElement('div');
+      btn.id = 'btn-ver-mas-alumnos';
+      btn.style.cssText = 'text-align:center;padding:12px 0;';
+      btn.innerHTML = `<button class="btn btn-ghost" onclick="window._alumnosPagina++;_renderAlumnosPagina()">
+        Ver ${Math.min(quedan, PAGE_SIZE)} más de ${quedan} restantes
+      </button>`;
+      wrap.appendChild(btn);
+    }
+  }
 }
 
 // ============================================================
@@ -4632,11 +4740,17 @@ async function deleteUsuario(uid) {
 let _usuariosCacheData = null;
 async function _cargarUsuariosCache() {
   if(_usuariosCacheData) return _usuariosCacheData;
+  const lsUsr = LSC.get('usuarios');
+  if(lsUsr) { _usuariosCacheData = lsUsr; return lsUsr; }
   const snap = await db.collection('usuarios').get();
   _usuariosCacheData = snap.docs.map(d => ({ uid: d.id, ...d.data() }));
+  LSC.set('usuarios', _usuariosCacheData, LSC.TTL_USUARIOS);
   return _usuariosCacheData;
 }
-function _invalidarUsuarios() { _usuariosCacheData = null; }
+function _invalidarUsuarios() {
+  _usuariosCacheData = null;
+  LSC.del('usuarios');
+}
 
 async function renderUsuarios() {
   const tbody = document.getElementById('usuarios-tbody');
@@ -4978,16 +5092,23 @@ let configCache = null;
 
 async function getConfig() {
   if(configCache) return configCache;
+  // Intentar desde localStorage
+  const lsConfig = LSC.get('config');
+  if(lsConfig) { configCache = lsConfig; return configCache; }
   try {
     const doc = await db.collection('config').doc('general').get();
     configCache = doc.exists ? { ...CONFIG_DEFAULTS, ...doc.data() } : { ...CONFIG_DEFAULTS };
+    LSC.set('config', configCache, LSC.TTL_CONFIG);
   } catch(e) {
     configCache = { ...CONFIG_DEFAULTS };
   }
   return configCache;
 }
 
-function invalidateConfig() { configCache = null; }
+function invalidateConfig() {
+  configCache = null;
+  LSC.del('config');
+}
 
 async function getLimiteByNivel(nivel) {
   const cfg = await getConfig();
@@ -5433,12 +5554,19 @@ let _incidentesCacheIdx = null;
 
 async function _cargarIncidentesCache() {
   if(_incidentesCacheIdx) return _incidentesCacheIdx;
+  // Intentar desde localStorage
+  const lsInc = LSC.get('incidentes');
+  if(lsInc) { _incidentesCacheIdx = lsInc; return lsInc; }
   const snap = await db.collection('incidentes').limit(200).get();
   _incidentesCacheIdx = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  LSC.set('incidentes', _incidentesCacheIdx, LSC.TTL_INCIDENTES);
   return _incidentesCacheIdx;
 }
 
-function _invalidarIncidentes() { _incidentesCacheIdx = null; }
+function _invalidarIncidentes() {
+  _incidentesCacheIdx = null;
+  LSC.del('incidentes');
+}
 
 async function renderIncidentes() {
   const tbody = document.getElementById('incidentes-tbody');
@@ -5957,6 +6085,11 @@ async function resetearTodoElSistema() {
     statusEl.style.border = '1px solid rgba(16,185,129,0.3)';
     statusEl.style.color = '#10b981';
     DB.invalidarAlumnos();
+    DB.invalidarRegistros();
+    _invalidarIncidentes();
+    _invalidarUsuarios();
+    invalidateConfig();
+    LSC.clear(); // Limpiar todo el localStorage del sistema
     statusEl.textContent = 'Sistema reseteado correctamente. Eliminados: ' + nAlumnos + ' alumnos, ' + nRegistros + ' registros, ' + nIncidentes + ' incidentes, ' + nApoderados + ' apoderados, ' + nUsuarios + ' usuarios.';
 
     // Limpiar cache local
