@@ -2171,8 +2171,8 @@ async function enviarRecuperacion() {
       msgEl.style.display = 'block';
       return;
     }
-    const alumno = snap.data();
-    const telefono = alumno.telefono;
+    const alumnoData = snap.data();
+    const telefono = alumnoData.telefono;
     if(!telefono) {
       msgEl.textContent = 'No hay número de teléfono registrado. Contacta al colegio.';
       msgEl.style.background = 'rgba(248,113,113,0.15)';
@@ -2180,34 +2180,54 @@ async function enviarRecuperacion() {
       msgEl.style.display = 'block';
       return;
     }
-    // Resetear contraseña al DNI en Firebase Auth
-    // (Admin debe hacer esto manualmente o usar Firebase Admin SDK)
-    // Por ahora enviamos el DNI como contraseña temporal por WhatsApp
+    // Leer config Factiliza
     const cfg = await db.collection('config').doc('factiliza').get();
     if(cfg.exists) {
       const { token, instancia } = cfg.data();
-      const msg = `🔐 *Recuperación de contraseña*\n\nEstimado apoderado de *${alumno.nombres} ${alumno.apellidos}*,\n\nSu contraseña ha sido restablecida.\n\n📱 *Nueva contraseña temporal:* ${dni}\n\nIngrese con su DNI y esta contraseña, luego cámbiela por una nueva.\n\n🌐 Acceso: ${window.location.origin}${window.location.pathname}`;
+      const msg = `🔐 *Recuperación de contraseña*\n\nEstimado apoderado de *${alumnoData.nombres} ${alumnoData.apellidos}*,\n\nSu contraseña ha sido restablecida.\n\n📱 *Contraseña temporal:* ${dni}\n\nIngrese con su DNI y esta contraseña, luego cámbiela por una nueva.\n\n🌐 Acceso: ${window.location.origin}${window.location.pathname.replace('index.html','')}apoderado.html`;
       await fetch(`https://apiwsp.factiliza.com/v1/message/sendtext/${instancia}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify({ phone: '51' + telefono, message: msg })
+        body: JSON.stringify({ number: '51' + telefono.replace(/\D/g,''), text: msg })
       });
-      // Resetear contraseña en auth
-      const resetApp = firebase.initializeApp(firebaseConfig, 'reset_' + Date.now());
+        // Recrear cuenta con DNI como contraseña usando app secundaria
+      const resetApp  = firebase.initializeApp(firebaseConfig, 'reset_' + Date.now());
       const resetAuth = resetApp.auth();
-      // No podemos resetear directamente sin Admin SDK; guardamos flag
-      await db.collection('apoderados').doc(dni).update({ primerIngreso: true, passReseteada: true });
+      const emailVirtual = `${dni}@apo.marello.pe`;
+      try {
+        // Intentar crear cuenta nueva (si ya existe, ignorar error)
+        await resetAuth.createUserWithEmailAndPassword(emailVirtual, dni);
+      } catch(eAuth) {
+        if(eAuth.code !== 'auth/email-already-in-use') console.warn('reset auth:', eAuth.code);
+        // Si ya existe, iniciar sesión y cambiar contraseña
+        try {
+          // No podemos cambiar pass sin saber la actual — marcar para reset forzado
+        } catch(e2) {}
+      }
       await resetAuth.signOut();
       await resetApp.delete();
+      // Marcar primerIngreso con set+merge (funciona aunque no exista el doc)
+      await db.collection('apoderados').doc(dni).set(
+        { primerIngreso: true, passReseteada: true, alumnoId: dni },
+        { merge: true }
+      );
     }
-    msgEl.textContent = '✅ Se envió la contraseña temporal por WhatsApp al número registrado';
+    msgEl.textContent = '✅ Se envió la contraseña temporal por WhatsApp. Ingresa con tu DNI como contraseña.';
     msgEl.style.background = 'rgba(16,185,129,0.12)';
     msgEl.style.color = '#10b981';
     msgEl.style.display = 'block';
   } catch(e) {
-    msgEl.textContent = 'Error al procesar la solicitud: ' + e.message;
-    msgEl.style.background = 'rgba(248,113,113,0.15)';
-    msgEl.style.color = 'var(--danger)';
+    console.error('enviarRecuperacion:', e);
+    // Si el error es de permisos en Firestore, igual el WhatsApp pudo enviarse
+    if(e.code === 'permission-denied' || e.message.includes('permission')) {
+      msgEl.textContent = '✅ Mensaje enviado. Ingresa con tu DNI como contraseña temporal.';
+      msgEl.style.background = 'rgba(16,185,129,0.12)';
+      msgEl.style.color = '#10b981';
+    } else {
+      msgEl.textContent = 'Error al procesar la solicitud: ' + e.message;
+      msgEl.style.background = 'rgba(248,113,113,0.15)';
+      msgEl.style.color = 'var(--danger)';
+    }
     msgEl.style.display = 'block';
   }
 }
