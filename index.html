@@ -36,8 +36,14 @@
     color: var(--text);
     font-family: var(--font-body);
     min-height: 100vh;
-    overflow-x: clip; /* clip en vez de hidden para no afectar position:fixed en iOS */
+    overflow-x: clip;
   }
+  /* Scrollbar más ancha y visible */
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: rgba(255,255,255,0.05); border-radius: 4px; }
+  ::-webkit-scrollbar-thumb { background: rgba(148,163,184,0.4); border-radius: 4px; }
+  ::-webkit-scrollbar-thumb:hover { background: rgba(148,163,184,0.7); }
+  * { scrollbar-width: thin; scrollbar-color: rgba(148,163,184,0.4) rgba(255,255,255,0.05); }
 
   /* BG GRID */
   body::before {
@@ -114,6 +120,12 @@
     margin: 0 auto;
     padding: 28px 20px 60px;
     overflow-x: hidden;
+    overflow-y: auto;
+  }
+  /* Cuando sec-scan está activo en desktop, no hacer scroll en main */
+  body:has(#sec-scan.active) main {
+    overflow: hidden;
+    padding-bottom: 20px;
   }
   @media(max-width:700px){
     main { padding: 14px 12px 90px; }
@@ -134,6 +146,7 @@
   /* SECTIONS */
   .section { display: none; animation: fadeUp 0.3s ease; }
   .section.active { display: block; }
+  #sec-scan.active { display: flex !important; } /* Siempre flex en scanner */
   @media(max-width:700px){ #sec-scan.active { display: flex !important; } }
 
   @keyframes fadeUp {
@@ -258,6 +271,29 @@
     #qr-reader { aspect-ratio: 1/1; }
     .qr-frame { width: 160px; height: 160px; }
   }
+  /* SCANNER DESKTOP — pantalla completa */
+  #sec-scan {
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - 64px - 48px); /* altura total - header - padding */
+    overflow: hidden;
+    padding-bottom: 0 !important;
+  }
+  #sec-scan .scan-controls { flex-shrink: 0; margin-bottom: 12px; }
+  #sec-scan .scanner-layout {
+    flex: 1;
+    min-height: 0;
+  }
+  #sec-scan .stats-row { flex-shrink: 0; margin-top: 12px; }
+  #qr-reader {
+    height: 100% !important;
+    aspect-ratio: unset !important;
+  }
+  .result-box {
+    height: 100%;
+    overflow-y: auto;
+  }
+
   .scanner-layout {
     display: grid;
     grid-template-columns: 1fr 1fr;
