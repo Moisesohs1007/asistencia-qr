@@ -262,17 +262,8 @@ function continuarCargaApoderado(user, dni) {
     var apoData = apoSnap.exists ? apoSnap.data() : {};
     var esPrimerIngreso = !apoSnap.exists || apoData.primerIngreso !== false;
 
-    // Si hay un reset pendiente — cambiar contraseña automáticamente al DNI
-    if(apoData.passReseteada && apoData.passTemp) {
-      auth.currentUser.updatePassword(apoData.passTemp).then(function() {
-        return db.collection('apoderados').doc(dni).set(
-          { passReseteada: false, passTemp: null }, { merge: true }
-        );
-      }).catch(function(e) { console.warn('auto reset pass:', e); });
-    }
-
     if(esPrimerIngreso) {
-      // Mostrar formulario completo de registro
+      // Mostrar formulario completo de registro/cambio de contraseña
       var datosApo = apoData;
       // Pre-llenar si ya hay datos
       document.getElementById('inp-apo-nombres').value   = datosApo.nombres   || alumno.apoderadoNombres   || '';
@@ -489,7 +480,20 @@ function guardarNuevaPass() {
   btn.disabled = true;
   btn.textContent = 'Guardando...';
 
-  auth.currentUser.updatePassword(pass1).then(function() {
+  // Re-autenticar para evitar requires-recent-login
+  var emailActual = auth.currentUser.email;
+  var dniActual   = emailActual.replace('@apo.marello.pe', '');
+  var credential  = firebase.auth.EmailAuthProvider.credential(emailActual, dniActual);
+
+  // Intentar reautenticar silenciosamente — si falla, igual intentamos el cambio
+  Promise.resolve().then(function() {
+    return auth.currentUser.reauthenticateWithCredential(credential);
+  }).catch(function() {
+    // Ignorar error de reautenticación — continuar con updatePassword
+    return Promise.resolve();
+  }).then(function() {
+    return auth.currentUser.updatePassword(pass1);
+  }).then(function() {
     // Actualizar datos del alumno con teléfono
     var updateAlumno = {
       telefono:           telefono,
