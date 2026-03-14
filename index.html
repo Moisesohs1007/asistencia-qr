@@ -4357,8 +4357,6 @@ function closeModal(id) {
   el.classList.remove('open');
   el.classList.remove('active');
   el.style.display = 'none';
-  // Reset display after so CSS can reopen it
-  setTimeout(() => { el.style.display = ''; }, 50);
 }
 
 function toast(msg, type='success') {

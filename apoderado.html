@@ -197,6 +197,9 @@
       <input type="password" id="inp-pass2" placeholder="Repite la contraseña">
     </div>
     <button class="btn btn-primary" id="btn-guardar-pass" style="width:100%;justify-content:center;padding:12px;">Guardar y continuar</button>
+    <button id="btn-cancelar-pass" style="width:100%;margin-top:10px;padding:10px;background:none;border:none;color:var(--muted);cursor:pointer;font-size:0.85rem;display:none;" onclick="cancelarPrimerIngreso()">
+      Ahora no — continuar con contraseña temporal (DNI)
+    </button>
   </div>
 </div>
 
@@ -271,6 +274,8 @@ function continuarCargaApoderado(user, dni) {
       document.getElementById('modal-pass-titulo').textContent   = tieneDatos ? 'Cambia tu contraseña' : 'Bienvenido';
       document.getElementById('modal-pass-subtitulo').textContent = tieneDatos ? 'Por seguridad crea una nueva contraseña' : 'Completa tus datos para activar tu cuenta';
       document.getElementById('modal-cambiar-pass').style.display = 'flex';
+      // Mostrar cancelar solo si es primer ingreso (puede posponer el cambio)
+      document.getElementById('btn-cancelar-pass').style.display = tieneDatos ? 'none' : 'block';
     } else {
       cargarRegistros().then(function() { renderResumen(); });
     }
@@ -421,6 +426,29 @@ function compartirCarnet() {
   else if(navigator.clipboard) navigator.clipboard.writeText(texto).then(function(){alert('Datos copiados');});
 }
 
+function cancelarPrimerIngreso() {
+  // Cierra el modal y deja al apoderado con su contraseña temporal (el DNI)
+  document.getElementById('modal-cambiar-pass').style.display = 'none';
+  cargarRegistros().then(function() { renderResumen(); });
+}
+
+async function sendWhatsAppApo(telefono, mensaje) {
+  try {
+    const snap = await db.collection('config').doc('factiliza').get();
+    if(!snap.exists) return;
+    var token     = snap.data().token;
+    var instancia = snap.data().instancia;
+    if(!token || !instancia) return;
+    var num = '51' + telefono.replace(/\D/g,'');
+    if(num.length < 11) return;
+    await fetch('https://apiwsp.factiliza.com/v1/message/sendtext/' + instancia, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+      body: JSON.stringify({ number: num, text: mensaje })
+    });
+  } catch(e) { console.warn('WhatsApp apoderado:', e); }
+}
+
 function guardarNuevaPass() {
   var pass1    = document.getElementById('inp-pass1').value;
   var pass2    = document.getElementById('inp-pass2').value;
@@ -481,11 +509,21 @@ function guardarNuevaPass() {
     return Promise.all(promises);
   }).then(function() {
     document.getElementById('modal-cambiar-pass').style.display = 'none';
-    alumno.telefono          = telefono;
-    alumno.apoderadoNombres  = nombres   || alumno.apoderadoNombres;
-    alumno.apoderadoApellidos= apellidos || alumno.apoderadoApellidos;
+    alumno.telefono           = telefono;
+    alumno.apoderadoNombres   = nombres   || alumno.apoderadoNombres;
+    alumno.apoderadoApellidos = apellidos || alumno.apoderadoApellidos;
     btn.disabled = false;
     btn.textContent = 'Guardar y continuar';
+    // Enviar nueva contraseña por WhatsApp
+    var nombreApo = (nombres || alumno.apoderadoNombres || 'Apoderado').split(' ')[0];
+    var msgPass = '🔐 *Contraseña registrada — Portal Apoderado*\n\n'
+      + 'Hola *' + nombreApo + '*,\n\n'
+      + 'Tu contraseña ha sido guardada exitosamente.\n\n'
+      + '📱 *Usuario:* ' + alumno.id + ' (DNI del alumno)\n'
+      + '🔑 *Contraseña:* ' + pass1 + '\n\n'
+      + '⚠️ Guarda este mensaje, lo necesitarás para ingresar al portal.\n\n'
+      + '🌐 Acceso: ' + window.location.href.replace('apoderado.html','') + 'apoderado.html';
+    sendWhatsAppApo(telefono, msgPass);
     return cargarRegistros();
   }).then(function() {
     renderResumen();
