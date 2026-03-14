@@ -26,6 +26,25 @@
     .apo-nav::-webkit-scrollbar { display: none; }
     .apo-nav button { flex-shrink: 0; padding: 12px 16px; border: none; background: none; cursor: pointer; font-size: 0.82rem; font-weight: 600; color: var(--muted); border-bottom: 2px solid transparent; white-space: nowrap; font-family: var(--font-body); transition: color .2s; }
     .apo-nav button.active { color: var(--accent); border-bottom-color: var(--accent); }
+    /* ── MÓVIL: tabs en grid 3x2, sin scroll horizontal ── */
+    @media(max-width:640px) {
+      .apo-nav { display: grid; grid-template-columns: repeat(3,1fr); overflow-x: visible; top: 52px; }
+      .apo-nav button { flex-shrink: unset; padding: 8px 2px 7px; font-size: 0.67rem; white-space: normal; text-align: center; line-height: 1.25; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; border-right: 1px solid var(--border); border-bottom: 2px solid transparent; }
+      .apo-nav button:nth-child(3), .apo-nav button:nth-child(6) { border-right: none; }
+      .apo-nav button:nth-child(1), .apo-nav button:nth-child(2), .apo-nav button:nth-child(3) { border-bottom: 1px solid var(--border); }
+      .apo-nav button.active { color: var(--accent); background: rgba(59,130,246,0.08); border-bottom-color: var(--accent) !important; }
+    }
+    /* ── Botón login apoderado: más visible ── */
+    .btn-login-apo {
+      width: 100%; display: flex; justify-content: center; align-items: center; gap: 8px;
+      padding: 14px; border-radius: 12px; border: none; cursor: pointer;
+      font-family: var(--font-body); font-size: 0.95rem; font-weight: 700;
+      background: linear-gradient(135deg, #1d4ed8, #3b82f6);
+      color: #fff; box-shadow: 0 4px 16px rgba(59,130,246,0.4);
+      transition: all .2s; letter-spacing: 0.2px;
+    }
+    .btn-login-apo:hover { background: linear-gradient(135deg,#1e40af,#2563eb); transform: translateY(-1px); box-shadow: 0 6px 20px rgba(59,130,246,0.5); }
+    .btn-login-apo:active { transform: translateY(0); }
     .card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; margin-bottom: 12px; }
     .registro-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 16px; border-bottom: 1px solid var(--border); }
     .registro-row:last-child { border-bottom: none; }
@@ -122,7 +141,7 @@
   <!-- CARNET -->
   <div id="panel-carnet" style="display:none;text-align:center;">
     <p style="font-size:0.83rem;color:var(--muted);margin-bottom:16px;">Muestra este QR al portero para registrar ingreso o salida</p>
-    <div style="display:inline-block;background:linear-gradient(145deg,#0d1a3a,#1a2b5e);border-radius:18px;padding:22px;max-width:250px;width:100%;box-shadow:0 8px 32px rgba(0,0,0,0.5);">
+    <div id="carnet-visual" style="display:inline-block;background:linear-gradient(145deg,#0d1a3a,#1a2b5e);border-radius:18px;padding:22px;max-width:250px;width:100%;box-shadow:0 8px 32px rgba(0,0,0,0.5);">
       <div id="carnet-colegio" style="color:#c9a84c;font-size:0.66rem;font-weight:800;text-align:center;margin-bottom:10px;text-transform:uppercase;letter-spacing:1px;"></div>
       <div style="width:76px;height:76px;border-radius:50%;background:#334155;overflow:hidden;margin:0 auto 10px;border:3px solid #c9a84c;">
         <img id="carnet-foto" src="" style="width:100%;height:100%;object-fit:cover;" onerror="this.parentElement.innerHTML='<div style=\'display:flex;align-items:center;justify-content:center;height:100%;font-size:1.8rem;color:#c9a84c;\'>&#128100;</div>'">
@@ -136,7 +155,7 @@
       <div id="carnet-year" style="color:rgba(255,255,255,0.35);font-size:0.63rem;text-align:center;margin-top:2px;"></div>
     </div>
     <div style="margin-top:14px;">
-      <button class="btn" onclick="compartirCarnet()" style="background:var(--navy);color:#fff;">Compartir</button>
+      <button class="btn-login-apo" onclick="compartirCarnet()" style="max-width:250px;margin:14px auto 0;background:linear-gradient(135deg,#0d1a3a,#1a2b5e);box-shadow:0 4px 16px rgba(0,0,0,0.4);">📤 Compartir imagen</button>
     </div>
   </div>
 
@@ -202,13 +221,15 @@
         <button type="button" onclick="togglePassFieldApo('inp-pass2',this)" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--muted);font-size:1.1rem;padding:4px;">👁</button>
       </div>
     </div>
-    <button class="btn btn-primary" id="btn-guardar-pass" style="width:100%;justify-content:center;padding:12px;">Guardar y continuar</button>
+    <button class="btn-login-apo" id="btn-guardar-pass">🔐 Guardar y continuar</button>
     <button id="btn-cancelar-pass" style="width:100%;margin-top:10px;padding:10px;background:none;border:none;color:var(--muted);cursor:pointer;font-size:0.85rem;display:none;" onclick="cancelarPrimerIngreso()">
       Ahora no — continuar con contraseña temporal (DNI)
     </button>
   </div>
 </div>
 
+<!-- html2canvas para carnet -->
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <!-- Firebase -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
@@ -320,21 +341,40 @@ function poblarMeses() {
 }
 
 function cargarRegistros() {
-  return db.collection('registros').where('alumnoId','==',alumno.id).get().then(function(snap) {
-    var grupos = {};
-    snap.docs.forEach(function(d) {
-      var r = d.data();
-      var key = r.alumnoId + '_' + r.fecha;
-      if(!grupos[key]) grupos[key] = { fecha: r.fecha, estado: r.estado || '', horaIngreso: null, horaSalida: null };
-      var esIngreso = !r.tipo || r.tipo.toLowerCase() === 'ingreso';
-      if(esIngreso) { if(!grupos[key].horaIngreso) grupos[key].horaIngreso = r.hora; }
-      else { grupos[key].horaSalida = r.hora; }
-      if(r.estado === 'Tardanza') grupos[key].estado = 'Tardanza';
-      else if(!grupos[key].estado && r.estado) grupos[key].estado = r.estado;
+  // Usar cache si ya está cargado (evita re-fetch innecesario)
+  if(window._regCache) { registros = window._regCache; return Promise.resolve(); }
+  return db.collection('registros')
+    .where('alumnoId','==',alumno.id)
+    .orderBy('fecha','desc')
+    .get().then(function(snap) {
+      var grupos = {};
+      snap.docs.forEach(function(d) {
+        var r = d.data();
+        var key = r.alumnoId + '_' + r.fecha;
+        if(!grupos[key]) grupos[key] = { fecha: r.fecha, estado: '', horaIngreso: null, horaSalida: null };
+        var esIngreso = !r.tipo || r.tipo.toLowerCase() === 'ingreso';
+        if(esIngreso) {
+          if(!grupos[key].horaIngreso) grupos[key].horaIngreso = r.hora;
+        } else {
+          grupos[key].horaSalida = r.hora;
+        }
+        // Prioridad: Tardanza > Puntual > (lo que sea)
+        if(r.estado === 'Tardanza') grupos[key].estado = 'Tardanza';
+        else if(r.estado === 'Puntual' && grupos[key].estado !== 'Tardanza') grupos[key].estado = 'Puntual';
+        else if(r.estado && !grupos[key].estado) grupos[key].estado = r.estado;
+      });
+      // Asignar 'Ausente' a días sin ningún ingreso registrado
+      Object.values(grupos).forEach(function(g) {
+        if(!g.estado) g.estado = 'Ausente';
+        if(!g.horaIngreso && g.estado !== 'Tardanza') g.estado = 'Ausente';
+      });
+      registros = Object.values(grupos).sort(function(a,b){ return b.fecha.localeCompare(a.fecha); });
+      window._regCache = registros; // guardar en cache
     });
-    registros = Object.values(grupos).sort(function(a,b){ return b.fecha.localeCompare(a.fecha); });
-  });
 }
+
+// Invalidar cache cuando se necesite refrescar
+function invalidarCacheRegistros() { window._regCache = null; }
 
 function showTab(tab) {
   ['resumen','historial','incidentes','carnet','comunicados','contacto'].forEach(function(t) {
@@ -382,11 +422,42 @@ function renderHistorial() {
   var mes  = document.getElementById('sel-mes-hist').value;
   var tipo = document.getElementById('sel-tipo-hist').value;
   var cont = document.getElementById('lista-historial');
+
+  // Si registros aún no cargó, mostrar cargando
+  if(!registros || !registros.length && !window._regCache) {
+    cont.innerHTML = '<div style="padding:24px;text-align:center;color:var(--muted);font-size:0.83rem;">⏳ Cargando registros...</div>';
+    cargarRegistros().then(function() { renderHistorial(); });
+    return;
+  }
+
   var list = filtrarMes(registros, mes);
-  if(tipo) list = list.filter(function(r){return r.estado===tipo;});
-  if(!list.length) { cont.innerHTML='<div style="padding:24px;text-align:center;color:var(--muted);font-size:0.83rem;">Sin registros con esos filtros</div>'; return; }
+
+  // Normalizar estados para comparación segura
+  if(tipo) list = list.filter(function(r) {
+    var est = (r.estado || '').trim();
+    return est === tipo || (tipo === 'Ausente' && !est);
+  });
+
+  var total = list.length;
+  if(!total) {
+    var tipoLabel = tipo || 'todos los estados';
+    cont.innerHTML = '<div style="padding:24px;text-align:center;color:var(--muted);font-size:0.83rem;">Sin registros de <strong>' + tipoLabel + '</strong> en este periodo</div>';
+    return;
+  }
+
   cont.innerHTML = list.map(function(r) {
-    return '<div class="card" style="padding:12px 16px;display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;"><div style="display:flex;align-items:center;gap:10px;"><span style="font-size:1.1rem;">'+ico(r.estado)+'</span><div><div style="font-size:0.85rem;font-weight:700;">'+fStr(r.fecha)+'</div><div style="font-size:0.75rem;color:var(--muted);">'+(r.horaIngreso?'Ingreso: '+r.horaIngreso:'Sin ingreso')+' '+(r.horaSalida?'- Salida: '+r.horaSalida:'')+'</div></div></div>'+badge(r.estado)+'</div>';
+    var estado = r.estado || 'Ausente';
+    return '<div class="card" style="padding:12px 16px;display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">'
+      + '<div style="display:flex;align-items:center;gap:10px;">'
+      + '<span style="font-size:1.1rem;">'+ico(estado)+'</span>'
+      + '<div>'
+      + '<div style="font-size:0.85rem;font-weight:700;">'+fStr(r.fecha)+'</div>'
+      + '<div style="font-size:0.75rem;color:var(--muted);">'
+      + (r.horaIngreso ? 'Ingreso: '+r.horaIngreso : 'Sin ingreso registrado')
+      + (r.horaSalida  ? ' · Salida: '+r.horaSalida : '')
+      + '</div></div></div>'
+      + badge(estado)
+      + '</div>';
   }).join('');
 }
 
@@ -429,9 +500,58 @@ function renderContacto() {
 }
 
 function compartirCarnet() {
-  var texto = 'Carnet Digital\n'+alumno.nombres+' '+alumno.apellidos+'\n'+alumno.grado+' '+alumno.seccion+'\nDNI: '+alumno.id;
-  if(navigator.share) navigator.share({title:'Carnet',text:texto}).catch(function(){});
-  else if(navigator.clipboard) navigator.clipboard.writeText(texto).then(function(){alert('Datos copiados');});
+  // Capturar el carnet como imagen usando canvas
+  var carnetEl = document.getElementById('carnet-visual');
+  if(!carnetEl) {
+    alert('No se pudo capturar el carnet'); return;
+  }
+
+  // Verificar si html2canvas está disponible
+  if(typeof html2canvas === 'undefined') {
+    // Fallback: compartir texto + link QR
+    var qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=300x300&ecc=H&data=' + alumno.id;
+    var texto = '🪪 Carnet Digital — I.E.P. San José Marello\n'
+      + alumno.nombres + ' ' + alumno.apellidos + '\n'
+      + alumno.grado + ' ' + alumno.seccion + '\n'
+      + 'DNI: ' + alumno.id + '\n'
+      + 'QR: ' + qrUrl;
+    if(navigator.share) {
+      navigator.share({ title: 'Carnet QR — ' + alumno.nombres, text: texto }).catch(function(){});
+    } else {
+      navigator.clipboard && navigator.clipboard.writeText(texto).then(function(){ alert('Datos copiados al portapapeles'); });
+    }
+    return;
+  }
+
+  var btn = document.querySelector('[onclick="compartirCarnet()"]');
+  if(btn) { btn.textContent = '⏳ Generando...'; btn.disabled = true; }
+
+  html2canvas(carnetEl, { backgroundColor: null, scale: 2, useCORS: true, allowTaint: true })
+    .then(function(canvas) {
+      if(btn) { btn.textContent = '📤 Compartir imagen'; btn.disabled = false; }
+      canvas.toBlob(function(blob) {
+        if(!blob) { alert('Error al generar imagen'); return; }
+        var file = new File([blob], 'carnet-' + alumno.id + '.png', { type: 'image/png' });
+        if(navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+          navigator.share({ title: 'Carnet — ' + alumno.nombres + ' ' + alumno.apellidos, files: [file] })
+            .catch(function(e) { if(e.name !== 'AbortError') descargarCarnet(canvas); });
+        } else {
+          descargarCarnet(canvas);
+        }
+      }, 'image/png');
+    }).catch(function(e) {
+      if(btn) { btn.textContent = '📤 Compartir imagen'; btn.disabled = false; }
+      console.error(e);
+      alert('Error al generar imagen: ' + e.message);
+    });
+}
+
+function descargarCarnet(canvas) {
+  var link = document.createElement('a');
+  link.download = 'carnet-' + alumno.id + '.png';
+  link.href = canvas.toDataURL('image/png');
+  link.click();
+}
 }
 
 // Toggle contraseña con auto-ocultar 3 segundos
