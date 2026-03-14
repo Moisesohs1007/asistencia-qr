@@ -306,6 +306,7 @@ function continuarCargaApoderado(user, dni) {
       // Mostrar cancelar solo si es primer ingreso (puede posponer el cambio)
       document.getElementById('btn-cancelar-pass').style.display = tieneDatos ? 'none' : 'block';
     } else {
+      invalidarCacheRegistros(); // siempre datos frescos al iniciar
       cargarRegistros().then(function() { renderResumen(); });
     }
   }).catch(function(e) {
@@ -341,15 +342,19 @@ function poblarMeses() {
 }
 
 function cargarRegistros() {
-  // Usar cache si ya está cargado (evita re-fetch innecesario)
-  if(window._regCache) { registros = window._regCache; return Promise.resolve(); }
+  // Cache válido: reusar solo si tiene datos
+  if(window._regCache && window._regCache.length > 0) {
+    registros = window._regCache;
+    return Promise.resolve();
+  }
+  // Sin orderBy para evitar requerir índice compuesto en Firestore
   return db.collection('registros')
     .where('alumnoId','==',alumno.id)
-    .orderBy('fecha','desc')
     .get().then(function(snap) {
       var grupos = {};
       snap.docs.forEach(function(d) {
         var r = d.data();
+        if(!r.fecha) return; // ignorar docs sin fecha
         var key = r.alumnoId + '_' + r.fecha;
         if(!grupos[key]) grupos[key] = { fecha: r.fecha, estado: '', horaIngreso: null, horaSalida: null };
         var esIngreso = !r.tipo || r.tipo.toLowerCase() === 'ingreso';
@@ -358,30 +363,41 @@ function cargarRegistros() {
         } else {
           grupos[key].horaSalida = r.hora;
         }
-        // Prioridad: Tardanza > Puntual > (lo que sea)
-        if(r.estado === 'Tardanza') grupos[key].estado = 'Tardanza';
-        else if(r.estado === 'Puntual' && grupos[key].estado !== 'Tardanza') grupos[key].estado = 'Puntual';
-        else if(r.estado && !grupos[key].estado) grupos[key].estado = r.estado;
+        // Prioridad de estado: Tardanza > Puntual > otros
+        var est = (r.estado || '').trim();
+        if(est === 'Tardanza') {
+          grupos[key].estado = 'Tardanza';
+        } else if(est === 'Puntual' && grupos[key].estado !== 'Tardanza') {
+          grupos[key].estado = 'Puntual';
+        } else if(est && !grupos[key].estado) {
+          grupos[key].estado = est;
+        }
       });
-      // Asignar 'Ausente' a días sin ningún ingreso registrado
+      // Asignar 'Ausente' a días sin estado definido
       Object.values(grupos).forEach(function(g) {
-        if(!g.estado) g.estado = 'Ausente';
-        if(!g.horaIngreso && g.estado !== 'Tardanza') g.estado = 'Ausente';
+        if(!g.estado || g.estado === '') g.estado = 'Ausente';
       });
-      registros = Object.values(grupos).sort(function(a,b){ return b.fecha.localeCompare(a.fecha); });
-      window._regCache = registros; // guardar en cache
+      // Ordenar por fecha descendente en JS
+      registros = Object.values(grupos).sort(function(a,b){
+        return b.fecha.localeCompare(a.fecha);
+      });
+      // Solo cachear si hay datos reales
+      if(registros.length > 0) window._regCache = registros;
+    }).catch(function(e) {
+      console.error('cargarRegistros error:', e);
+      registros = [];
     });
 }
 
-// Invalidar cache cuando se necesite refrescar
-function invalidarCacheRegistros() { window._regCache = null; }
+// Invalidar cache (llamar al refrescar o al cambiar alumno)
+function invalidarCacheRegistros() { window._regCache = null; registros = []; }
 
 function showTab(tab) {
   ['resumen','historial','incidentes','carnet','comunicados','contacto'].forEach(function(t) {
     document.getElementById('panel-'+t).style.display = t === tab ? 'block' : 'none';
     document.getElementById('tab-'+t).classList.toggle('active', t === tab);
   });
-  if(tab === 'historial')  renderHistorial();
+  if(tab === 'historial')  { invalidarCacheRegistros(); cargarRegistros().then(renderHistorial); }
   if(tab === 'incidentes') renderIncidentes();
   if(tab === 'carnet')     renderCarnet();
   if(tab === 'contacto')   renderContacto();
@@ -423,38 +439,41 @@ function renderHistorial() {
   var tipo = document.getElementById('sel-tipo-hist').value;
   var cont = document.getElementById('lista-historial');
 
-  // Si registros aún no cargó, mostrar cargando
-  if(!registros || !registros.length && !window._regCache) {
-    cont.innerHTML = '<div style="padding:24px;text-align:center;color:var(--muted);font-size:0.83rem;">⏳ Cargando registros...</div>';
+  // Si aún no hay registros cargados, traerlos
+  if(!registros || registros.length === 0) {
+    cont.innerHTML = '<div style="padding:24px;text-align:center;color:var(--muted);font-size:0.83rem;">⏳ Cargando...</div>';
     cargarRegistros().then(function() { renderHistorial(); });
     return;
   }
 
   var list = filtrarMes(registros, mes);
 
-  // Normalizar estados para comparación segura
-  if(tipo) list = list.filter(function(r) {
-    var est = (r.estado || '').trim();
-    return est === tipo || (tipo === 'Ausente' && !est);
-  });
+  // Filtro por estado — comparación normalizada
+  if(tipo) {
+    list = list.filter(function(r) {
+      var est = (r.estado || 'Ausente').trim();
+      return est === tipo;
+    });
+  }
 
-  var total = list.length;
-  if(!total) {
-    var tipoLabel = tipo || 'todos los estados';
-    cont.innerHTML = '<div style="padding:24px;text-align:center;color:var(--muted);font-size:0.83rem;">Sin registros de <strong>' + tipoLabel + '</strong> en este periodo</div>';
+  if(!list.length) {
+    var lbl = tipo ? tipo : 'ningún estado';
+    cont.innerHTML = '<div style="padding:24px;text-align:center;color:var(--muted);font-size:0.83rem;">'
+      + 'Sin registros de <strong style="color:var(--text);">' + lbl + '</strong>'
+      + (mes ? ' en este mes' : '') + '</div>';
     return;
   }
 
   cont.innerHTML = list.map(function(r) {
-    var estado = r.estado || 'Ausente';
+    var estado = (r.estado || 'Ausente').trim();
     return '<div class="card" style="padding:12px 16px;display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">'
       + '<div style="display:flex;align-items:center;gap:10px;">'
       + '<span style="font-size:1.1rem;">'+ico(estado)+'</span>'
       + '<div>'
       + '<div style="font-size:0.85rem;font-weight:700;">'+fStr(r.fecha)+'</div>'
       + '<div style="font-size:0.75rem;color:var(--muted);">'
-      + (r.horaIngreso ? 'Ingreso: '+r.horaIngreso : 'Sin ingreso registrado')
-      + (r.horaSalida  ? ' · Salida: '+r.horaSalida : '')
+      + (r.horaIngreso ? '🟢 Ingreso: '+r.horaIngreso : '⭕ Sin ingreso')
+      + (r.horaSalida  ? ' · 🔴 Salida: '+r.horaSalida : '')
       + '</div></div></div>'
       + badge(estado)
       + '</div>';
