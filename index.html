@@ -272,34 +272,38 @@
     .qr-frame { width: 160px; height: 160px; }
   }
   /* SCANNER DESKTOP — pantalla completa */
-  /* ─── SCANNER DESKTOP: todo en pantalla, sin scroll ─── */
+  /* ═══════════════════════════════════════════════════
+     SCANNER — todos los estilos bajo #sec-scan
+     para no contaminar otras secciones
+  ═══════════════════════════════════════════════════ */
+
+  /* Sección scanner: flex-col, altura exacta de ventana disponible */
   #sec-scan {
     display: flex;
     flex-direction: column;
-    /* 100vh - header(64px) - padding top+bottom main(28+20px) */
-    height: calc(100vh - 112px);
+    height: calc(100vh - 112px); /* 100vh - header(64) - padding main(28+20) */
     overflow: hidden;
     padding-bottom: 0 !important;
     gap: 8px;
   }
 
-  /* Fila superior: botones cámara + stats en línea */
-  .scan-top-bar {
+  /* Fila superior: botones + stats en línea */
+  #sec-scan .scan-top-bar {
     display: flex;
     align-items: center;
     gap: 12px;
     flex-shrink: 0;
   }
-  .scan-controls { display: flex; gap: 8px; flex-shrink: 0; }
+  #sec-scan .scan-controls { display: flex; gap: 8px; flex-shrink: 0; }
 
-  /* Stats compactas inline (desktop) */
-  .stats-inline-bar {
+  /* Stats compactas inline (solo desktop) */
+  #sec-scan .stats-inline-bar {
     display: flex;
     gap: 8px;
     flex: 1;
     justify-content: flex-end;
   }
-  .sib-card {
+  #sec-scan .sib-card {
     display: flex;
     align-items: center;
     gap: 8px;
@@ -309,20 +313,20 @@
     padding: 7px 14px;
     white-space: nowrap;
   }
-  .sib-num {
+  #sec-scan .sib-num {
     font-family: var(--font-display);
     font-size: 1.15rem;
     font-weight: 800;
     line-height: 1;
   }
-  .sib-label { font-size: 0.72rem; color: var(--muted); }
-  .sib-card.blue   .sib-num { color: var(--accent); }
-  .sib-card.green  .sib-num { color: var(--success); }
-  .sib-card.yellow .sib-num { color: var(--warning); }
-  .sib-card.red    .sib-num { color: var(--danger); }
+  #sec-scan .sib-label { font-size: 0.72rem; color: var(--muted); }
+  #sec-scan .sib-card.blue   .sib-num { color: var(--accent); }
+  #sec-scan .sib-card.green  .sib-num { color: var(--success); }
+  #sec-scan .sib-card.yellow .sib-num { color: var(--warning); }
+  #sec-scan .sib-card.red    .sib-num { color: var(--danger); }
 
-  /* Grid principal: cámara | tarjeta */
-  .scanner-layout {
+  /* Grid principal */
+  #sec-scan .scanner-layout {
     display: grid;
     grid-template-columns: 1.15fr 0.85fr;
     gap: 14px;
@@ -330,47 +334,48 @@
     min-height: 0;
   }
 
-  /* Columna izquierda: flex-col, cámara crece */
-  .scan-col-left {
+  /* Columna izquierda: cámara crece, status e input quedan fijos */
+  #sec-scan .scan-col-left {
     display: flex;
     flex-direction: column;
     gap: 8px;
     min-height: 0;
     height: 100%;
   }
-  .scan-col-left #qr-reader {
+  #sec-scan .scan-col-left #qr-reader {
     flex: 1;
     min-height: 0;
     height: 100% !important;
     aspect-ratio: unset !important;
   }
-  .scan-col-left .scan-status { flex-shrink: 0; }
-  .scan-col-left .manual-input { flex-shrink: 0; margin: 0; }
+  #sec-scan .scan-col-left .scan-status { flex-shrink: 0; }
+  #sec-scan .scan-col-left .manual-input { flex-shrink: 0; margin: 0; }
 
-  /* Columna derecha ocupa toda la altura */
-  .result-box { height: 100%; overflow-y: auto; min-height: 0; }
+  /* Columna derecha: tarjeta alumno, altura completa */
+  #sec-scan .result-box {
+    height: 100%;
+    overflow-y: auto;
+    min-height: 0;
+  }
 
   /* Stats móvil: ocultas en desktop */
-  .stats-row-mobile { display: none !important; }
-  /* MÓVIL: todo en pantalla sin scroll */
+  #sec-scan .stats-row-mobile { display: none !important; }
+
+  /* ── MÓVIL ── */
   @media(max-width:700px){
     #sec-scan {
-      flex-direction: column;
       height: calc(100dvh - 52px - 62px - 28px);
-      overflow: hidden;
       padding: 6px 10px 0 !important;
       gap: 6px;
     }
-    /* En móvil: ocultar top-bar de desktop, mostrar solo botones */
-    .scan-top-bar {
-      flex-wrap: wrap;
-      gap: 6px;
+    #sec-scan .scan-top-bar { flex-wrap: wrap; gap: 6px; }
+    #sec-scan .stats-inline-bar { display: none; }
+    #sec-scan .scan-controls { flex: 1; }
+    #sec-scan .scan-controls .btn {
+      flex: 1; min-width: 80px; justify-content: center;
+      font-size: 0.78rem; padding: 7px 8px;
     }
-    .stats-inline-bar { display: none; }
-    .scan-controls { flex: 1; }
-    .scan-controls .btn { flex: 1; min-width: 80px; justify-content: center; font-size:0.78rem; padding: 7px 8px; }
-
-    .scanner-layout {
+    #sec-scan .scanner-layout {
       grid-template-columns: 1fr;
       gap: 6px;
       flex: 1;
@@ -378,67 +383,48 @@
       display: flex;
       flex-direction: column;
     }
-    .scan-col-left {
-      flex: 0 0 auto;
-      height: auto;
-    }
-    .scan-col-left #qr-reader {
+    #sec-scan .scan-col-left { flex: 0 0 auto; height: auto; }
+    #sec-scan .scan-col-left #qr-reader {
       flex: none;
       height: 200px !important;
       min-height: 200px;
       position: relative !important;
     }
     #qr-video {
-      width: 100% !important;
-      height: 200px !important;
-      object-fit: cover;
-      display: block;
-      position: absolute !important;
-      top: 0 !important;
-      left: 0 !important;
+      width: 100% !important; height: 200px !important;
+      object-fit: cover; display: block;
+      position: absolute !important; top: 0 !important; left: 0 !important;
       border-radius: 12px;
     }
-    #cam-placeholder {
-      position: absolute !important;
-      inset: 0;
-      z-index: 1;
-    }
+    #cam-placeholder { position: absolute !important; inset: 0; z-index: 1; }
     .qr-frame-overlay { z-index: 10; }
-    .scan-status { padding: 4px 8px !important; font-size: 0.75rem !important; }
-    .manual-input {
-      display: flex;
-      align-items: flex-end;
-      gap: 8px;
-      margin-top: 4px !important;
+    #sec-scan .scan-status { padding: 4px 8px !important; font-size: 0.75rem !important; }
+    #sec-scan .manual-input {
+      display: flex; align-items: flex-end;
+      gap: 8px; margin-top: 4px !important;
     }
-    .manual-input .form-group { flex: 1; margin: 0 !important; }
-    .manual-input label { font-size: 0.72rem !important; }
-    .manual-input input { padding: 7px 10px !important; font-size: 0.85rem !important; }
-    .manual-input button { flex-shrink: 0; padding: 7px 14px !important; font-size: 0.8rem !important; }
-    .result-box {
-      flex: 1;
-      min-height: 0;
-      overflow-y: auto;
-      padding: 10px !important;
-      gap: 6px !important;
+    #sec-scan .manual-input .form-group { flex: 1; margin: 0 !important; }
+    #sec-scan .manual-input label { font-size: 0.72rem !important; }
+    #sec-scan .manual-input input { padding: 7px 10px !important; font-size: 0.85rem !important; }
+    #sec-scan .manual-input button { flex-shrink: 0; padding: 7px 14px !important; font-size: 0.8rem !important; }
+    #sec-scan .result-box {
+      flex: 1; min-height: 0; overflow-y: auto;
+      padding: 10px !important; gap: 6px !important;
     }
-    .result-empty { height: 100% !important; font-size: 0.8rem; }
-    .student-name { font-size: 0.95rem !important; }
-    .student-meta { font-size: 0.75rem !important; }
-    .info-grid { gap: 6px !important; }
-    .info-item label { font-size: 0.68rem !important; }
-    .info-item span  { font-size: 0.82rem !important; }
-    /* Barra de botones fija en móvil */
+    #sec-scan .result-empty { height: 100% !important; font-size: 0.8rem; }
+    #sec-scan .student-name { font-size: 0.95rem !important; }
+    #sec-scan .student-meta { font-size: 0.75rem !important; }
+    #sec-scan .info-grid { gap: 6px !important; }
+    #sec-scan .info-item label { font-size: 0.68rem !important; }
+    #sec-scan .info-item span  { font-size: 0.82rem !important; }
     #scan-action-bar {
-      flex-shrink: 0;
-      display: flex !important;
-      gap: 8px;
-      padding: 6px 0 4px;
+      flex-shrink: 0; display: flex !important;
+      gap: 8px; padding: 6px 0 4px;
     }
     #result-student .btn-action-group { display: none; }
   }
 
-  /* Desktop: barra oculta, botones dentro del card */
+  /* Desktop: barra fija oculta */
   @media(min-width:701px){
     #scan-action-bar { display: none !important; }
   }
