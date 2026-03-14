@@ -546,10 +546,9 @@ function renderIncidentes() {
         + '<div style="display:inline-flex;align-items:center;gap:5px;background:'+sevBg+';border:1px solid '+sevColor+'40;border-radius:20px;padding:3px 10px;margin-bottom:10px;">'
         +   '<span style="font-size:0.68rem;font-weight:700;color:'+sevColor+';text-transform:uppercase;letter-spacing:0.5px;">⚡ Severidad: '+sevLabel+'</span>'
         + '</div>'
-        // Pie: reportado por + botón descarga
-        + '<div style="display:flex;justify-content:space-between;align-items:center;padding-top:8px;border-top:1px solid rgba(255,255,255,0.06);">'
-        +   '<div style="font-size:0.74rem;color:var(--muted);">'+(inc.responsableNombre||inc.reportadoPor ? '👤 '+(inc.responsableNombre||inc.reportadoPor) : '')+'</div>'
-        +   '<button onclick="descargarIncidente('+idx+')" style="background:rgba(59,130,246,0.12);border:1px solid rgba(59,130,246,0.3);color:#60a5fa;border-radius:8px;padding:5px 12px;cursor:pointer;font-size:0.75rem;font-weight:600;font-family:var(--font-body);">⬇ Descargar PDF</button>'
+        // Botón descarga
+        + '<div style="margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.06);">'
+        +   '<button onclick="descargarIncidente('+idx+')" style="width:100%;background:rgba(59,130,246,0.12);border:1px solid rgba(59,130,246,0.3);color:#60a5fa;border-radius:8px;padding:7px;cursor:pointer;font-size:0.78rem;font-weight:600;font-family:var(--font-body);">⬇ Descargar PDF del reporte</button>'
         + '</div>'
         + '</div>';
     }).join('');
