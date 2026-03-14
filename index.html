@@ -476,7 +476,8 @@
   }
 
   /* RESULT CARD */
-  .result-box {
+  /* ── RESULT-BOX (card alumno) — solo dentro del scanner ── */
+  #sec-scan .result-box {
     background: var(--surface2);
     border: 1px solid var(--border);
     border-radius: 16px;
@@ -487,8 +488,7 @@
     position: relative;
     overflow: hidden;
   }
-  /* Sutil glow en la esquina superior */
-  .result-box::before {
+  #sec-scan .result-box::before {
     content: '';
     position: absolute;
     top: -40px; right: -40px;
@@ -497,13 +497,13 @@
     pointer-events: none;
   }
   @media(max-width:700px){
-    .result-box { padding: 12px; gap: 8px; }
-    .result-empty { height: 100px; font-size:0.8rem; }
-    .result-empty svg { width:28px; height:28px; }
+    #sec-scan .result-box { padding: 12px; gap: 8px; }
+    #sec-scan .result-empty { height: 100px; font-size:0.8rem; }
+    #sec-scan .result-empty svg { width:28px; height:28px; }
   }
 
-  /* ── ESTADO DE ESPERA (sin alumno) ── */
-  .result-empty {
+  /* Estado de espera */
+  #sec-scan .result-empty {
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -515,8 +515,8 @@
     gap: 16px;
     text-align: center;
   }
-  .result-empty svg { opacity: 0.15; }
-  .result-empty-icon {
+  #sec-scan .result-empty svg { opacity: 0.15; }
+  #sec-scan .result-empty-icon {
     width: 90px; height: 90px;
     border-radius: 50%;
     background: rgba(56,189,248,0.06);
@@ -529,77 +529,56 @@
     0%, 100% { box-shadow: 0 0 0 0 rgba(56,189,248,0.15); }
     50%       { box-shadow: 0 0 0 12px rgba(56,189,248,0); }
   }
-  .result-empty-title {
+  #sec-scan .result-empty-title {
     font-family: var(--font-display);
-    font-size: 1rem;
-    font-weight: 700;
-    color: var(--text);
-    opacity: 0.5;
+    font-size: 1rem; font-weight: 700;
+    color: var(--text); opacity: 0.5;
   }
-  .result-empty-sub {
-    font-size: 0.8rem;
-    color: var(--muted);
-    max-width: 200px;
-    line-height: 1.5;
+  #sec-scan .result-empty-sub {
+    font-size: 0.8rem; color: var(--muted);
+    max-width: 200px; line-height: 1.5;
   }
 
-  /* ── CARD DEL ALUMNO ── */
-  .result-student { display: none; }
+  /* Card del alumno */
+  #sec-scan .result-student { display: none; }
 
-  /* Foto / avatar grande */
-  .student-avatar {
+  #sec-scan .student-avatar {
     width: 88px; height: 88px;
     border-radius: 50%;
     background: linear-gradient(135deg, var(--accent), var(--accent2));
     display: flex; align-items: center; justify-content: center;
     font-family: var(--font-display);
-    font-size: 2rem;
-    font-weight: 800;
-    color: #fff;
+    font-size: 2rem; font-weight: 800; color: #fff;
     flex-shrink: 0;
     box-shadow: 0 0 0 4px rgba(56,189,248,0.2), 0 8px 24px rgba(0,0,0,0.35);
     overflow: hidden;
   }
-  .student-avatar img { width:100%; height:100%; object-fit:cover; border-radius:50%; }
-
-  .student-info { flex: 1; min-width: 0; }
-  .student-name {
+  #sec-scan .student-avatar img { width:100%; height:100%; object-fit:cover; border-radius:50%; }
+  #sec-scan .student-info { flex: 1; min-width: 0; }
+  #sec-scan .student-name {
     font-family: var(--font-display);
-    font-size: 1.25rem;
-    font-weight: 800;
-    line-height: 1.2;
-    word-break: break-word;
+    font-size: 1.25rem; font-weight: 800;
+    line-height: 1.2; word-break: break-word;
   }
-  .student-meta {
-    font-size: 0.84rem;
-    color: var(--muted);
-    margin-top: 5px;
-    display: flex;
-    align-items: center;
-    gap: 6px;
+  #sec-scan .student-meta {
+    font-size: 0.84rem; color: var(--muted);
+    margin-top: 5px; display: flex; align-items: center; gap: 6px;
   }
-  .student-meta::before {
-    content: '';
-    display: inline-block;
-    width: 6px; height: 6px;
-    border-radius: 50%;
-    background: var(--accent);
-    flex-shrink: 0;
+  #sec-scan .student-meta::before {
+    content: ''; display: inline-block;
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--accent); flex-shrink: 0;
   }
-  .student-row {
-    display: flex;
-    align-items: center;
-    gap: 18px;
-    padding-bottom: 16px;
+  #sec-scan .student-row {
+    display: flex; align-items: center;
+    gap: 18px; padding-bottom: 16px;
     border-bottom: 1px solid var(--border);
   }
-
-  /* Móvil: avatar más pequeño */
   @media(max-width:700px){
-    .student-avatar { width: 52px; height: 52px; font-size: 1.2rem; }
-    .student-name { font-size: 0.97rem; }
-    .student-meta { font-size: 0.75rem; }
-    .student-row { gap: 12px; padding-bottom: 10px; }
+    #sec-scan .student-avatar { width: 52px; height: 52px; font-size: 1.2rem; }
+    #sec-scan .student-name { font-size: 0.97rem; }
+    #sec-scan .student-meta { font-size: 0.75rem; }
+    #sec-scan .student-row { gap: 12px; padding-bottom: 10px; }
   }
 
   .badge {
@@ -617,21 +596,21 @@
   .badge.red    { background: rgba(248,113,113,0.15); color: var(--danger);  border: 1px solid rgba(248,113,113,0.35); }
   .badge.blue   { background: rgba(56,189,248,0.15);  color: var(--accent);  border: 1px solid rgba(56,189,248,0.35); }
 
-  /* Info grid 2x2 */
-  .info-grid {
+  /* Info grid 2x2 — solo en el scanner */
+  #sec-scan .info-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 10px;
   }
-  .info-item {
+  #sec-scan .info-item {
     background: var(--surface);
     border: 1px solid var(--border);
     border-radius: 12px;
     padding: 12px 16px;
     transition: border-color 0.2s;
   }
-  .info-item:hover { border-color: rgba(56,189,248,0.25); }
-  .info-item label {
+  #sec-scan .info-item:hover { border-color: rgba(56,189,248,0.25); }
+  #sec-scan .info-item label {
     font-size: 0.68rem;
     color: var(--muted);
     display: block;
@@ -640,42 +619,31 @@
     letter-spacing: 0.7px;
     font-weight: 600;
   }
-  .info-item span { font-size: 0.95rem; font-weight: 600; }
+  #sec-scan .info-item span { font-size: 0.95rem; font-weight: 600; }
   @media(max-width:700px){
-    .info-grid { gap: 6px; }
-    .info-item { padding: 7px 10px; border-radius: 8px; }
-    .info-item label { font-size: 0.65rem; }
-    .info-item span { font-size: 0.82rem; }
+    #sec-scan .info-grid { gap: 6px; }
+    #sec-scan .info-item { padding: 7px 10px; border-radius: 8px; }
+    #sec-scan .info-item label { font-size: 0.65rem; }
+    #sec-scan .info-item span { font-size: 0.82rem; }
   }
 
-  /* Botones de acción en desktop: más grandes y con color */
+  /* Botones de acción en desktop */
   @media(min-width:701px){
-    .btn-action-group .btn-success {
+    #sec-scan .btn-action-group .btn-success {
       background: rgba(52,211,153,0.18);
       color: var(--success);
       border: 1px solid rgba(52,211,153,0.4);
       padding: 12px 22px;
       font-size: 0.92rem;
     }
-    .btn-action-group .btn-success:hover {
+    #sec-scan .btn-action-group .btn-success:hover {
       background: rgba(52,211,153,0.28);
       transform: translateY(-1px);
     }
-    .btn-action-group .btn-ghost {
+    #sec-scan .btn-action-group .btn-ghost {
       padding: 12px 22px;
       font-size: 0.92rem;
     }
-  }
-
-  /* SCAN CONTROLS */
-  .scan-controls {
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
-    margin-bottom: 12px;
-  }
-  @media(max-width:700px){
-    .scan-controls .btn { flex: 1; min-width: 80px; justify-content: center; font-size:0.78rem; padding: 7px 8px; }
   }
 
   /* BUTTONS */
