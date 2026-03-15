@@ -496,83 +496,52 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 12px;
+    gap: 14px;
     padding: 24px;
     text-align: center;
     animation: fadeIn 0.2s ease;
+    background: var(--surface2);
   }
   #scan-result-overlay.show { display: flex; }
 
-  /* Colores según estado */
-  #scan-result-overlay.ok      { background: rgba(16,185,129,0.97); }
-  #scan-result-overlay.warning { background: rgba(245,158,11,0.97); }
-  #scan-result-overlay.salida  { background: rgba(56,189,248,0.97); }
-  #scan-result-overlay.error   { background: rgba(239,68,68,0.97); }
-  #scan-result-overlay.loading { background: rgba(17,24,39,0.95); }
-
-  .sro-icon {
-    width: 80px; height: 80px;
-    border-radius: 50%;
-    background: rgba(255,255,255,0.2);
-    display: flex; align-items: center; justify-content: center;
-    font-size: 2.4rem;
+  /* Círculo SVG animado */
+  .sro-circle {
     flex-shrink: 0;
+    animation: popIn 0.3s cubic-bezier(0.34,1.56,0.64,1);
   }
-  @media(max-width:700px) {
-    .sro-icon { width: 60px; height: 60px; font-size: 1.8rem; }
-  }
+  @keyframes popIn { from { transform: scale(0.4); opacity:0; } to { transform: scale(1); opacity:1; } }
 
-  /* Spinner para estado loading */
+  /* Spinner para loading */
   .sro-spinner {
-    width: 60px; height: 60px;
-    border: 4px solid rgba(255,255,255,0.3);
-    border-top-color: #fff;
+    width: 80px; height: 80px;
+    border: 5px solid var(--border);
+    border-top-color: var(--accent);
     border-radius: 50%;
     animation: spin 0.8s linear infinite;
     flex-shrink: 0;
   }
-  @media(max-width:700px) { .sro-spinner { width: 44px; height: 44px; } }
-  @keyframes spin { to { transform: rotate(360deg); } }
-
-  /* Círculo de progreso SVG */
-  .sro-progress {
-    position: relative;
-    width: 80px; height: 80px;
-    flex-shrink: 0;
-  }
-  @media(max-width:700px) { .sro-progress { width: 60px; height: 60px; } }
-  .sro-progress svg { position: absolute; inset: 0; transform: rotate(-90deg); }
-  .sro-progress-track { fill: none; stroke: rgba(255,255,255,0.2); stroke-width: 4; }
-  .sro-progress-bar   { fill: none; stroke: #fff; stroke-width: 4; stroke-linecap: round;
-    stroke-dasharray: 226; stroke-dashoffset: 226;
-    transition: stroke-dashoffset 2.5s linear; }
-  .sro-progress-bar.go { stroke-dashoffset: 0; }
   @media(max-width:700px) {
-    .sro-progress-bar { stroke-dasharray: 170; stroke-dashoffset: 170; }
+    .sro-spinner { width: 56px; height: 56px; }
+    .sro-circle svg { width: 80px; height: 80px; }
   }
-  .sro-progress-inner {
-    position: absolute; inset: 0;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 1.6rem;
-  }
-  @media(max-width:700px) { .sro-progress-inner { font-size: 1.3rem; } }
+  @keyframes spin { to { transform: rotate(360deg); } }
 
   .sro-name {
     font-family: var(--font-display);
-    font-size: clamp(1.1rem, 3vw, 1.6rem);
+    font-size: clamp(1rem, 3vw, 1.5rem);
     font-weight: 800;
-    color: #fff;
+    color: var(--text);
     line-height: 1.2;
     word-break: break-word;
   }
   .sro-msg {
     font-size: clamp(0.82rem, 2vw, 1rem);
-    color: rgba(255,255,255,0.9);
-    font-weight: 600;
+    color: var(--text);
+    font-weight: 700;
   }
   .sro-sub {
     font-size: clamp(0.72rem, 1.5vw, 0.85rem);
-    color: rgba(255,255,255,0.7);
+    color: var(--muted);
   }
 
   /* ── RESULT-BOX (card alumno) — solo dentro del scanner ── */
@@ -3051,19 +3020,38 @@ function showOverlay(tipo, nombre, grado, msg, sub) {
   document.getElementById('result-student').style.display = 'none';
   document.getElementById('scan-action-bar').style.display = 'none';
 
+  // Círculos SVG sin fondo de color
+  const R = 48, CX = 52, CY = 52, SIZE = 104;
+  function svgCircle(stroke, fill, symbol) {
+    return `<div class="sro-circle"><svg width="${SIZE}" height="${SIZE}" viewBox="0 0 ${SIZE} ${SIZE}">
+      <circle cx="${CX}" cy="${CY}" r="${R}" fill="${fill}" stroke="${stroke}" stroke-width="3.5"/>
+      ${symbol}
+    </svg></div>`;
+  }
+  // Check verde — ingreso puntual
+  const iconOk = svgCircle('#10b981','rgba(16,185,129,0.15)',
+    `<polyline points="33,52 46,65 71,39" fill="none" stroke="#10b981" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>`);
+  // Check amarillo — tardanza
+  const iconTardanza = svgCircle('#f59e0b','rgba(245,158,11,0.15)',
+    `<polyline points="33,52 46,65 71,39" fill="none" stroke="#f59e0b" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>`);
+  // Triángulo rojo — error / ya registrado / QR inválido
+  const iconError = svgCircle('#ef4444','rgba(239,68,68,0.15)',
+    `<polygon points="52,30 72,74 32,74" fill="none" stroke="#ef4444" stroke-width="4" stroke-linejoin="round"/>
+     <line x1="52" y1="44" x2="52" y2="60" stroke="#ef4444" stroke-width="4" stroke-linecap="round"/>
+     <circle cx="52" cy="68" r="2.5" fill="#ef4444"/>`);
+
   const configs = {
-    loading: { cls:'loading', icon:`<div class="sro-spinner"></div>`,       dur: null  },
-    ok:      { cls:'ok',      icon:`<div class="sro-icon">✅</div>`,         dur: 3000  },
-    tardanza:{ cls:'warning', icon:`<div class="sro-icon">⚠️</div>`,         dur: 3500  },
-    salida:  { cls:'salida',  icon:`<div class="sro-icon">🚪</div>`,         dur: 3000  },
-    yaing:   { cls:'warning', icon:`<div class="sro-icon">⚠️</div>`,         dur: 3000  },
-    yasal:   { cls:'warning', icon:`<div class="sro-icon">⚠️</div>`,         dur: 3000  },
-    noqr:    { cls:'error',   icon:`<div class="sro-icon">❌</div>`,         dur: 2500  },
-    nored:   { cls:'error',   icon:`<div class="sro-icon">📡</div>`,         dur: 3000  },
+    loading:  { icon: `<div class="sro-spinner"></div>`,  dur: null  },
+    ok:       { icon: iconOk,       dur: 3000  },
+    tardanza: { icon: iconTardanza, dur: 3500  },
+    yaing:    { icon: iconError,    dur: 3000  },
+    yasal:    { icon: iconError,    dur: 3000  },
+    noqr:     { icon: iconError,    dur: 2500  },
+    nored:    { icon: iconError,    dur: 3000  },
   };
   const cfg = configs[tipo] || configs.noqr;
 
-  el.className = 'show ' + cfg.cls;
+  el.className = 'show';
   el.innerHTML = cfg.icon
     + (nombre ? `<div class="sro-name">${nombre}</div>` : '')
     + (grado  ? `<div class="sro-sub">${grado}</div>` : '')
@@ -3138,7 +3126,13 @@ async function autoRegistrar(alumno) {
       return;
     }
 
-    const tipo = tieneIngreso ? 'SALIDA' : 'INGRESO';
+    // ── Ya registró INGRESO — NO registrar salida automáticamente ──
+    if(tieneIngreso && !tieneSalida) {
+      showOverlay('yaing', nombre, grado, 'Ya registró su ingreso hoy', '');
+      return;
+    }
+
+    const tipo = 'INGRESO';
 
     // ── Verificar tardanza usando config ya cacheada ──
     const limiteStr = await getLimiteByNivel(alumno.turno);
