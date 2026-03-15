@@ -1025,7 +1025,7 @@
     background: linear-gradient(90deg, #38bdf8, #818cf8);
     border-radius: 2px;
     width: 0%;
-    transition: width 2.8s cubic-bezier(0.4,0,0.2,1);
+    transition: width 4.8s cubic-bezier(0.4,0,0.2,1);
   }
   .splash-progress-bar.go { width: 100%; }
   .splash-year {
@@ -2776,13 +2776,13 @@ function iniciarSplash() {
     if(bar) bar.classList.add('go');
   }, 100);
 
-  // Ocultar splash después de 3 segundos
+  // Ocultar splash después de 5 segundos
   setTimeout(function() {
     splash.classList.add('ocultar');
     setTimeout(function() {
       splash.style.display = 'none';
     }, 600);
-  }, 3000);
+  }, 5000);
 }
 
 // Iniciar splash al cargar la página
