@@ -5616,6 +5616,13 @@ async function guardarIncidente() {
   const descripcion = document.getElementById('inc-descripcion').value.trim();
   if(!descripcion) { toast('Escribe la descripción del incidente','warning'); return; }
 
+  // Deshabilitar botón para evitar doble clic
+  const btnGuardar = document.querySelector('#modal-incidente .btn-primary');
+  if(btnGuardar) { btnGuardar.disabled = true; btnGuardar.textContent = '⏳ Guardando...'; }
+  const reactivarBtn = () => {
+    if(btnGuardar) { btnGuardar.disabled = false; btnGuardar.innerHTML = '🖨️ Guardar y Generar PDF'; }
+  };
+
   const severidad = document.querySelector('input[name="inc-sev"]:checked').value;
   const fecha = document.getElementById('inc-fecha').value;
   const hora = document.getElementById('inc-hora').value;
@@ -5644,6 +5651,7 @@ async function guardarIncidente() {
     await db.collection('incidentes').add(incidente);
     _invalidarIncidentes(); // Invalidar cache para recargar con el nuevo
     toast('Reporte guardado','success');
+    reactivarBtn();
     closeModal('modal-incidente');
     renderIncidentes();
 
@@ -5672,7 +5680,7 @@ async function guardarIncidente() {
       }
     }
     // (llamada ya mostrada arriba inmediatamente)
-  } catch(e) { toast('Error al guardar: ' + e.message, 'error'); }
+  } catch(e) { reactivarBtn(); toast('Error al guardar: ' + e.message, 'error'); }
 }
 
 function mostrarBotonLlamada(telefono, nombreApoderado) {
