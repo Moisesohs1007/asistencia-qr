@@ -2826,6 +2826,39 @@ let lastScanTime = 0;
 let pendingStudent = null;
 let currentSection = 'scan';
 
+// ── SET DE REGISTROS DEL DÍA (pre-cargado al iniciar cámara) ──
+// Evita consultar Firestore en cada escaneo
+// Estructura: { alumnoId: { ingreso: bool, salida: bool } }
+let _hoyRegs = {};
+let _hoyRegsLoaded = false;
+let _hoyRegsTimer = null;
+
+async function precargarRegistrosHoy() {
+  try {
+    const regs = await DB.getRegistros({ fecha: hoy() });
+    _hoyRegs = {};
+    regs.forEach(r => {
+      if(!_hoyRegs[r.alumnoId]) _hoyRegs[r.alumnoId] = { ingreso: false, salida: false };
+      if(r.tipo === 'INGRESO') _hoyRegs[r.alumnoId].ingreso = true;
+      if(r.tipo === 'SALIDA')  _hoyRegs[r.alumnoId].salida  = true;
+    });
+    _hoyRegsLoaded = true;
+  } catch(e) {
+    console.warn('precargarRegistrosHoy error:', e);
+    _hoyRegsLoaded = false;
+  }
+}
+
+function actualizarHoyRegs(alumnoId, tipo) {
+  if(!_hoyRegs[alumnoId]) _hoyRegs[alumnoId] = { ingreso: false, salida: false };
+  if(tipo === 'INGRESO') _hoyRegs[alumnoId].ingreso = true;
+  if(tipo === 'SALIDA')  _hoyRegs[alumnoId].salida  = true;
+}
+
+function getRegsHoyLocal(alumnoId) {
+  return _hoyRegs[alumnoId] || { ingreso: false, salida: false };
+}
+
 function setUIScanning(active) {
   document.getElementById('btn-start-scan').disabled = active;
   document.getElementById('btn-stop-scan').disabled = !active;
@@ -2851,6 +2884,12 @@ function startScanner() {
   document.getElementById('scan-status').textContent = '⏳ Solicitando cámara...';
   document.getElementById('btn-start-scan').disabled = true;
 
+  // Pre-cargar registros del día en background para que el primer escaneo sea instantáneo
+  precargarRegistrosHoy();
+  // Refrescar cada 10 minutos por si otro dispositivo registró
+  if(_hoyRegsTimer) clearInterval(_hoyRegsTimer);
+  _hoyRegsTimer = setInterval(precargarRegistrosHoy, 10 * 60 * 1000);
+
   navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } } })
     .then(stream => {
       videoStream = stream;
@@ -2863,7 +2902,7 @@ function startScanner() {
         scannerRunning = true;
         setUIScanning(true);
         document.getElementById('scan-status').textContent = '🟢 Cámara activa — apunta al QR';
-        anunciarCamaraActiva(); // Avisar a otras pestañas
+        anunciarCamaraActiva();
         startScanLoop();
       };
       video.onloadedmetadata = onReady;
@@ -2881,6 +2920,7 @@ function startScanner() {
 function stopScanner() {
   scannerRunning = false;
   if(scanInterval) { clearInterval(scanInterval); scanInterval = null; }
+  if(_hoyRegsTimer) { clearInterval(_hoyRegsTimer); _hoyRegsTimer = null; }
   if(videoStream) { videoStream.getTracks().forEach(t => t.stop()); videoStream = null; }
   const video = document.getElementById('qr-video');
   if(video) video.srcObject = null;
@@ -3079,9 +3119,18 @@ async function autoRegistrar(alumno) {
   const grado  = alumno.grado + ' ' + alumno.seccion + ' — ' + alumno.turno;
 
   try {
-    const regsHoy = await DB.getRegistros({fecha: today, alumnoId: alumno.id});
-    const tieneIngreso = regsHoy.some(r => r.tipo === 'INGRESO');
-    const tieneSalida  = regsHoy.some(r => r.tipo === 'SALIDA');
+    // ── Usar Set local (sin consulta Firestore) ──
+    // Si no está precargado aún, fallback a Firestore
+    let tieneIngreso, tieneSalida;
+    if(_hoyRegsLoaded) {
+      const local = getRegsHoyLocal(alumno.id);
+      tieneIngreso = local.ingreso;
+      tieneSalida  = local.salida;
+    } else {
+      const regsHoy = await DB.getRegistros({fecha: today, alumnoId: alumno.id});
+      tieneIngreso = regsHoy.some(r => r.tipo === 'INGRESO');
+      tieneSalida  = regsHoy.some(r => r.tipo === 'SALIDA');
+    }
 
     // ── Ya registró INGRESO y SALIDA ──
     if(tieneIngreso && tieneSalida) {
@@ -3089,15 +3138,9 @@ async function autoRegistrar(alumno) {
       return;
     }
 
-    // ── Ya registró INGRESO, aún sin SALIDA ──
     const tipo = tieneIngreso ? 'SALIDA' : 'INGRESO';
 
-    // ── Ya registró solo INGRESO y escanea de nuevo ──
-    if(tieneIngreso && !tieneSalida) {
-      // Registrar salida automáticamente
-    }
-
-    // ── Sin ningún registro: verificar tardanza ──
+    // ── Verificar tardanza usando config ya cacheada ──
     const limiteStr = await getLimiteByNivel(alumno.turno);
     const [lh, lm] = limiteStr.split(':').map(Number);
     const tardanza = tipo === 'INGRESO' && (now.getHours() > lh || (now.getHours() === lh && now.getMinutes() > lm));
@@ -3114,6 +3157,8 @@ async function autoRegistrar(alumno) {
     // Mostrar spinner mientras guarda
     showOverlay('loading', nombre, grado, 'Registrando ' + tipo.toLowerCase() + '...', '');
     await DB.saveRegistro(reg);
+    // Actualizar Set local inmediatamente — sin esperar re-carga
+    actualizarHoyRegs(alumno.id, tipo);
     await updateStatsForce();
     pendingStudent = alumno;
 
