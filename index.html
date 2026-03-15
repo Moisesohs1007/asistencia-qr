@@ -1866,6 +1866,9 @@
         <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;">
           <div class="form-group" style="min-width:150px;margin:0;">
             <label>Fecha exacta</label>
+            <select id="inc-filter-mes" onchange="renderIncidentes()" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:7px 12px;font-family:var(--font-body);font-size:0.85rem;width:100%;">
+              <!-- poblado por JS -->
+            </select>
             <input type="date" id="inc-filter-fecha" onchange="limpiarFiltroAlumnoInc();renderIncidentes()" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:7px 12px;font-family:var(--font-body);font-size:0.85rem;width:100%;">
           </div>
           <div class="form-group" style="min-width:180px;margin:0;">
@@ -2727,7 +2730,10 @@ function showSectionDirect(id) {
   if(id==='usuarios') renderUsuarios();
   if(id==='config') renderConfig();
   updateBottomNavActive(id);
-  if(id==='incidentes') renderIncidentes();
+  if(id==='incidentes') {
+    poblarSelectorMesInc();
+    renderIncidentes();
+  }
 }
 
 // ============================================================
@@ -5788,8 +5794,15 @@ let incAlumnoSeleccionado = null;
 
 async function getCargoUsuario(uid) {
   try {
-    const doc = await db.collection('usuarios').doc(uid).get();
-    return doc.exists ? (doc.data().cargo || '') : '';
+    // Usar cache de usuarios si está disponible — sin lectura extra a Firestore
+    if(_usuariosCacheData) {
+      const u = _usuariosCacheData.find(x => x.uid === uid);
+      return u ? (u.cargo || '') : '';
+    }
+    // Fallback: cargar cache completo y buscar
+    const usuarios = await _cargarUsuariosCache();
+    const u = usuarios.find(x => x.uid === uid);
+    return u ? (u.cargo || '') : '';
   } catch(e) { return ''; }
 }
 
@@ -6033,6 +6046,22 @@ function _invalidarIncidentes() {
   LSC.del('incidentes');
 }
 
+function poblarSelectorMesInc() {
+  const sel = document.getElementById('inc-filter-mes');
+  if(!sel || sel.options.length > 1) return;
+  const hoy = new Date();
+  let opts = '';
+  // Admin/director pueden ver hasta 6 meses atrás
+  const meses = (currentRol === 'admin' || currentRol === 'director') ? 6 : 3;
+  for(let i = 0; i < meses; i++) {
+    const d = new Date(hoy.getFullYear(), hoy.getMonth() - i, 1);
+    const val = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
+    const label = d.toLocaleDateString('es-PE', { month: 'long', year: 'numeric' });
+    opts += `<option value="${val}">${label.charAt(0).toUpperCase()+label.slice(1)}</option>`;
+  }
+  sel.innerHTML = opts;
+}
+
 async function renderIncidentes() {
   const tbody = document.getElementById('incidentes-tbody');
   const empty = document.getElementById('incidentes-empty');
@@ -6048,6 +6077,10 @@ async function renderIncidentes() {
     if(currentRol === 'profesor') {
       docs = docs.filter(d => d.responsableId === currentUser.uid);
     }
+
+    // Filtro por mes seleccionado
+    const mesSel = document.getElementById('inc-filter-mes')?.value || hoy().slice(0,7);
+    docs = docs.filter(d => (d.fecha||'').startsWith(mesSel));
 
     // Filtros UI — todo en memoria, sin tocar Firestore
     const fecha = document.getElementById('inc-filter-fecha')?.value;

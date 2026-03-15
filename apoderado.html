@@ -98,7 +98,7 @@
     </div>
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
       <span style="font-size:0.82rem;color:var(--muted);white-space:nowrap;">Mes:</span>
-      <select id="sel-mes-resumen" onchange="renderResumen()" style="flex:1;"></select>
+      <select id="sel-mes-resumen" onchange="onMesChange('resumen')" style="flex:1;"></select>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px;">
       <div style="background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.25);border-radius:12px;padding:14px;text-align:center;">
@@ -123,7 +123,7 @@
   <!-- HISTORIAL -->
   <div id="panel-historial" style="display:none;">
     <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
-      <select id="sel-mes-hist"  onchange="renderHistorial()" style="flex:1;min-width:130px;"></select>
+      <select id="sel-mes-hist"  onchange="onMesChange('hist')" style="flex:1;min-width:130px;"></select>
       <select id="sel-tipo-hist" onchange="renderHistorial()" style="flex:1;min-width:130px;">
         <option value="">Todos los estados</option>
         <option value="Puntual">Puntuales</option>
@@ -358,24 +358,52 @@ function llenarDatos() {
 }
 
 function poblarMeses() {
-  var meses   = ['','01','02','03','04','05','06','07','08','09','10','11','12'];
-  var nombres = ['Todo el anio','Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
-  var opts = meses.map(function(m,i){ return '<option value="'+m+'">'+nombres[i]+'</option>'; }).join('');
+  // Solo mostrar mes actual y 2 meses anteriores
+  var opts = '';
+  var hoy = new Date();
+  for(var i = 0; i < 3; i++) {
+    var d = new Date(hoy.getFullYear(), hoy.getMonth() - i, 1);
+    var val = String(d.getMonth()+1).padStart(2,'0');
+    var label = d.toLocaleDateString('es-PE', { month: 'long', year: 'numeric' });
+    label = label.charAt(0).toUpperCase() + label.slice(1);
+    opts += '<option value="'+val+'">'+label+'</option>';
+  }
   document.getElementById('sel-mes-resumen').innerHTML = opts;
   document.getElementById('sel-mes-hist').innerHTML    = opts;
+  // Por defecto mes actual (primera opción)
   var mesActual = String(new Date().getMonth()+1).padStart(2,'0');
   document.getElementById('sel-mes-resumen').value = mesActual;
   document.getElementById('sel-mes-hist').value    = mesActual;
+}
+
+function onMesChange(origen) {
+  var mes = document.getElementById('sel-mes-' + origen).value;
+  // Sincronizar ambos selectores
+  document.getElementById('sel-mes-resumen').value = mes;
+  document.getElementById('sel-mes-hist').value    = mes;
+  // Recargar registros del mes seleccionado
+  cargarRegistros(mes).then(function() {
+    if(origen === 'resumen') renderResumen();
+    else renderHistorial();
+  });
 }
 
 // ── CARGA DE REGISTROS ──
 // Se hace UNA sola vez al iniciar sesión y se guarda en memoria.
 // Las pestañas usan los datos ya cargados sin volver a Firestore.
 
-function cargarRegistros() {
-  console.log('[APO] Cargando registros de: ', alumno.id);
+function cargarRegistros(mes) {
+  // mes = '03' formato. Por defecto mes actual
+  var mesNum = mes || String(new Date().getMonth()+1).padStart(2,'0');
+  var anio   = new Date().getFullYear();
+  var desde  = anio + '-' + mesNum + '-01';
+  var ultimo = new Date(anio, parseInt(mesNum), 0).getDate();
+  var hasta  = anio + '-' + mesNum + '-' + String(ultimo).padStart(2,'0');
+  console.log('[APO] Cargando registros de:', alumno.id, 'mes:', mesNum);
   return db.collection('registros')
     .where('alumnoId','==',alumno.id)
+    .where('fecha','>=',desde)
+    .where('fecha','<=',hasta)
     .get().then(function(snap) {
       console.log('[APO] Registros recibidos: ', snap.docs.length);
       var grupos = {};
@@ -506,14 +534,27 @@ function renderHistorial() {
 }
 
 function renderIncidentes() {
-  // Usar cache si ya está cargado — sin nueva consulta a Firestore
+  // Filtrar solo mes actual
+  var hoy = new Date();
+  var mesActual = hoy.getFullYear() + '-' + String(hoy.getMonth()+1).padStart(2,'0');
+
+  // Usar cache si ya está cargado — filtrar por mes en memoria
   if(_incidentesCache !== null) {
-    _renderIncidentesLista(_incidentesCache);
+    var filtrados = _incidentesCache.filter(function(i){ return (i.fecha||'').startsWith(mesActual); });
+    _renderIncidentesLista(filtrados);
     return;
   }
   var cont = document.getElementById('lista-incidentes');
   cont.innerHTML = '<div style="padding:16px;text-align:center;color:var(--muted);font-size:0.83rem;">Cargando...</div>';
-  db.collection('incidentes').where('alumnoId','==',alumno.id).get().then(function(snap) {
+  // Filtrar por mes en Firestore — reducir lecturas
+  var desde = mesActual + '-01';
+  var ultimoDia = new Date(hoy.getFullYear(), hoy.getMonth()+1, 0).getDate();
+  var hasta = mesActual + '-' + String(ultimoDia).padStart(2,'0');
+  db.collection('incidentes')
+    .where('alumnoId','==',alumno.id)
+    .where('fecha','>=',desde)
+    .where('fecha','<=',hasta)
+    .get().then(function(snap) {
     _incidentesCache = snap.docs.map(function(d){ return Object.assign({_id: d.id}, d.data()); })
       .sort(function(a,b){ return (b.fecha||'').localeCompare(a.fecha||''); });
     _renderIncidentesLista(_incidentesCache);
