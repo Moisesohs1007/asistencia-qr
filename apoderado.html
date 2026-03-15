@@ -145,12 +145,12 @@
     <div id="carnet-visual" style="display:inline-block;background:linear-gradient(145deg,#0d1a3a,#1a2b5e);border-radius:18px;padding:22px;max-width:250px;width:100%;box-shadow:0 8px 32px rgba(0,0,0,0.5);">
       <div id="carnet-colegio" style="color:#c9a84c;font-size:0.66rem;font-weight:800;text-align:center;margin-bottom:10px;text-transform:uppercase;letter-spacing:1px;"></div>
       <div style="width:76px;height:76px;border-radius:50%;background:#334155;overflow:hidden;margin:0 auto 10px;border:3px solid #c9a84c;">
-        <img id="carnet-foto" src="" style="width:100%;height:100%;object-fit:cover;" onerror="this.parentElement.innerHTML='<div style=\'display:flex;align-items:center;justify-content:center;height:100%;font-size:1.8rem;color:#c9a84c;\'>&#128100;</div>'">
+        <img id="carnet-foto" src="" crossorigin="anonymous" style="width:100%;height:100%;object-fit:cover;" onerror="this.parentElement.innerHTML='<div style=\'display:flex;align-items:center;justify-content:center;height:100%;font-size:1.8rem;color:#c9a84c;\'>&#128100;</div>'">
       </div>
       <div id="carnet-nombre" style="color:#fff;font-weight:800;font-size:0.86rem;text-align:center;margin-bottom:3px;"></div>
       <div id="carnet-grado"  style="color:#c9a84c;font-size:0.7rem;text-align:center;margin-bottom:12px;"></div>
       <div style="background:#fff;border-radius:8px;padding:6px;margin:0 auto;width:fit-content;">
-        <img id="carnet-qr" src="" style="width:130px;height:130px;display:block;">
+        <img id="carnet-qr" src="" crossorigin="anonymous" style="width:130px;height:130px;display:block;">
       </div>
       <div id="carnet-dni"  style="color:rgba(255,255,255,0.45);font-size:0.66rem;text-align:center;margin-top:8px;letter-spacing:1px;"></div>
       <div id="carnet-year" style="color:rgba(255,255,255,0.35);font-size:0.63rem;text-align:center;margin-top:2px;"></div>
@@ -298,7 +298,7 @@ auth.onAuthStateChanged(function(user) {
 });
 
 function continuarCargaApoderado(user, dni) {
-  dbg('Buscando alumno: ' + dni);
+  console.log('[APO] Buscando alumno: ', dni);
   db.collection('alumnos').doc(dni).get().then(function(snap) {
     if(!snap.exists) { auth.signOut(); window.location.href = 'index.html'; return; }
     alumno = Object.assign({ id: dni }, snap.data());
@@ -309,7 +309,7 @@ function continuarCargaApoderado(user, dni) {
     if(!apoSnap) return;
     var apoData = apoSnap.exists ? apoSnap.data() : {};
     var esPrimerIngreso = !apoSnap.exists || apoData.primerIngreso !== false;
-    dbg('primerIngreso=' + esPrimerIngreso + ' | existe=' + apoSnap.exists);
+    console.log('[APO] primerIngreso=', esPrimerIngreso + ' | existe=' + apoSnap.exists);
 
     if(esPrimerIngreso) {
       // Mostrar formulario completo de registro/cambio de contraseña
@@ -337,7 +337,7 @@ function continuarCargaApoderado(user, dni) {
     }
   }).catch(function(e) {
     console.error(e);
-    dbg('ERROR general: ' + e.message);
+    console.log('[APO] ERROR general: ', e.message);
     document.getElementById('lista-ultimos').innerHTML = '<div style="padding:16px;text-align:center;color:#f87171;font-size:0.83rem;">❌ Error: ' + e.message + '</div>';
   });
 }
@@ -373,11 +373,11 @@ function poblarMeses() {
 // Las pestañas usan los datos ya cargados sin volver a Firestore.
 
 function cargarRegistros() {
-  dbg('Cargando registros de: ' + alumno.id);
+  console.log('[APO] Cargando registros de: ', alumno.id);
   return db.collection('registros')
     .where('alumnoId','==',alumno.id)
     .get().then(function(snap) {
-      dbg('Registros recibidos: ' + snap.docs.length);
+      console.log('[APO] Registros recibidos: ', snap.docs.length);
       var grupos = {};
       snap.docs.forEach(function(d) {
         var r = d.data();
@@ -414,14 +414,10 @@ function cargarRegistros() {
       registros = Object.values(grupos).sort(function(a,b){
         return b.fecha.localeCompare(a.fecha);
       });
-      dbg('Procesados: ' + registros.length + ' días | P:' +
-        registros.filter(function(r){return r.estado==='Puntual';}).length + ' T:' +
-        registros.filter(function(r){return r.estado==='Tardanza';}).length + ' A:' +
-        registros.filter(function(r){return r.estado==='Ausente';}).length);
-      setTimeout(dbgOk, 3000); // ocultar barra tras 3s
+      console.log('[APO] Procesados:', registros.length, 'días');
     }).catch(function(e) {
       console.error('cargarRegistros error:', e);
-      dbg('ERROR cargarRegistros: ' + e.message);
+      console.log('[APO] ERROR cargarRegistros: ', e.message);
       registros = registros || [];
     });
 }
@@ -665,7 +661,9 @@ function renderCarnet() {
   document.getElementById('carnet-grado').textContent  = alumno.grado+' '+alumno.seccion+' - '+alumno.turno;
   document.getElementById('carnet-dni').textContent    = 'DNI: '+alumno.id;
   document.getElementById('carnet-year').textContent   = new Date().getFullYear();
-  document.getElementById('carnet-qr').src = 'https://api.qrserver.com/v1/create-qr-code/?size=260x260&ecc=H&color=000000&data='+alumno.id;
+  var qrEl = document.getElementById('carnet-qr');
+  qrEl.crossOrigin = 'anonymous';
+  qrEl.src = 'https://api.qrserver.com/v1/create-qr-code/?size=260x260&ecc=H&color=000000&data='+alumno.id;
 }
 
 function renderContacto() {
@@ -708,8 +706,18 @@ function compartirCarnet() {
   var btn = document.querySelector('[onclick="compartirCarnet()"]');
   if(btn) { btn.textContent = '⏳ Generando...'; btn.disabled = true; }
 
-  html2canvas(carnetEl, { backgroundColor: null, scale: 2, useCORS: true, allowTaint: true })
-    .then(function(canvas) {
+  // Esperar que la imagen QR cargue antes de capturar
+  var qrImg = document.getElementById('carnet-qr');
+  var capturar = function() {
+    html2canvas(carnetEl, {
+      backgroundColor: '#0d1a3a',
+      scale: 2,
+      useCORS: true,
+      allowTaint: false,
+      foreignObjectRendering: false,
+      imageTimeout: 5000,
+      logging: false
+    }).then(function(canvas) {
       if(btn) { btn.textContent = '📤 Compartir imagen'; btn.disabled = false; }
       canvas.toBlob(function(blob) {
         if(!blob) { alert('Error al generar imagen'); return; }
@@ -726,6 +734,19 @@ function compartirCarnet() {
       console.error(e);
       alert('Error al generar imagen: ' + e.message);
     });
+  };
+
+  // Si el QR ya cargó, capturar de inmediato; si no, esperar
+  if(qrImg && qrImg.complete && qrImg.naturalWidth > 0) {
+    capturar();
+  } else if(qrImg) {
+    qrImg.onload = capturar;
+    qrImg.onerror = capturar; // capturar igual aunque falle la imagen
+    // Timeout de seguridad
+    setTimeout(capturar, 3000);
+  } else {
+    capturar();
+  }
 }
 
 function descargarCarnet(canvas) {
