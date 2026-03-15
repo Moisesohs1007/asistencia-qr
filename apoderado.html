@@ -364,7 +364,7 @@ function poblarMeses() {
   for(var i = 0; i < 3; i++) {
     var d = new Date(hoy.getFullYear(), hoy.getMonth() - i, 1);
     var val = String(d.getMonth()+1).padStart(2,'0');
-    var label = d.toLocaleDateString('es-PE', { month: 'long', year: 'numeric' });
+    var label = d.toLocaleDateString('es-PE', { month: 'long' });
     label = label.charAt(0).toUpperCase() + label.slice(1);
     opts += '<option value="'+val+'">'+label+'</option>';
   }
