@@ -486,6 +486,95 @@
   }
 
   /* RESULT CARD */
+  /* ── PANTALLA RESULTADO AUTOMÁTICO ESCÁNER ── */
+  #scan-result-overlay {
+    display: none;
+    position: absolute;
+    inset: 0;
+    z-index: 50;
+    border-radius: 14px;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 24px;
+    text-align: center;
+    animation: fadeIn 0.2s ease;
+  }
+  #scan-result-overlay.show { display: flex; }
+
+  /* Colores según estado */
+  #scan-result-overlay.ok      { background: rgba(16,185,129,0.97); }
+  #scan-result-overlay.warning { background: rgba(245,158,11,0.97); }
+  #scan-result-overlay.salida  { background: rgba(56,189,248,0.97); }
+  #scan-result-overlay.error   { background: rgba(239,68,68,0.97); }
+  #scan-result-overlay.loading { background: rgba(17,24,39,0.95); }
+
+  .sro-icon {
+    width: 80px; height: 80px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.2);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 2.4rem;
+    flex-shrink: 0;
+  }
+  @media(max-width:700px) {
+    .sro-icon { width: 60px; height: 60px; font-size: 1.8rem; }
+  }
+
+  /* Spinner para estado loading */
+  .sro-spinner {
+    width: 60px; height: 60px;
+    border: 4px solid rgba(255,255,255,0.3);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    flex-shrink: 0;
+  }
+  @media(max-width:700px) { .sro-spinner { width: 44px; height: 44px; } }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Círculo de progreso SVG */
+  .sro-progress {
+    position: relative;
+    width: 80px; height: 80px;
+    flex-shrink: 0;
+  }
+  @media(max-width:700px) { .sro-progress { width: 60px; height: 60px; } }
+  .sro-progress svg { position: absolute; inset: 0; transform: rotate(-90deg); }
+  .sro-progress-track { fill: none; stroke: rgba(255,255,255,0.2); stroke-width: 4; }
+  .sro-progress-bar   { fill: none; stroke: #fff; stroke-width: 4; stroke-linecap: round;
+    stroke-dasharray: 226; stroke-dashoffset: 226;
+    transition: stroke-dashoffset 2.5s linear; }
+  .sro-progress-bar.go { stroke-dashoffset: 0; }
+  @media(max-width:700px) {
+    .sro-progress-bar { stroke-dasharray: 170; stroke-dashoffset: 170; }
+  }
+  .sro-progress-inner {
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.6rem;
+  }
+  @media(max-width:700px) { .sro-progress-inner { font-size: 1.3rem; } }
+
+  .sro-name {
+    font-family: var(--font-display);
+    font-size: clamp(1.1rem, 3vw, 1.6rem);
+    font-weight: 800;
+    color: #fff;
+    line-height: 1.2;
+    word-break: break-word;
+  }
+  .sro-msg {
+    font-size: clamp(0.82rem, 2vw, 1rem);
+    color: rgba(255,255,255,0.9);
+    font-weight: 600;
+  }
+  .sro-sub {
+    font-size: clamp(0.72rem, 1.5vw, 0.85rem);
+    color: rgba(255,255,255,0.7);
+  }
+
   /* ── RESULT-BOX (card alumno) — solo dentro del scanner ── */
   #sec-scan .result-box {
     background: var(--surface2);
@@ -1233,7 +1322,12 @@
       </div>
 
       <!-- COLUMNA DERECHA: tarjeta alumno -->
-      <div class="result-box" id="result-box">
+      <div class="result-box" id="result-box" style="position:relative;">
+
+        <!-- OVERLAY RESULTADO AUTOMÁTICO -->
+        <div id="scan-result-overlay">
+          <!-- contenido dinámico por JS -->
+        </div>
         <div class="result-empty" id="result-empty">
           <div class="result-empty-icon">🪪</div>
           <div>
@@ -2904,20 +2998,71 @@ function flashGreenFrame() {
   setTimeout(() => frame.classList.remove('detected'), 1000);
 }
 
+// ── OVERLAY: mostrar resultado visual en la columna derecha ──
+let _overlayTimer = null;
+
+function showOverlay(tipo, nombre, grado, msg, sub) {
+  const el = document.getElementById('scan-result-overlay');
+  if(!el) return;
+  if(_overlayTimer) { clearTimeout(_overlayTimer); _overlayTimer = null; }
+
+  // Ocultar tarjeta antigua
+  document.getElementById('result-empty').style.display = 'none';
+  document.getElementById('result-student').style.display = 'none';
+  document.getElementById('scan-action-bar').style.display = 'none';
+
+  const configs = {
+    loading: { cls:'loading', icon:`<div class="sro-spinner"></div>`,       dur: null  },
+    ok:      { cls:'ok',      icon:`<div class="sro-icon">✅</div>`,         dur: 3000  },
+    tardanza:{ cls:'warning', icon:`<div class="sro-icon">⚠️</div>`,         dur: 3500  },
+    salida:  { cls:'salida',  icon:`<div class="sro-icon">🚪</div>`,         dur: 3000  },
+    yaing:   { cls:'warning', icon:`<div class="sro-icon">⚠️</div>`,         dur: 3000  },
+    yasal:   { cls:'warning', icon:`<div class="sro-icon">⚠️</div>`,         dur: 3000  },
+    noqr:    { cls:'error',   icon:`<div class="sro-icon">❌</div>`,         dur: 2500  },
+    nored:   { cls:'error',   icon:`<div class="sro-icon">📡</div>`,         dur: 3000  },
+  };
+  const cfg = configs[tipo] || configs.noqr;
+
+  el.className = 'show ' + cfg.cls;
+  el.innerHTML = cfg.icon
+    + (nombre ? `<div class="sro-name">${nombre}</div>` : '')
+    + (grado  ? `<div class="sro-sub">${grado}</div>` : '')
+    + `<div class="sro-msg">${msg}</div>`
+    + (sub    ? `<div class="sro-sub">${sub}</div>` : '');
+
+  if(cfg.dur) {
+    _overlayTimer = setTimeout(hideOverlay, cfg.dur);
+  }
+}
+
+function hideOverlay() {
+  const el = document.getElementById('scan-result-overlay');
+  if(el) el.className = '';
+  document.getElementById('result-empty').style.display = 'flex';
+  pendingStudent = null;
+}
+
 async function processQR(rawId) {
-  // Limpiar espacios, saltos de línea y caracteres invisibles del QR escaneado
   const id = (rawId||'').trim().replace(/\s+/g, '');
   if(!id) return;
   flashGreenFrame();
+  // Mostrar spinner mientras busca
+  showOverlay('loading', '', '', 'Buscando alumno...', '');
   try {
     const alumnos = await DB.getAlumnos();
-    // Buscar con coincidencia exacta primero, luego insensible a mayúsculas
     const alumno = alumnos.find(a => a.id === id) ||
                    alumnos.find(a => a.id.trim() === id) ||
                    alumnos.find(a => a.id.toLowerCase() === id.toLowerCase());
-    if(!alumno) { toast(`DNI "${id}" no encontrado`, 'error'); return; }
-    showStudentResult(alumno);
-  } catch(e) { toast('Error al buscar alumno','error'); }
+    if(!alumno) {
+      showOverlay('noqr', '', '', 'QR no válido', `ID "${id}" no encontrado`);
+      return;
+    }
+    // Registrar automáticamente
+    await autoRegistrar(alumno);
+  } catch(e) {
+    showOverlay('nored', '', '', 'Error de conexión', 'Intenta de nuevo');
+    console.error(e);
+  }
 }
 
 function manualRegister() {
@@ -2927,68 +3072,32 @@ function manualRegister() {
   document.getElementById('manual-id').value = '';
 }
 
-async function showStudentResult(alumno) {
-  pendingStudent = alumno;
-  const initials = (alumno.nombres[0]||'?') + (alumno.apellidos[0]||'?');
-  document.getElementById('stu-avatar').textContent = initials.toUpperCase();
-  document.getElementById('stu-name').textContent = alumno.nombres + ' ' + alumno.apellidos;
-  document.getElementById('stu-meta').textContent = alumno.grado + ' ' + alumno.seccion + ' — ' + alumno.turno;
-  document.getElementById('stu-id').textContent = alumno.id;
-  document.getElementById('stu-grade').textContent = alumno.grado + ' ' + alumno.seccion;
-
-  const now = new Date();
-  document.getElementById('stu-time').textContent = now.toLocaleTimeString('es-PE', {hour:'2-digit',minute:'2-digit'});
-
-  try {
-    const regs = await DB.getRegistros({fecha: hoy(), alumnoId: alumno.id});
-    const tieneIngreso = regs.some(r => r.tipo === 'INGRESO');
-    const tieneSalida  = regs.some(r => r.tipo === 'SALIDA');
-    let tipo = tieneIngreso ? 'SALIDA' : 'INGRESO';
-    document.getElementById('stu-type').textContent = tipo;
-
-    const limiteStr = await getLimiteByNivel(alumno.turno);
-    const [lh, lm] = limiteStr.split(':').map(Number);
-    const tardanza = now.getHours() > lh || (now.getHours() === lh && now.getMinutes() > lm);
-    let badgeHtml = '';
-    if(tipo === 'INGRESO') {
-      badgeHtml = tardanza ? '<span class="badge yellow">⚠ Tardanza</span>' : '<span class="badge green">✓ A tiempo</span>';
-    } else {
-      badgeHtml = tieneSalida ? '<span class="badge red">⚠ Ya registró salida hoy</span>' : '<span class="badge blue">🚪 Salida</span>';
-    }
-    document.getElementById('stu-badge-wrap').innerHTML = badgeHtml;
-  } catch(e) {
-    document.getElementById('stu-badge-wrap').innerHTML = '';
-  }
-
-  document.getElementById('result-empty').style.display = 'none';
-  document.getElementById('result-student').style.display = 'flex';
-  document.getElementById('result-student').style.flexDirection = 'column';
-  document.getElementById('result-student').style.gap = '12px';
-  document.getElementById('scan-action-bar').style.display = 'flex'; // Mostrar barra móvil
-}
-
-async function confirmRegister(tipo) {
-  if(!pendingStudent){ toast('Escanea un alumno primero','warning'); return; }
-  const alumno = pendingStudent;
-  const now = new Date();
+async function autoRegistrar(alumno) {
+  const now   = new Date();
   const today = hoy();
+  const nombre = alumno.nombres + ' ' + alumno.apellidos;
+  const grado  = alumno.grado + ' ' + alumno.seccion + ' — ' + alumno.turno;
 
   try {
     const regsHoy = await DB.getRegistros({fecha: today, alumnoId: alumno.id});
-    if(tipo === 'INGRESO') {
-      if(regsHoy.some(r => r.tipo === 'INGRESO')){
-        toast(alumno.nombres + ' ya tiene ingreso registrado hoy','warning'); return;
-      }
-    }
-    if(tipo === 'SALIDA') {
-      if(!regsHoy.some(r => r.tipo === 'INGRESO')){
-        toast('No hay ingreso registrado para '+alumno.nombres,'warning'); return;
-      }
-      if(regsHoy.some(r => r.tipo === 'SALIDA')){
-        toast(alumno.nombres + ' ya tiene salida registrada hoy','warning'); return;
-      }
+    const tieneIngreso = regsHoy.some(r => r.tipo === 'INGRESO');
+    const tieneSalida  = regsHoy.some(r => r.tipo === 'SALIDA');
+
+    // ── Ya registró INGRESO y SALIDA ──
+    if(tieneIngreso && tieneSalida) {
+      showOverlay('yasal', nombre, grado, 'Ya registró ingreso y salida hoy', '');
+      return;
     }
 
+    // ── Ya registró INGRESO, aún sin SALIDA ──
+    const tipo = tieneIngreso ? 'SALIDA' : 'INGRESO';
+
+    // ── Ya registró solo INGRESO y escanea de nuevo ──
+    if(tieneIngreso && !tieneSalida) {
+      // Registrar salida automáticamente
+    }
+
+    // ── Sin ningún registro: verificar tardanza ──
     const limiteStr = await getLimiteByNivel(alumno.turno);
     const [lh, lm] = limiteStr.split(':').map(Number);
     const tardanza = tipo === 'INGRESO' && (now.getHours() > lh || (now.getHours() === lh && now.getMinutes() > lm));
@@ -2996,44 +3105,53 @@ async function confirmRegister(tipo) {
 
     const reg = {
       alumnoId: alumno.id,
-      nombre: alumno.nombres + ' ' + alumno.apellidos,
-      grado: alumno.grado,
-      seccion: alumno.seccion,
-      turno: alumno.turno,
+      nombre, grado: alumno.grado, seccion: alumno.seccion, turno: alumno.turno,
       tipo, estado,
       hora: now.toLocaleTimeString('es-PE', {hour:'2-digit', minute:'2-digit', second:'2-digit'}),
       fecha: today,
     };
 
+    // Mostrar spinner mientras guarda
+    showOverlay('loading', nombre, grado, 'Registrando ' + tipo.toLowerCase() + '...', '');
     await DB.saveRegistro(reg);
-    await updateStatsForce(); // Forzar actualización inmediata tras registro
-    pendingStudent = null;
-    document.getElementById('result-empty').style.display = 'flex';
-    document.getElementById('result-student').style.display = 'none';
-    document.getElementById('scan-action-bar').style.display = 'none'; // Ocultar barra móvil
-    toast(`${tipo} registrado: ${alumno.nombres} — ${estado}`, tipo==='INGRESO' ? 'success' : 'info');
+    await updateStatsForce();
+    pendingStudent = alumno;
+
+    // Mostrar resultado según caso
+    if(tipo === 'INGRESO' && tardanza) {
+      showOverlay('tardanza', nombre, grado, '⚠ Tardanza registrada', reg.hora);
+    } else if(tipo === 'INGRESO') {
+      showOverlay('ok', nombre, grado, '✔ Ingreso registrado', reg.hora);
+    } else {
+      showOverlay('salida', nombre, grado, '🚪 Salida registrada', reg.hora);
+    }
 
     // Enviar WhatsApp al apoderado
     if(alumno.telefono) {
       const cfg2 = await getConfig();
       const nomColegio = cfg2?.nombreColegio || 'Institución Educativa';
-      const horaActual = reg.hora;
-      const fechaActual = reg.fecha;
       let msg = '';
       if(tipo === 'INGRESO' && estado === 'A tiempo') {
-        msg = `✅ *INGRESO REGISTRADO*\n${nomColegio}\n\n👤 *Alumno:* ${alumno.nombres} ${alumno.apellidos}\n🏫 *Grado:* ${alumno.grado} ${alumno.seccion} — ${alumno.turno}\n🕐 *Hora:* ${horaActual}\n📅 *Fecha:* ${fechaActual}\n\n✔️ Su hijo/a ingresó *puntualmente* al colegio.`;
+        msg = `✅ *INGRESO REGISTRADO*\n${nomColegio}\n\n👤 *Alumno:* ${nombre}\n🏫 *Grado:* ${alumno.grado} ${alumno.seccion} — ${alumno.turno}\n🕐 *Hora:* ${reg.hora}\n📅 *Fecha:* ${reg.fecha}\n\n✔️ Su hijo/a ingresó *puntualmente* al colegio.`;
       } else if(tipo === 'INGRESO' && estado === 'Tardanza') {
-        msg = `⚠️ *TARDANZA REGISTRADA*\n${nomColegio}\n\n👤 *Alumno:* ${alumno.nombres} ${alumno.apellidos}\n🏫 *Grado:* ${alumno.grado} ${alumno.seccion} — ${alumno.turno}\n🕐 *Hora:* ${horaActual}\n📅 *Fecha:* ${fechaActual}\n\n⏰ Su hijo/a ingresó *con tardanza* al colegio. Por favor tome las medidas necesarias.`;
+        msg = `⚠️ *TARDANZA REGISTRADA*\n${nomColegio}\n\n👤 *Alumno:* ${nombre}\n🏫 *Grado:* ${alumno.grado} ${alumno.seccion} — ${alumno.turno}\n🕐 *Hora:* ${reg.hora}\n📅 *Fecha:* ${reg.fecha}\n\n⏰ Su hijo/a ingresó *con tardanza* al colegio.`;
       } else if(tipo === 'SALIDA') {
-        msg = `🚪 *SALIDA REGISTRADA*\n${nomColegio}\n\n👤 *Alumno:* ${alumno.nombres} ${alumno.apellidos}\n🏫 *Grado:* ${alumno.grado} ${alumno.seccion} — ${alumno.turno}\n🕐 *Hora:* ${horaActual}\n📅 *Fecha:* ${fechaActual}\n\n🏠 Su hijo/a ha salido del colegio. Por favor recójalo a la brevedad.`;
+        msg = `🚪 *SALIDA REGISTRADA*\n${nomColegio}\n\n👤 *Alumno:* ${nombre}\n🏫 *Grado:* ${alumno.grado} ${alumno.seccion} — ${alumno.turno}\n🕐 *Hora:* ${reg.hora}\n📅 *Fecha:* ${reg.fecha}\n\n🏠 Su hijo/a ha salido del colegio.`;
       }
       if(msg) sendWhatsApp(alumno.telefono, msg);
     }
 
   } catch(e) {
-    toast('Error al guardar registro','error');
+    showOverlay('nored', nombre, grado, 'Error al registrar', 'Intenta de nuevo');
     console.error(e);
   }
+}
+
+// Mantener confirmRegister por compatibilidad (ya no se usa en flujo normal)
+async function confirmRegister(tipo) {
+  if(!pendingStudent){ return; }
+  const alumno = pendingStudent;
+  await autoRegistrar(alumno);
 }
 
 // ============================================================
