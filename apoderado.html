@@ -410,6 +410,11 @@ function cargarRegistros(mes) {
     .where('fecha','<=',hasta)
     .get().then(function(snap) {
       console.log('[APO] Registros recibidos: ', snap.docs.length);
+      // LOG TEMPORAL — ver raw de cada documento
+      snap.docs.forEach(function(d) {
+        var r = d.data();
+        console.log('[APO] DOC:', JSON.stringify({alumnoId:r.alumnoId, fecha:r.fecha, tipo:r.tipo, estado:r.estado, hora:r.hora}));
+      });
       var grupos = {};
       snap.docs.forEach(function(d) {
         var r = d.data();
