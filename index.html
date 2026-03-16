@@ -1038,7 +1038,7 @@
   #login-screen {
     position: fixed; inset: 0; z-index: 9999;
     background: var(--bg);
-    display: flex; align-items: center; justify-content: center;
+    display: none; align-items: center; justify-content: center;
     padding: 20px;
   }
   #login-screen::before {
@@ -2553,7 +2553,10 @@ function doLogout() {
   clearTimeout(_inactTimer);
   clearTimeout(_inactWarning);
   if(!confirm('¿Cerrar sesión?')) return;
+  sessionStorage.removeItem('splashMostrado');
   auth.signOut();
+  // Mostrar login inmediatamente al salir
+  document.getElementById('login-screen').style.display = 'flex';
 }
 
 // Escuchar cambios de sesión
