@@ -2556,8 +2556,12 @@ function doLogout() {
   sessionStorage.removeItem('splashMostrado');
   try { localStorage.removeItem('asmqr_lastTab'); } catch(e) {}
   auth.signOut();
-  // Mostrar splash y luego login al salir
-  document.getElementById('login-screen').style.display = 'none';
+  // Resetear splash y mostrarlo
+  var splash = document.getElementById('splash-screen');
+  if(splash) {
+    splash.classList.remove('ocultar');
+    splash.style.display = 'flex';
+  }
   iniciarSplash();
   setTimeout(function() {
     document.getElementById('login-screen').style.display = 'flex';
