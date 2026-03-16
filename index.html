@@ -1600,7 +1600,7 @@
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
       <span id="registro-count" style="color:var(--muted);font-size:0.85rem;"></span>
       <div style="display:flex;gap:8px;">
-        <button class="btn btn-ghost" onclick="exportCSV()">📤 Exportar CSV</button>
+
         <button class="btn btn-ghost" onclick="exportXLSX()">📊 Exportar Excel</button>
         <button class="btn btn-ghost" onclick="exportPDFRegistro()">📄 Exportar PDF</button>
         <button class="btn btn-danger" onclick="clearToday()">🗑 Limpiar hoy</button>
@@ -4405,7 +4405,7 @@ async function exportXLSX() {
       const fp = (r.fecha||'').split('-');
       const fechaFmt = fp.length===3 ? fp[2]+'/'+fp[1]+'/'+fp[0] : r.fecha;
       const diaSem = r.fecha ? diasSemana[new Date(r.fecha+'T12:00:00').getDay()] : '';
-      aoa.push([`📅  ${diaSem} ${fechaFmt}`, ...Array(COLS.length-1).fill('')]);
+      aoa.push([`${diaSem}  ${fechaFmt}`, ...Array(COLS.length-1).fill('')]);
       merges.push({ s:{r:aoa.length-1,c:0}, e:{r:aoa.length-1,c:COLS.length-1} });
       styles[aoa.length-1] = 'daterow';
       rowCount = 0;
@@ -4618,14 +4618,14 @@ async function exportPDFRegistro() {
       doc.setFillColor(13, 26, 58); // NAVY
       doc.rect(TABLE_X, curY, TABLE_W, DATE_H, 'F');
       doc.setTextColor(201, 168, 76); // GOLD
-      doc.setFontSize(7.5); doc.setFont('helvetica','bold');
+      doc.setFontSize(9); doc.setFont('helvetica','bold');
       // Formatear fecha dd/mm/yyyy
       const fp = r.fecha ? r.fecha.split('-') : [];
       const fechaLabel = fp.length === 3 ? `${fp[2]}/${fp[1]}/${fp[0]}` : r.fecha;
       // Día de semana
-      const diasSemana = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+      const diasSemana = ['Domingo','Lunes','Martes','Miercoles','Jueves','Viernes','Sabado'];
       const diaSem = r.fecha ? diasSemana[new Date(r.fecha + 'T12:00:00').getDay()] : '';
-      doc.text(`📅  ${diaSem} ${fechaLabel}`, TABLE_X + 4, curY + DATE_H/2 + 2);
+      doc.text(`${diaSem}  ${fechaLabel}`, TABLE_X + TABLE_W/2, curY + DATE_H/2 + 2, {align:'center'});
       curY += DATE_H;
       rowIndex = 0; // resetear alternado por cada nuevo día
     }
