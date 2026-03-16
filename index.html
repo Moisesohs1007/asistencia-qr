@@ -1506,8 +1506,8 @@
       <span id="alumnos-count" style="color:var(--muted);font-size:0.85rem;"></span>
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
         <button class="btn btn-primary" id="btn-nuevo-alumno" onclick="openModalAlumno()">+ Nuevo Alumno</button>
-        <button class="btn btn-ghost" id="btn-importar-csv" onclick="importCSV()">📥 Importar CSV</button>
         <button class="btn btn-ghost" id="btn-importar-excel" onclick="importExcel()">📊 Importar Excel</button>
+        <button class="btn btn-ghost" onclick="exportPDFAlumnos()">🖨 Exportar PDF</button>
         <!-- Toggle modo carnets -->
         <label style="display:flex;align-items:center;gap:6px;cursor:pointer;padding:6px 12px;border-radius:8px;border:1.5px solid var(--border);background:var(--card);font-size:0.82rem;color:var(--text);user-select:none;" title="Activar modo impresión de carnets">
           <input type="checkbox" id="toggle-modo-carnets" onchange="toggleModoCarnets(this.checked)" style="width:15px;height:15px;cursor:pointer;">
@@ -2206,7 +2206,6 @@
 <div id="toast-container"></div>
 
 <!-- INPUT CSV oculto -->
-<input type="file" id="csv-input" accept=".csv" style="display:none" onchange="handleCSV(event)">
 <input type="file" id="excel-input" accept=".xlsx,.xls" style="display:none" onchange="handleExcel(event)">
 
 <script>
@@ -4553,6 +4552,138 @@ async function exportPDFRegistro() {
 // ============================================================
 // IMPORT CSV
 // ============================================================
+async function exportPDFAlumnos() {
+  const grado   = document.getElementById('fa-grado').value;
+  const seccion = document.getElementById('fa-seccion').value;
+  const nivel   = document.getElementById('fa-nivel').value;
+  const q       = (document.getElementById('search-alumnos').value||'').toLowerCase();
+
+  let alumnos = await DB.getAlumnos();
+  if(nivel   && nivel   !== 'TODOS') alumnos = alumnos.filter(a => a.turno === nivel);
+  if(grado   && grado   !== 'TODOS') alumnos = alumnos.filter(a => a.grado === grado);
+  if(seccion && seccion !== 'TODOS') alumnos = alumnos.filter(a => a.seccion === seccion);
+  if(q) alumnos = alumnos.filter(a =>
+    (a.nombres+' '+a.apellidos).toLowerCase().includes(q) || (a.id||'').includes(q)
+  );
+
+  if(!alumnos.length) { toast('No hay alumnos para exportar','warning'); return; }
+
+  // Ordenar: nivel → grado → sección → apellidos
+  const cfg2 = await getConfig();
+  const ordenNiveles = (cfg2.niveles||[]).map(n => n.nombre);
+  const gradosCfg = cfg2.grados || {};
+  const gradoIdx = {};
+  ordenNiveles.forEach((niv,ni) => {
+    (gradosCfg[niv]||[]).forEach((g,gi) => { gradoIdx[g] = {ni,gi}; });
+  });
+  alumnos.sort((a,b) => {
+    const ia = gradoIdx[a.grado] || {ni:999,gi:999};
+    const ib = gradoIdx[b.grado] || {ni:999,gi:999};
+    if(ia.ni !== ib.ni) return ia.ni - ib.ni;
+    if(ia.gi !== ib.gi) return ia.gi - ib.gi;
+    if((a.seccion||'') !== (b.seccion||'')) return (a.seccion||'').localeCompare(b.seccion||'');
+    return ((a.apellidos||'')+(a.nombres||'')).localeCompare((b.apellidos||'')+(b.nombres||''));
+  });
+
+  await cargarJsPDF();
+  if(!window.jspdf) { toast('Error cargando jsPDF','error'); return; }
+  const { jsPDF } = window.jspdf;
+  const cfgp = await getConfig();
+  const nombreColegio = cfgp?.nombreColegio || 'I.E.P. San José Marello';
+  const fechaExport = new Date().toLocaleDateString('es-PE',{day:'2-digit',month:'2-digit',year:'numeric'});
+
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  const PW = 210, PH = 297;
+  const NAVY = [13,26,58], GOLD = [201,168,76], WHITE = [255,255,255];
+  const GRAY = [240,242,248], TEXT = [30,41,59], MUTED = [100,116,139];
+
+  const COLS = [
+    { label:'#',         key:'num',      w:10 },
+    { label:'DNI',       key:'id',       w:22 },
+    { label:'Apellidos', key:'apellidos',w:46 },
+    { label:'Nombres',   key:'nombres',  w:46 },
+    { label:'Grado',     key:'grado',    w:18 },
+    { label:'Sección',   key:'seccion',  w:16 },
+    { label:'Nivel',     key:'turno',    w:22 },
+  ];
+  const TABLE_X = 10;
+  const TABLE_W = COLS.reduce((s,c)=>s+c.w,0);
+  const ROW_H = 7, HEAD_H = 8;
+  let pageNum = 1, curY = 0;
+
+  function drawHeader() {
+    doc.setFillColor(...NAVY); doc.rect(0,0,PW,18,'F');
+    doc.setFillColor(...GOLD); doc.rect(0,18,PW,1,'F');
+    doc.setTextColor(...WHITE);
+    doc.setFontSize(11); doc.setFont('helvetica','bold');
+    doc.text(nombreColegio, PW/2, 8, {align:'center'});
+    doc.setFontSize(7); doc.setFont('helvetica','normal');
+    doc.setTextColor(176,196,232);
+    const subtitulo = (nivel && nivel !== 'TODOS' ? nivel : '') +
+      (grado && grado !== 'TODOS' ? ' — ' + grado : '') +
+      (seccion && seccion !== 'TODOS' ? ' ' + seccion : '') +
+      (q ? ' — Búsqueda: "' + q + '"' : '') || 'Lista General de Alumnos';
+    doc.text(`${subtitulo.trim()} — ${fechaExport} — Pág. ${pageNum}`, PW/2, 14, {align:'center'});
+    curY = 24;
+  }
+
+  function drawTableHeader() {
+    doc.setFillColor(...NAVY); doc.rect(TABLE_X,curY,TABLE_W,HEAD_H,'F');
+    doc.setTextColor(...WHITE); doc.setFontSize(8); doc.setFont('helvetica','bold');
+    let cx = TABLE_X;
+    COLS.forEach(col => { doc.text(col.label, cx+col.w/2, curY+HEAD_H/2+2,{align:'center'}); cx+=col.w; });
+    curY += HEAD_H;
+  }
+
+  function checkNewPage() {
+    if(curY + ROW_H > PH - 10) {
+      doc.addPage(); pageNum++; drawHeader(); drawTableHeader();
+    }
+  }
+
+  drawHeader(); drawTableHeader();
+  let gradoActual = null;
+
+  alumnos.forEach((a, i) => {
+    // Separador por grado+sección
+    const grupoKey = (a.grado||'') + '|' + (a.seccion||'');
+    if(grupoKey !== gradoActual) {
+      gradoActual = grupoKey;
+      if(curY + 6 + ROW_H > PH - 10) { doc.addPage(); pageNum++; drawHeader(); drawTableHeader(); }
+      doc.setFillColor(...NAVY); doc.rect(TABLE_X,curY,TABLE_W,6,'F');
+      doc.setTextColor(...GOLD); doc.setFontSize(7.5); doc.setFont('helvetica','bold');
+      doc.text(`${a.turno||''} — ${a.grado||''} Sección ${a.seccion||''}`, TABLE_X+4, curY+4.2);
+      curY += 6;
+    }
+    checkNewPage();
+    if(i % 2 === 0) { doc.setFillColor(...GRAY); doc.rect(TABLE_X,curY,TABLE_W,ROW_H,'F'); }
+    doc.setDrawColor(220,226,238); doc.setLineWidth(0.2);
+    doc.line(TABLE_X, curY+ROW_H, TABLE_X+TABLE_W, curY+ROW_H);
+    doc.setFontSize(7.5); doc.setFont('helvetica','normal'); doc.setTextColor(...TEXT);
+    let cx = TABLE_X;
+    COLS.forEach(col => {
+      let val = col.key === 'num' ? String(i+1) : (a[col.key]||'-');
+      if(col.key === 'apellidos' && val.length > 20) val = val.substring(0,18)+'...';
+      if(col.key === 'nombres'   && val.length > 20) val = val.substring(0,18)+'...';
+      doc.text(String(val), cx+col.w/2, curY+ROW_H/2+2, {align:'center'});
+      cx += col.w;
+    });
+    curY += ROW_H;
+  });
+
+  // Borde exterior
+  doc.setDrawColor(...NAVY); doc.setLineWidth(0.4);
+  doc.rect(TABLE_X, 24, TABLE_W, curY-24);
+
+  curY += 4;
+  doc.setTextColor(...MUTED); doc.setFontSize(8); doc.setFont('helvetica','italic');
+  doc.text(`Total: ${alumnos.length} alumno${alumnos.length!==1?'s':''}`, TABLE_X, curY);
+
+  const sufijo = grado && grado !== 'TODOS' ? `_${grado}${seccion && seccion !== 'TODOS' ? seccion : ''}` : '_general';
+  doc.save(`alumnos${sufijo}_${hoy()}.pdf`);
+  toast('✅ PDF exportado', 'success');
+}
+
 function importCSV() {
   document.getElementById('csv-input').click();
 }
@@ -4843,10 +4974,8 @@ function toggleModoCarnets(activo) {
   });
   // Deshabilitar/habilitar Nuevo Alumno e Importar CSV/Excel
   const btnNuevo = document.getElementById('btn-nuevo-alumno');
-  const btnImportar   = document.getElementById('btn-importar-csv');
   const btnImportarXL = document.getElementById('btn-importar-excel');
   if(btnNuevo)      { btnNuevo.disabled = activo;      btnNuevo.style.opacity = activo ? '0.35' : '';  btnNuevo.style.pointerEvents = activo ? 'none' : ''; }
-  if(btnImportar)   { btnImportar.disabled = activo;   btnImportar.style.opacity = activo ? '0.35' : '';   btnImportar.style.pointerEvents = activo ? 'none' : ''; }
   if(btnImportarXL) { btnImportarXL.disabled = activo; btnImportarXL.style.opacity = activo ? '0.35' : '1'; btnImportarXL.style.pointerEvents = activo ? 'none' : ''; }
 }
 
