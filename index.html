@@ -4142,9 +4142,9 @@ async function getRegistrosFiltrados() {
     });
   }
 
-  // Ordenar por fecha desc luego nombre
+  // Ordenar por fecha desc luego nombre — defensivo contra undefined
   return filasPDF.sort((a,b) =>
-    b.fecha.localeCompare(a.fecha) || a.nombre.localeCompare(b.nombre)
+    (b.fecha||'').localeCompare(a.fecha||'') || (a.nombre||'').localeCompare(b.nombre||'')
   );
 }
 
@@ -4216,7 +4216,18 @@ async function exportPDFRegistro() {
   const esPorAula    = grado && grado !== 'TODOS' && seccion && seccion !== 'TODOS';
 
   if(!esPorAlumno && !esPorAula) {
-    toast('Para exportar PDF selecciona un aula específica (grado + sección) o busca un alumno', 'warning');
+    // Mostrar modal centrado en vez de toast
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;padding:20px;';
+    overlay.innerHTML = `
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:28px 24px;max-width:360px;width:100%;text-align:center;box-shadow:0 8px 32px rgba(0,0,0,0.4);">
+        <div style="font-size:2.2rem;margin-bottom:12px;">⚠️</div>
+        <div style="font-weight:800;font-size:1rem;margin-bottom:8px;color:var(--text);">Filtro requerido</div>
+        <div style="font-size:0.85rem;color:var(--muted);margin-bottom:20px;line-height:1.5;">Para exportar el PDF selecciona un <strong style="color:var(--text);">aula específica</strong> (grado + sección) o busca un <strong style="color:var(--text);">alumno</strong> por nombre o DNI.</div>
+        <button onclick="this.closest('div[style*=fixed]').remove()" style="background:var(--accent);color:#fff;border:none;border-radius:8px;padding:10px 28px;font-size:0.9rem;font-weight:700;cursor:pointer;">Entendido</button>
+      </div>`;
+    overlay.addEventListener('click', function(e){ if(e.target===overlay) overlay.remove(); });
+    document.body.appendChild(overlay);
     return;
   }
 
