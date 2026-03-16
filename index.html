@@ -3987,8 +3987,7 @@ async function renderRegistro() {
     }
     if(nivel   && nivel   !== 'TODOS') regs = regs.filter(r => r.turno === nivel);
     if(grado   && grado   !== 'TODOS') regs = regs.filter(r => r.grado === grado);
-    // Sección solo aplica si hay grado seleccionado
-    if(seccion && seccion !== 'TODOS' && grado && grado !== 'TODOS') regs = regs.filter(r => r.seccion === seccion);
+    if(seccion && seccion !== 'TODOS') regs = regs.filter(r => r.seccion === seccion);
     if(q) regs = regs.filter(r => r.nombre.toLowerCase().includes(q.trim()) || r.alumnoId.trim().toLowerCase().includes(q.trim()));
 
     // 2. Agrupar por alumnoId + fecha → una fila por alumno por día
@@ -4127,8 +4126,7 @@ async function getRegistrosFiltrados() {
   }
   if(nivel   && nivel   !== 'TODOS') regs = regs.filter(r => r.turno === nivel);
   if(grado   && grado   !== 'TODOS') regs = regs.filter(r => r.grado === grado);
-  // Sección solo aplica si hay grado seleccionado
-  if(seccion && seccion !== 'TODOS' && grado && grado !== 'TODOS') regs = regs.filter(r => r.seccion === seccion);
+  if(seccion && seccion !== 'TODOS') regs = regs.filter(r => r.seccion === seccion);
   if(q) regs = regs.filter(r => (r.nombre||'').toLowerCase().includes(q) || (r.alumnoId||'').includes(q));
 
   // Agrupar por alumnoId + fecha → una fila por alumno por día (igual que la tabla)
