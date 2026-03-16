@@ -2554,9 +2554,14 @@ function doLogout() {
   clearTimeout(_inactWarning);
   if(!confirm('¿Cerrar sesión?')) return;
   sessionStorage.removeItem('splashMostrado');
+  try { localStorage.removeItem('asmqr_lastTab'); } catch(e) {}
   auth.signOut();
-  // Mostrar login inmediatamente al salir
-  document.getElementById('login-screen').style.display = 'flex';
+  // Mostrar splash y luego login al salir
+  document.getElementById('login-screen').style.display = 'none';
+  iniciarSplash();
+  setTimeout(function() {
+    document.getElementById('login-screen').style.display = 'flex';
+  }, 5000);
 }
 
 // Escuchar cambios de sesión
@@ -2693,8 +2698,11 @@ function aplicarPermisos(rol) {
     if(el) el.style.display = tabs.includes(t) ? '' : 'none';
   });
 
-  // Ir a la primera pestaña permitida
-  showSectionDirect(tabs[0]);
+  // Restaurar última pestaña activa, o ir a la primera permitida
+  var lastTab = null;
+  try { lastTab = localStorage.getItem('asmqr_lastTab'); } catch(e) {}
+  var tabInicial = (lastTab && tabs.includes(lastTab)) ? lastTab : tabs[0];
+  showSectionDirect(tabInicial);
 }
 
 function showSectionDirect(id) {
@@ -3022,6 +3030,8 @@ function showSection(id) {
   document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
   if(event && event.target) event.target.classList.add('active');
   else { const t = document.getElementById('tab-'+id); if(t) t.classList.add('active'); }
+  // Guardar pestaña activa para restaurar al recargar
+  try { localStorage.setItem('asmqr_lastTab', id); } catch(e) {}
 }
 
 // ============================================================
