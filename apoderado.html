@@ -250,6 +250,7 @@ var auth = firebase.auth();
 var db   = firebase.firestore();
 auth.setPersistence(firebase.auth.Auth.Persistence.SESSION);
 
+console.log('[APO] Script iniciando...');
 var alumno    = null;
 var registros = [];
 var _registrosCargados = false; // true una vez que cargarRegistros termina
@@ -269,6 +270,11 @@ function getConfigCache() {
 }
 
 
+
+// Capturar errores JS globales
+window.onerror = function(msg, src, line, col, err) {
+  console.error('[APO] ERROR JS:', msg, '| linea:', line, '| col:', col);
+};
 
 // Boton salir
 document.getElementById('btn-salir').addEventListener('click', function() {
