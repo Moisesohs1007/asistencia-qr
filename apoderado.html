@@ -56,6 +56,9 @@
 </head>
 <body>
 
+<!-- APP CONTENT: oculto hasta confirmar sesión -->
+<div id="apo-app" style="display:none;">
+
 <!-- HEADER -->
 <div style="background:var(--navy);padding:14px 20px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;box-shadow:0 2px 12px rgba(0,0,0,0.4);">
   <div style="display:flex;align-items:center;gap:10px;">
@@ -176,6 +179,8 @@
   </div>
 
 </div>
+
+</div><!-- /apo-app -->
 
 <!-- MODAL: Primer ingreso / Registro apoderado -->
 <div id="modal-cambiar-pass" class="modal-overlay">
@@ -337,6 +342,7 @@ function continuarCargaApoderado(user, dni) {
       // Mostrar cancelar solo si es primer ingreso (puede posponer el cambio)
       document.getElementById('btn-cancelar-pass').style.display = tieneDatos ? 'none' : 'block';
     } else {
+      document.getElementById('apo-app').style.display = '';
       var lastTab = null;
       try { lastTab = localStorage.getItem('asmqr_apo_lastTab'); } catch(e) {}
       var tabInicial = lastTab || 'resumen';
