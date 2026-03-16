@@ -420,8 +420,10 @@ function cargarRegistros(mes) {
         } else {
           grupos[key].horaSalida = r.hora;
         }
-        // Prioridad: Tardanza > Puntual > otros
+        // Normalizar: 'A tiempo' → 'Puntual' (index.html guarda 'A tiempo')
         var est = (r.estado || '').trim();
+        if(est === 'A tiempo') est = 'Puntual';
+        // Prioridad: Tardanza > Puntual > otros
         if(est === 'Tardanza') {
           grupos[key].estado = 'Tardanza';
         } else if(est === 'Puntual' && grupos[key].estado !== 'Tardanza') {
@@ -580,18 +582,15 @@ function renderIncidentes() {
   }
   var cont = document.getElementById('lista-incidentes');
   cont.innerHTML = '<div style="padding:16px;text-align:center;color:var(--muted);font-size:0.83rem;">Cargando...</div>';
-  // Filtrar por mes en Firestore — reducir lecturas
-  var desde = mesActual + '-01';
-  var ultimoDia = new Date(hoy.getFullYear(), hoy.getMonth()+1, 0).getDate();
-  var hasta = mesActual + '-' + String(ultimoDia).padStart(2,'0');
+  // Solo filtrar por alumnoId — evita índice compuesto en Firestore.
+  // El filtro de mes se aplica en cliente (pocos incidentes por alumno).
   db.collection('incidentes')
     .where('alumnoId','==',alumno.id)
-    .where('fecha','>=',desde)
-    .where('fecha','<=',hasta)
     .get().then(function(snap) {
     _incidentesCache = snap.docs.map(function(d){ return Object.assign({_id: d.id}, d.data()); })
       .sort(function(a,b){ return (b.fecha||'').localeCompare(a.fecha||''); });
-    _renderIncidentesLista(_incidentesCache);
+    var filtrados = _incidentesCache.filter(function(i){ return (i.fecha||'').startsWith(mesActual); });
+    _renderIncidentesLista(filtrados);
   }).catch(function(e){
     cont.innerHTML='<div style="padding:16px;text-align:center;color:#f87171;font-size:0.83rem;">Error: '+e.message+'</div>';
   });
