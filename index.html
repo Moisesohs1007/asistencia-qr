@@ -1321,7 +1321,7 @@
 
 
 
-<header>
+<header id="app-header" style="display:none;">
   <div class="logo">Asistencia<span>QR</span></div>
   <div style="display:flex;align-items:center;gap:10px;">
     <span id="user-name-display" style="font-size:0.8rem;color:var(--muted);display:none;"></span>
@@ -1346,7 +1346,7 @@
   </div>
 </div>
 
-<main>
+<main id="app-main" style="display:none;">
 
   <!-- ===== SCAN ===== -->
   <div class="section active" id="sec-scan">
@@ -2629,6 +2629,8 @@ auth.onAuthStateChanged(async user => {
 
     // Ocultar login, mostrar app
     document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('app-header').style.display = '';
+    document.getElementById('app-main').style.display = '';
     resetInactTimer(); // Iniciar contador de inactividad
     document.getElementById('user-name-display').textContent = nombre;
     document.getElementById('user-name-display').style.display = 'inline';
@@ -2670,6 +2672,8 @@ auth.onAuthStateChanged(async user => {
     if(tbody) tbody.innerHTML = '';
     // Resetear pantalla de login completamente
     document.getElementById('login-screen').style.display = 'flex';
+    document.getElementById('app-header').style.display = 'none';
+    document.getElementById('app-main').style.display = 'none';
     document.getElementById('login-loading').style.display = 'none';
     document.getElementById('login-error').style.display = 'none';
     document.getElementById('btn-login').disabled = false;
