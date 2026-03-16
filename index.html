@@ -1568,13 +1568,13 @@
         </div>
         <div class="form-group" style="min-width:120px;">
           <label>Grado</label>
-          <select id="filter-grado" onchange="renderRegistro()">
+          <select id="filter-grado" onchange="onAulaChangeRegistro()">
             <option value="" disabled selected>-- Grado --</option>
           </select>
         </div>
         <div class="form-group" style="min-width:100px;">
           <label>Sección</label>
-          <select id="filter-seccion" onchange="renderRegistro()">
+          <select id="filter-seccion" onchange="onAulaChangeRegistro()">
             <option value="" disabled selected>-- Sección --</option>
           </select>
         </div>
@@ -1590,7 +1590,7 @@
         </div>
         <div class="search-wrap" style="flex:1;min-width:160px;margin:0;">
           <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="#64748b"><circle cx="11" cy="11" r="8"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35"/></svg>
-          <input type="text" id="filter-search" placeholder="Buscar nombre o DNI..." oninput="renderRegistro()">
+          <input type="text" id="filter-search" placeholder="Buscar nombre o DNI..." oninput="onSearchRegistro()">
         </div>
         <button class="btn btn-ghost" onclick="limpiarFiltrosRegistro()" style="align-self:flex-end;">✕ Limpiar</button>
       </div>
@@ -3871,6 +3871,27 @@ function validarRangoFecha() {
       document.getElementById('filter-hasta').value = h.toISOString().split('T')[0];
     }
   }
+}
+
+// Al escribir en buscador → limpiar filtros de aula
+function onSearchRegistro() {
+  const q = document.getElementById('filter-search').value;
+  if(q.trim()) {
+    document.getElementById('filter-grado').value   = '';
+    document.getElementById('filter-seccion').value = '';
+    document.getElementById('filter-nivel').value   = '';
+  }
+  renderRegistro();
+}
+
+// Al cambiar grado o sección → limpiar buscador
+function onAulaChangeRegistro() {
+  const grado   = document.getElementById('filter-grado').value;
+  const seccion = document.getElementById('filter-seccion').value;
+  if((grado && grado !== 'TODOS') || (seccion && seccion !== 'TODOS')) {
+    document.getElementById('filter-search').value = '';
+  }
+  renderRegistro();
 }
 
 async function renderRegistro() {
