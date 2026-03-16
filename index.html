@@ -3829,14 +3829,17 @@ function setTodayFilter() {
   document.getElementById('filter-hasta').value = hoyStr;
 }
 
-function limpiarFiltrosRegistro() {
-  document.getElementById('filter-desde').value = '';
-  document.getElementById('filter-hasta').value = '';
-  document.getElementById('filter-grado').value = '';
+async function limpiarFiltrosRegistro() {
+  document.getElementById('filter-desde').value   = '';
+  document.getElementById('filter-hasta').value   = '';
+  document.getElementById('filter-nivel').value   = '';
+  document.getElementById('filter-grado').value   = '';
   document.getElementById('filter-seccion').value = '';
-  document.getElementById('filter-nivel').value = '';
-  document.getElementById('filter-tipo').value = '';
-  document.getElementById('filter-search').value = '';
+  document.getElementById('filter-tipo').value    = '';
+  document.getElementById('filter-search').value  = '';
+  // Repoblar grado y sección a estado inicial (sin filtro)
+  await poblarFiltroGrado('filter-grado', null);
+  await poblarFiltroSeccion('filter-seccion', null);
   document.getElementById('registro-tbody').innerHTML = '';
   document.getElementById('registro-empty').style.display = 'block';
   document.getElementById('registro-empty').querySelector('p').textContent = 'Selecciona una fecha u otro filtro para ver los registros';
@@ -3873,41 +3876,67 @@ function validarRangoFecha() {
   }
 }
 
-// Al escribir en buscador → limpiar TODOS los filtros de aula
-function onSearchRegistro() {
+// ── FILTROS DE REGISTRO — lógica en cascada ──
+// Nivel → Grado → Sección → Resultado
+// Buscador es modo alternativo — mutuamente excluyente con nivel/grado/sección
+
+// Al cambiar NIVEL → repoblar grado y sección, limpiar buscador
+async function onNivelChangeRegistro() {
+  document.getElementById('filter-search').value  = '';
+  document.getElementById('filter-grado').value   = '';
+  document.getElementById('filter-seccion').value = '';
+  const nivel = document.getElementById('filter-nivel').value;
+  await poblarFiltroGrado('filter-grado', nivel || null);
+  await poblarFiltroSeccion('filter-seccion', null);
+  renderRegistro();
+}
+
+// Al cambiar GRADO → auto-detectar nivel, repoblar sección, limpiar buscador
+async function onGradoChangeRegistro() {
+  document.getElementById('filter-search').value  = '';
+  document.getElementById('filter-seccion').value = '';
+  const grado = document.getElementById('filter-grado').value;
+  if(grado && grado !== 'TODOS') {
+    // Auto-detectar nivel del grado
+    const cfg = await getConfig();
+    for(const [niv, lista] of Object.entries(cfg.grados || {})) {
+      if(lista.includes(grado)) {
+        document.getElementById('filter-nivel').value = niv;
+        break;
+      }
+    }
+    await poblarFiltroSeccion('filter-seccion', grado);
+  } else {
+    // Grado vacío o TODOS → repoblar sección sin filtro de grado
+    const nivel = document.getElementById('filter-nivel').value;
+    const alumnos = await DB.getAlumnos();
+    const secs = [...new Set(alumnos
+      .filter(a => !nivel || nivel === 'TODOS' || a.turno === nivel)
+      .map(a => a.seccion)
+    )].sort();
+    const el = document.getElementById('filter-seccion');
+    el.innerHTML = '<option value="" disabled selected>-- Sección --</option><option value="TODOS">Todas</option>';
+    secs.forEach(s => { el.innerHTML += `<option value="${s}">${s}</option>`; });
+  }
+  renderRegistro();
+}
+
+// Al cambiar SECCIÓN → limpiar buscador, respetar grado activo
+function onSeccionChangeRegistro() {
+  document.getElementById('filter-search').value = '';
+  renderRegistro();
+}
+
+// Al escribir en BUSCADOR → limpiar nivel/grado/sección y repoblar a estado inicial
+async function onSearchRegistro() {
   const q = document.getElementById('filter-search').value;
   if(q.trim()) {
     document.getElementById('filter-nivel').value   = '';
     document.getElementById('filter-grado').value   = '';
     document.getElementById('filter-seccion').value = '';
+    await poblarFiltroGrado('filter-grado', null);
+    await poblarFiltroSeccion('filter-seccion', null);
   }
-  renderRegistro();
-}
-
-// Al cambiar grado → detectar nivel automáticamente y poblar secciones
-async function onGradoChangeRegistro() {
-  document.getElementById('filter-search').value = '';
-  const grado = document.getElementById('filter-grado').value;
-  if(grado && grado !== 'TODOS') {
-    // Auto-detectar nivel del grado seleccionado
-    const cfg = await getConfig();
-    const grados = cfg.grados || {};
-    for(const [nivel, lista] of Object.entries(grados)) {
-      if(lista.includes(grado)) {
-        document.getElementById('filter-nivel').value = nivel;
-        break;
-      }
-    }
-    // Poblar secciones según el grado
-    await poblarFiltroSeccion('filter-seccion', grado);
-    document.getElementById('filter-seccion').value = '';
-  }
-  renderRegistro();
-}
-
-// Al cambiar sección → renderizar respetando grado activo
-function onSeccionChangeRegistro() {
-  document.getElementById('filter-search').value = '';
   renderRegistro();
 }
 
@@ -5684,17 +5713,6 @@ async function onNivelChangeAlumnos() {
   document.getElementById('fa-grado').value = '';
   document.getElementById('fa-seccion').value = '';
   renderAlumnos();
-}
-
-async function onNivelChangeRegistro() {
-  const nivel = document.getElementById('filter-nivel').value;
-  // Limpiar buscador al cambiar nivel
-  document.getElementById('filter-search').value = '';
-  await poblarFiltroGrado('filter-grado', nivel);
-  await poblarFiltroSeccion('filter-seccion', null);
-  document.getElementById('filter-grado').value = '';
-  document.getElementById('filter-seccion').value = '';
-  renderRegistro();
 }
 
 async function inicializarFiltros() {
