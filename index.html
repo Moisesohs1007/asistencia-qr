@@ -4351,23 +4351,132 @@ async function exportXLSX() {
     });
   }
 
-  const header = ['Fecha','DNI','Nombre','Nivel','Grado','Sección','Hora Ingreso','Hora Salida','Estado'];
-  const rows = regs.map(r => [
-    r.fecha,           // fecha siempre llena (a diferencia del PDF de aula)
-    r.dni, r.nombre, r.nivel,
-    r.grado, r.seccion, r.ingreso||'-', r.salida||'-', r.estado
-  ]);
+  const cfg = await getConfig();
+  const nombreColegio = cfg?.nombreColegio || 'I.E.P. San José Marello';
+  const fechaExport = new Date().toLocaleDateString('es-PE',{day:'2-digit',month:'2-digit',year:'numeric'});
+  const diasSemana  = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
 
-  const ws = XLSX.utils.aoa_to_sheet([header, ...rows]);
-  ws['!cols'] = [
-    {wch:12}, {wch:12}, {wch:28}, {wch:12},
-    {wch:10}, {wch:10}, {wch:14}, {wch:12}, {wch:14}
-  ];
+  // Colores
+  const NAVY_HEX  = '000D1A3A'; // ARGB para SheetJS
+  const GOLD_HEX  = 'FFC9A84C';
+  const WHITE_HEX = 'FFFFFFFF';
+  const GRAY_HEX  = 'FFF0F2F8';
+  const RED_HEX   = 'FFDC2626';
+  const GREEN_HEX = 'FF16A34A';
+  const AMBER_HEX = 'FFD97706';
+  const TEXT_HEX  = 'FF1E293B';
+
+  const COLS = ['Fecha','DNI','Nombre','Nivel','Grado','Sección','H. Ingreso','H. Salida','Estado'];
+  const KEYS = ['fecha','dni','nombre','nivel','grado','seccion','ingreso','salida','estado'];
+  const WIDTHS = [13,12,32,12,10,10,14,12,16];
+
+  // Construir filas con separadores por fecha (solo modo aula)
+  const aoa = []; // array of arrays
+  const merges = [];
+  const styles = {}; // fila → estilo especial
+
+  // Fila 1: título colegio (merge todas las columnas)
+  aoa.push([nombreColegio, ...Array(COLS.length-1).fill('')]);
+  merges.push({ s:{r:0,c:0}, e:{r:0,c:COLS.length-1} });
+  styles[0] = 'title';
+
+  // Fila 2: subtítulo
+  const sub = esPorAula
+    ? `${grado} Sección ${seccion} — Registro de Asistencia — ${fechaExport}`
+    : `${q} — Registro de Asistencia — ${fechaExport}`;
+  aoa.push([sub, ...Array(COLS.length-1).fill('')]);
+  merges.push({ s:{r:1,c:0}, e:{r:1,c:COLS.length-1} });
+  styles[1] = 'subtitle';
+
+  // Fila 3: vacía
+  aoa.push(Array(COLS.length).fill(''));
+
+  // Fila 4: encabezado de columnas
+  aoa.push(COLS);
+  styles[aoa.length-1] = 'header';
+
+  let fechaActual = null;
+  let rowCount = 0;
+
+  regs.forEach(r => {
+    // Separador por fecha en modo aula
+    if(esPorAula && r.fecha !== fechaActual) {
+      fechaActual = r.fecha;
+      const fp = (r.fecha||'').split('-');
+      const fechaFmt = fp.length===3 ? fp[2]+'/'+fp[1]+'/'+fp[0] : r.fecha;
+      const diaSem = r.fecha ? diasSemana[new Date(r.fecha+'T12:00:00').getDay()] : '';
+      aoa.push([`📅  ${diaSem} ${fechaFmt}`, ...Array(COLS.length-1).fill('')]);
+      merges.push({ s:{r:aoa.length-1,c:0}, e:{r:aoa.length-1,c:COLS.length-1} });
+      styles[aoa.length-1] = 'daterow';
+      rowCount = 0;
+    }
+    // Formatear fecha en la celda
+    const fp = (r.fecha||'').split('-');
+    const fechaFmt = fp.length===3 ? fp[2]+'/'+fp[1]+'/'+fp[0] : r.fecha;
+    const row = [fechaFmt, r.dni, r.nombre, r.nivel, r.grado, r.seccion,
+                 r.ingreso||'-', r.salida||'-', r.estado||'Sin registro'];
+    aoa.push(row);
+    styles[aoa.length-1] = rowCount % 2 === 0 ? 'even' : 'odd';
+    rowCount++;
+  });
+
+  // Fila total
+  aoa.push(Array(COLS.length).fill(''));
+  aoa.push([`Total: ${regs.length} registro${regs.length!==1?'s':''}`, ...Array(COLS.length-1).fill('')]);
+  styles[aoa.length-1] = 'total';
+
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  ws['!cols'] = WIDTHS.map(w => ({wch:w}));
+  ws['!merges'] = merges;
+
+  // Aplicar estilos celda a celda
+  aoa.forEach((row, ri) => {
+    row.forEach((_, ci) => {
+      const cellAddr = XLSX.utils.encode_cell({r:ri, c:ci});
+      if(!ws[cellAddr]) return;
+      const st = styles[ri];
+      let fill, font, alignment, border;
+
+      if(st === 'title') {
+        fill = {fgColor:{rgb:'0D1A3A'}}; font = {bold:true,color:{rgb:'FFFFFF'},sz:13};
+        alignment = {horizontal:'center',vertical:'center'};
+      } else if(st === 'subtitle') {
+        fill = {fgColor:{rgb:'0D1A3A'}}; font = {color:{rgb:'B0C4E8'},sz:9};
+        alignment = {horizontal:'center'};
+      } else if(st === 'header') {
+        fill = {fgColor:{rgb:'0D1A3A'}}; font = {bold:true,color:{rgb:'FFFFFF'},sz:9};
+        alignment = {horizontal:'center',vertical:'center'};
+      } else if(st === 'daterow') {
+        fill = {fgColor:{rgb:'0D1A3A'}}; font = {bold:true,color:{rgb:'C9A84C'},sz:9};
+        alignment = {horizontal:'left',vertical:'center'};
+      } else if(st === 'even') {
+        fill = {fgColor:{rgb:'F0F2F8'}}; font = {sz:8,color:{rgb:'1E293B'}};
+        alignment = {horizontal:'center'};
+      } else if(st === 'odd') {
+        fill = {fgColor:{rgb:'FFFFFF'}}; font = {sz:8,color:{rgb:'1E293B'}};
+        alignment = {horizontal:'center'};
+      } else if(st === 'total') {
+        font = {italic:true,sz:8,color:{rgb:'64748B'}};
+      }
+
+      // Color especial para estado
+      if((st==='even'||st==='odd') && ci === COLS.length-1 && ws[cellAddr].v) {
+        const v = String(ws[cellAddr].v).toLowerCase();
+        if(v.includes('tardanza')) font = {...font, color:{rgb:'D97706'}, bold:true};
+        else if(v.includes('tiempo')||v.includes('puntual')) font = {...font, color:{rgb:'16A34A'}, bold:true};
+        else if(v.includes('sin registro')||v.includes('ausente')) font = {...font, color:{rgb:'DC2626'}, bold:true};
+      }
+
+      ws[cellAddr].s = { fill, font, alignment,
+        border: { bottom:{style:'thin',color:{rgb:'DCE2EE'}} }
+      };
+    });
+  });
 
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Asistencia');
-  const sufijo = esPorAlumno ? `_${q.replace(/\s+/g,'_')}` : `_${grado}${seccion}`;
-  XLSX.writeFile(wb, `asistencia${sufijo}_${hoy()}.xlsx`);
+  const sufijo = esPorAlumno ? '_'+q.substring(0,20).replace(/\s/g,'_') : '_'+grado+seccion;
+  XLSX.writeFile(wb, 'asistencia'+sufijo+'_'+hoy()+'.xlsx');
   toast('✅ Excel exportado','success');
 }
 
@@ -4537,10 +4646,10 @@ async function exportPDFRegistro() {
     COLS.forEach(col => {
       let val = r[col.key] || '-';
       if(col.key === 'nombre' && val.length > 30) val = val.substring(0,28) + '...';
-      // En modo aula ocultar columna fecha (ya está en el separador)
-      if(col.key === 'fecha' && esPorAula) {
-        cx += col.w;
-        return;
+      // Formatear fecha dd/mm/yyyy en la celda
+      if(col.key === 'fecha' && val && val !== '-') {
+        const fp = val.split('-');
+        if(fp.length === 3) val = fp[2]+'/'+fp[1]+'/'+fp[0];
       }
       if(col.key === 'estado') {
         doc.setTextColor(...estadoColor(val));
