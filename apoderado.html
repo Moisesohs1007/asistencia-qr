@@ -97,8 +97,8 @@
       </div>
     </div>
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
-      <span style="font-size:0.82rem;color:var(--muted);white-space:nowrap;">Mes:</span>
-      <select id="sel-mes-resumen" onchange="onMesChange('resumen')" style="flex:1;"></select>
+      <span style="font-size:0.82rem;color:var(--muted);">Resumen de</span>
+      <span id="lbl-mes-resumen" style="font-size:0.86rem;font-weight:700;color:var(--accent);text-transform:capitalize;"></span>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px;">
       <div style="background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.25);border-radius:12px;padding:14px;text-align:center;">
@@ -115,7 +115,7 @@
       </div>
     </div>
     <div class="card">
-      <div style="padding:12px 16px;border-bottom:1px solid var(--border);font-weight:700;font-size:0.86rem;">Ultimos registros</div>
+      <div style="padding:12px 16px;border-bottom:1px solid var(--border);font-weight:700;font-size:0.86rem;">Últimos 5 días</div>
       <div id="lista-ultimos"><div style="padding:16px;text-align:center;color:var(--muted);font-size:0.83rem;">Cargando...</div></div>
     </div>
   </div>
@@ -378,19 +378,14 @@ function poblarMeses() {
     label = label.charAt(0).toUpperCase() + label.slice(1);
     opts += '<option value="'+val+'">'+label+'</option>';
   }
-  document.getElementById('sel-mes-resumen').innerHTML = opts;
-  document.getElementById('sel-mes-hist').innerHTML    = opts;
+  document.getElementById('sel-mes-hist').innerHTML = opts;
   // Por defecto mes actual (primera opción)
   var mesActual = String(new Date().getMonth()+1).padStart(2,'0');
-  document.getElementById('sel-mes-resumen').value = mesActual;
-  document.getElementById('sel-mes-hist').value    = mesActual;
+  document.getElementById('sel-mes-hist').value = mesActual;
 }
 
 function onMesChange(origen) {
-  var mes = document.getElementById('sel-mes-' + origen).value;
-  // Sincronizar ambos selectores
-  document.getElementById('sel-mes-resumen').value = mes;
-  document.getElementById('sel-mes-hist').value    = mes;
+  var mes = document.getElementById('sel-mes-hist').value;
   // Recargar registros del mes seleccionado
   cargarRegistros(mes).then(function() {
     if(origen === 'resumen') renderResumen();
@@ -532,8 +527,14 @@ function ico(estado) {
 }
 
 function renderResumen() {
-  var mes  = document.getElementById('sel-mes-resumen').value;
-  var list = filtrarMes(registros || [], mes);
+  // Resumen siempre muestra el mes actual — sin selector
+  var mesNum = String(new Date().getMonth()+1).padStart(2,'0');
+  var list   = filtrarMes(registros || [], mesNum);
+  // Mostrar nombre del mes en el label
+  var nombreMes = new Date().toLocaleDateString('es-PE', { month: 'long', year: 'numeric' });
+  nombreMes = nombreMes.charAt(0).toUpperCase() + nombreMes.slice(1);
+  var lbl = document.getElementById('lbl-mes-resumen');
+  if(lbl) lbl.textContent = nombreMes;
   document.getElementById('kpi-puntual').textContent  = list.filter(function(r){return r.estado==='Puntual';}).length;
   document.getElementById('kpi-tardanza').textContent = list.filter(function(r){return r.estado==='Tardanza';}).length;
   document.getElementById('kpi-ausente').textContent  = list.filter(function(r){return r.estado==='Ausente';}).length;
