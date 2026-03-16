@@ -4025,18 +4025,16 @@ async function renderRegistro() {
       ? await DB.getRegistros({ mes: mesSel })
       : await DB.getRegistros({ mes: mesSel });
 
-    // Filtrar por rango de fechas (excluir sábado y domingo)
-    if(desde || hasta) {
-      regs = regs.filter(r => {
-        if(!r.fecha) return false;
-        const d = new Date(r.fecha + 'T00:00:00');
-        const dia = d.getDay();
-        if(dia === 0 || dia === 6) return false;
-        if(desde && r.fecha < desde) return false;
-        if(hasta && r.fecha > hasta) return false;
-        return true;
-      });
-    }
+    // Filtrar por rango de fechas y excluir siempre sábado y domingo
+    regs = regs.filter(r => {
+      if(!r.fecha) return false;
+      const d = new Date(r.fecha + 'T12:00:00');
+      const dia = d.getDay();
+      if(dia === 0 || dia === 6) return false;
+      if(desde && r.fecha < desde) return false;
+      if(hasta && r.fecha > hasta) return false;
+      return true;
+    });
     if(nivel   && nivel   !== 'TODOS') regs = regs.filter(r => r.turno === nivel);
     if(grado   && grado   !== 'TODOS') regs = regs.filter(r => r.grado === grado);
     if(seccion && seccion !== 'TODOS') regs = regs.filter(r => r.seccion === seccion);
@@ -4107,8 +4105,34 @@ async function renderRegistro() {
       });
     }
 
-    // Ordenar por fecha desc, luego por apellido
-    filas.sort((a,b) => b.fecha.localeCompare(a.fecha) || a.nombre.localeCompare(b.nombre));
+    // Ordenar según modo:
+    // - Todos/nivel: nivel asc → grado asc → sección asc → nombre asc
+    // - Grado específico: fecha desc → nombre asc
+    const esTodos = (!grado || grado === 'TODOS');
+    if(esTodos) {
+      const cfg2 = await getConfig();
+      // Construir índice respetando orden de niveles y grados en config
+      const ordenNiveles = (cfg2.niveles || []).map(n => n.nombre);
+      const gradosCfg    = cfg2.grados || {};
+      // Mapa: grado → { nivelIdx, gradoIdx }
+      const gradoIdx = {};
+      ordenNiveles.forEach((niv, ni) => {
+        (gradosCfg[niv] || []).forEach((g, gi) => {
+          gradoIdx[g] = { ni, gi };
+        });
+      });
+      filas.sort((a, b) => {
+        const ia = gradoIdx[a.grado] || { ni: 999, gi: 999 };
+        const ib = gradoIdx[b.grado] || { ni: 999, gi: 999 };
+        if(ia.ni !== ib.ni) return ia.ni - ib.ni;       // nivel
+        if(ia.gi !== ib.gi) return ia.gi - ib.gi;       // grado dentro del nivel
+        const sc = (a.seccion||'').localeCompare(b.seccion||'');
+        if(sc !== 0) return sc;                          // sección
+        return (a.nombre||'').localeCompare(b.nombre||''); // nombre
+      });
+    } else {
+      filas.sort((a,b) => b.fecha.localeCompare(a.fecha) || a.nombre.localeCompare(b.nombre));
+    }
 
     // Filtrar por tipo si está seleccionado
     if(tipo && tipo !== 'TODOS') {
