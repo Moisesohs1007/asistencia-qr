@@ -1568,13 +1568,13 @@
         </div>
         <div class="form-group" style="min-width:120px;">
           <label>Grado</label>
-          <select id="filter-grado" onchange="onGradoChangeRegistro()">
+          <select id="filter-grado" onchange="onGradoChangeRegistro()" disabled style="opacity:0.45;cursor:not-allowed;">
             <option value="" disabled selected>-- Grado --</option>
           </select>
         </div>
         <div class="form-group" style="min-width:100px;">
           <label>Sección</label>
-          <select id="filter-seccion" onchange="onSeccionChangeRegistro()">
+          <select id="filter-seccion" onchange="onSeccionChangeRegistro()" disabled style="opacity:0.45;cursor:not-allowed;">
             <option value="" disabled selected>-- Sección --</option>
           </select>
         </div>
@@ -3837,9 +3837,11 @@ async function limpiarFiltrosRegistro() {
   document.getElementById('filter-seccion').value = '';
   document.getElementById('filter-tipo').value    = '';
   document.getElementById('filter-search').value  = '';
-  // Repoblar grado y sección a estado inicial (sin filtro)
+  // Repoblar y deshabilitar grado y sección (requieren nivel primero)
   await poblarFiltroGrado('filter-grado', null);
   await poblarFiltroSeccion('filter-seccion', null);
+  _disableSelect('filter-grado');
+  _disableSelect('filter-seccion');
   document.getElementById('registro-tbody').innerHTML = '';
   document.getElementById('registro-empty').style.display = 'block';
   document.getElementById('registro-empty').querySelector('p').textContent = 'Selecciona una fecha u otro filtro para ver los registros';
@@ -3880,13 +3882,32 @@ function validarRangoFecha() {
 // Nivel → Grado → Sección → Resultado
 // Buscador es modo alternativo — mutuamente excluyente con nivel/grado/sección
 
-// Al cambiar NIVEL → repoblar grado y sección, limpiar buscador
+function _enableSelect(id) {
+  const el = document.getElementById(id);
+  el.disabled = false; el.style.opacity = '1'; el.style.cursor = 'pointer';
+}
+function _disableSelect(id) {
+  const el = document.getElementById(id);
+  el.disabled = true; el.style.opacity = '0.45'; el.style.cursor = 'not-allowed';
+}
+
+// Al cambiar NIVEL → repoblar grado, deshabilitar sección, limpiar buscador
 async function onNivelChangeRegistro() {
   document.getElementById('filter-search').value  = '';
   document.getElementById('filter-grado').value   = '';
   document.getElementById('filter-seccion').value = '';
+  _disableSelect('filter-seccion');
   const nivel = document.getElementById('filter-nivel').value;
-  await poblarFiltroGrado('filter-grado', nivel || null);
+  if(nivel && nivel !== 'TODOS') {
+    await poblarFiltroGrado('filter-grado', nivel);
+    _enableSelect('filter-grado');
+  } else if(nivel === 'TODOS') {
+    await poblarFiltroGrado('filter-grado', null);
+    _enableSelect('filter-grado');
+  } else {
+    // Sin nivel → deshabilitar grado también
+    _disableSelect('filter-grado');
+  }
   await poblarFiltroSeccion('filter-seccion', null);
   renderRegistro();
 }
@@ -3928,6 +3949,14 @@ async function onGradoChangeRegistro() {
     elSec.value = opcionExiste ? seccionPrevia : '';
   }
 
+  // Habilitar/deshabilitar sección según si hay grado
+  if(grado && grado !== 'TODOS') {
+    _enableSelect('filter-seccion');
+  } else {
+    document.getElementById('filter-seccion').value = '';
+    _disableSelect('filter-seccion');
+  }
+
   renderRegistro();
 }
 
@@ -3946,6 +3975,11 @@ async function onSearchRegistro() {
     document.getElementById('filter-seccion').value = '';
     await poblarFiltroGrado('filter-grado', null);
     await poblarFiltroSeccion('filter-seccion', null);
+    _disableSelect('filter-grado');
+    _disableSelect('filter-seccion');
+  } else {
+    // Campo vacío → rehabilitar grado
+    _enableSelect('filter-grado');
   }
   renderRegistro();
 }
@@ -5769,6 +5803,11 @@ async function inicializarFiltros() {
   await poblarFiltroNivel('filter-nivel', 'onNivelChangeRegistro');
   await poblarFiltroGrado('filter-grado', null);
   await poblarFiltroSeccion('filter-seccion', null);
+  // Grado y sección deshabilitados hasta que se seleccione nivel
+  if(typeof _disableSelect === 'function') {
+    _disableSelect('filter-grado');
+    _disableSelect('filter-seccion');
+  }
 }
 
 // ============================================================
