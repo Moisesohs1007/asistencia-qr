@@ -3873,24 +3873,20 @@ function validarRangoFecha() {
   }
 }
 
-// Al escribir en buscador → limpiar filtros de aula
+// Al escribir en buscador → limpiar TODOS los filtros de aula
 function onSearchRegistro() {
   const q = document.getElementById('filter-search').value;
   if(q.trim()) {
+    document.getElementById('filter-nivel').value   = '';
     document.getElementById('filter-grado').value   = '';
     document.getElementById('filter-seccion').value = '';
-    document.getElementById('filter-nivel').value   = '';
   }
   renderRegistro();
 }
 
 // Al cambiar grado o sección → limpiar buscador
 function onAulaChangeRegistro() {
-  const grado   = document.getElementById('filter-grado').value;
-  const seccion = document.getElementById('filter-seccion').value;
-  if((grado && grado !== 'TODOS') || (seccion && seccion !== 'TODOS')) {
-    document.getElementById('filter-search').value = '';
-  }
+  document.getElementById('filter-search').value = '';
   renderRegistro();
 }
 
@@ -5669,6 +5665,8 @@ async function onNivelChangeAlumnos() {
 
 async function onNivelChangeRegistro() {
   const nivel = document.getElementById('filter-nivel').value;
+  // Limpiar buscador al cambiar nivel
+  document.getElementById('filter-search').value = '';
   await poblarFiltroGrado('filter-grado', nivel);
   await poblarFiltroSeccion('filter-seccion', null);
   document.getElementById('filter-grado').value = '';
