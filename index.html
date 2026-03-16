@@ -2791,9 +2791,16 @@ function iniciarSplash() {
   }, 5000);
 }
 
-// Iniciar splash al cargar la página
+// Iniciar splash solo una vez por sesión — no en cada recarga
 document.addEventListener('DOMContentLoaded', function() {
-  iniciarSplash();
+  if(!sessionStorage.getItem('splashMostrado')) {
+    sessionStorage.setItem('splashMostrado', '1');
+    iniciarSplash();
+  } else {
+    // Ya se mostró — ocultar splash inmediatamente
+    var splash = document.getElementById('splash-screen');
+    if(splash) splash.style.display = 'none';
+  }
 });
 
 // ============================================================
