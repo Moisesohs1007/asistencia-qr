@@ -281,17 +281,20 @@ document.getElementById('btn-guardar-pass').addEventListener('click', guardarNue
 
 // Verificar sesion
 auth.onAuthStateChanged(function(user) {
+  console.log('[APO] auth state:', user ? user.email : 'NO SESSION');
   if(!user) { window.location.href = 'index.html'; return; }
-  // Aceptar email virtual O correo real (si el apoderado registró su correo)
   var dni = null;
   if(user.email.indexOf('@apo.marello.pe') !== -1) {
     dni = user.email.replace('@apo.marello.pe', '');
+    console.log('[APO] email virtual, dni:', dni);
   } else {
-    // Correo real — buscar DNI en colección apoderados por email
+    console.log('[APO] correo real, buscando emailReal:', user.email);
     db.collection('apoderados').where('emailReal', '==', user.email).limit(1).get().then(function(snap) {
-if(snap.empty) { auth.signOut(); window.location.href = 'index.html'; return; }
+      console.log('[APO] emailReal snap.empty:', snap.empty, 'docs:', snap.docs.length);
+      if(snap.empty) { auth.signOut(); window.location.href = 'index.html'; return; }
       var dniReal = snap.docs[0].id;
-continuarCargaApoderado(user, dniReal);
+      console.log('[APO] dniReal:', dniReal);
+      continuarCargaApoderado(user, dniReal);
     }).catch(function(e) {
       console.error('[APO] ERROR emailReal query:', e.message);
       auth.signOut(); window.location.href = 'index.html';
@@ -302,8 +305,9 @@ continuarCargaApoderado(user, dniReal);
 });
 
 function continuarCargaApoderado(user, dni) {
-  console.log('[APO] Buscando alumno: ', dni);
+  console.log('[APO] continuarCarga dni:', dni);
   db.collection('alumnos').doc(dni).get().then(function(snap) {
+    console.log('[APO] alumno snap.exists:', snap.exists);
     if(!snap.exists) { auth.signOut(); window.location.href = 'index.html'; return; }
     alumno = Object.assign({ id: dni }, snap.data());
     console.log('[APO] Alumno OK — cargando apoderado...');
@@ -407,14 +411,19 @@ function cargarRegistros(mes) {
   var ultimo = new Date(anio, parseInt(mesNum), 0).getDate();
   var hasta  = anio + '-' + mesNum + '-' + String(ultimo).padStart(2,'0');
   console.log('[APO] Cargando registros de:', alumno.id, 'mes:', mesNum);
+  // Solo filtrar por alumnoId — evita índice compuesto en Firestore.
+  // Filtro de mes se aplica en cliente.
   return db.collection('registros')
     .where('alumnoId','==',alumno.id)
-    .where('fecha','>=',desde)
-    .where('fecha','<=',hasta)
     .get().then(function(snap) {
-      console.log('[APO] Registros recibidos: ', snap.docs.length);
+      console.log('[APO] Registros recibidos total:', snap.docs.length);
+      var docsDelMes = snap.docs.filter(function(d) {
+        var f = (d.data().fecha || '');
+        return f >= desde && f <= hasta;
+      });
+      console.log('[APO] Registros del mes:', docsDelMes.length);
       var grupos = {};
-      snap.docs.forEach(function(d) {
+      docsDelMes.forEach(function(d) {
         var r = d.data();
         if(!r.fecha) return;
         var key = r.alumnoId + '_' + r.fecha;
