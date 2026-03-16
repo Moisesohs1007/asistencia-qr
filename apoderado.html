@@ -538,7 +538,7 @@ function renderResumen() {
   document.getElementById('kpi-tardanza').textContent = list.filter(function(r){return r.estado==='Tardanza';}).length;
   document.getElementById('kpi-ausente').textContent  = list.filter(function(r){return r.estado==='Ausente';}).length;
   var cont = document.getElementById('lista-ultimos');
-  var ult  = list.slice(0,8);
+  var ult  = list.slice(0,5);
   if(!ult.length) { cont.innerHTML='<div style="padding:16px;text-align:center;color:var(--muted);font-size:0.83rem;">Sin registros en este periodo</div>'; return; }
   cont.innerHTML = ult.map(function(r) {
     return '<div class="registro-row"><div style="display:flex;align-items:center;gap:10px;"><span>'+ico(r.estado)+'</span><div><div style="font-size:0.83rem;font-weight:600;">'+fStr(r.fecha)+'</div><div style="font-size:0.74rem;color:var(--muted);">'+(r.horaIngreso?'Ingreso: '+r.horaIngreso:'')+' '+(r.horaSalida?'- Salida: '+r.horaSalida:'')+'</div></div></div>'+badge(r.estado)+'</div>';
