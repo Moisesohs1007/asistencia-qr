@@ -4400,10 +4400,37 @@ async function exportPDFRegistro() {
   drawHeader();
   drawTableHeader();
 
-  regs.forEach((r, i) => {
+  const DATE_H = 6; // altura del separador de fecha
+  let fechaActual = null;
+  let rowIndex = 0; // para alternar color independiente del separador
+
+  regs.forEach((r) => {
+    // Separador de fecha — solo en modo aula (no individual)
+    if(esPorAula && r.fecha !== fechaActual) {
+      fechaActual = r.fecha;
+      // Verificar espacio para separador + al menos una fila
+      if(curY + DATE_H + ROW_H > PH - 10) {
+        doc.addPage(); pageNum++; drawHeader(); drawTableHeader();
+      }
+      // Banda de fecha
+      doc.setFillColor(13, 26, 58); // NAVY
+      doc.rect(TABLE_X, curY, TABLE_W, DATE_H, 'F');
+      doc.setTextColor(201, 168, 76); // GOLD
+      doc.setFontSize(7.5); doc.setFont('helvetica','bold');
+      // Formatear fecha dd/mm/yyyy
+      const fp = r.fecha ? r.fecha.split('-') : [];
+      const fechaLabel = fp.length === 3 ? `${fp[2]}/${fp[1]}/${fp[0]}` : r.fecha;
+      // Día de semana
+      const diasSemana = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+      const diaSem = r.fecha ? diasSemana[new Date(r.fecha + 'T12:00:00').getDay()] : '';
+      doc.text(`📅  ${diaSem} ${fechaLabel}`, TABLE_X + 4, curY + DATE_H/2 + 2);
+      curY += DATE_H;
+      rowIndex = 0; // resetear alternado por cada nuevo día
+    }
+
     checkNewPage();
     // Fila alternada
-    if(i % 2 === 0) {
+    if(rowIndex % 2 === 0) {
       doc.setFillColor(...GRAY);
       doc.rect(TABLE_X, curY, TABLE_W, ROW_H, 'F');
     }
@@ -4416,9 +4443,12 @@ async function exportPDFRegistro() {
     let cx = TABLE_X;
     COLS.forEach(col => {
       let val = r[col.key] || '-';
-      // Truncar nombre si es muy largo
       if(col.key === 'nombre' && val.length > 30) val = val.substring(0,28) + '...';
-      // Color especial para estado
+      // En modo aula ocultar columna fecha (ya está en el separador)
+      if(col.key === 'fecha' && esPorAula) {
+        cx += col.w;
+        return;
+      }
       if(col.key === 'estado') {
         doc.setTextColor(...estadoColor(val));
         doc.setFont('helvetica','bold');
@@ -4430,6 +4460,7 @@ async function exportPDFRegistro() {
       cx += col.w;
     });
     curY += ROW_H;
+    rowIndex++;
   });
 
   // Borde exterior tabla
