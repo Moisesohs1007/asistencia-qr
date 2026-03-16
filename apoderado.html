@@ -285,8 +285,10 @@ document.getElementById('btn-salir').addEventListener('click', function() {
 // Boton guardar nueva pass
 document.getElementById('btn-guardar-pass').addEventListener('click', guardarNuevaPass);
 
+console.log('[APO] Llegando a onAuthStateChanged...');
 // Verificar sesion
 auth.onAuthStateChanged(function(user) {
+  console.log('[APO] onAuthStateChanged user:', user ? user.email : 'null');
   if(!user) { window.location.href = 'index.html'; return; }
   // Aceptar email virtual O correo real (si el apoderado registró su correo)
   var dni = null;
