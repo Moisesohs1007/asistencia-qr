@@ -4088,8 +4088,62 @@ async function getRegistrosFiltrados() {
     }
   });
 
+  let filasPDF = Object.values(grupos);
+
+  // Excluir sábados y domingos
+  filasPDF = filasPDF.filter(f => {
+    if(!f.fecha) return true;
+    const d = new Date(f.fecha + 'T12:00:00');
+    return d.getDay() !== 0 && d.getDay() !== 6;
+  });
+
+  // Generar ausentes si hay filtro individual (alumno) o por nivel/grado/sección
+  // No generar si no hay filtro — evita 14k+ filas
+  const hayFiltroEspecifico = q || (nivel && nivel !== 'TODOS') || (grado && grado !== 'TODOS') || (seccion && seccion !== 'TODOS');
+
+  if(hayFiltroEspecifico) {
+    const mesSel = document.getElementById('reg-mes-select')?.value || mesActual();
+    const rangoDesde = desde || mesSel + '-01';
+    const rangoHasta = hasta || (() => {
+      const [y,m] = mesSel.split('-').map(Number);
+      const hoyStr = new Date().toISOString().slice(0,10);
+      const finMes = mesSel + '-' + String(new Date(y,m,0).getDate()).padStart(2,'0');
+      return finMes < hoyStr ? finMes : hoyStr;
+    })();
+
+    const todosAlumnos = await DB.getAlumnos();
+    const alumnosFiltrados = todosAlumnos.filter(a => {
+      if(q && !(
+        (a.nombre||'').toLowerCase().includes(q.trim()) ||
+        (a.id||'').toLowerCase().includes(q.trim())
+      )) return false;
+      if(nivel   && nivel   !== 'TODOS' && (a.turno||'') !== nivel)   return false;
+      if(grado   && grado   !== 'TODOS' && (a.grado||'') !== grado)   return false;
+      if(seccion && seccion !== 'TODOS' && (a.seccion||'') !== seccion) return false;
+      return true;
+    });
+
+    const fechasHabiles = [];
+    let cur = new Date(rangoDesde + 'T12:00:00');
+    const fin = new Date(rangoHasta + 'T12:00:00');
+    while(cur <= fin) {
+      const dia = cur.getDay();
+      if(dia !== 0 && dia !== 6) fechasHabiles.push(cur.toISOString().slice(0,10));
+      cur.setDate(cur.getDate() + 1);
+    }
+
+    alumnosFiltrados.forEach(a => {
+      fechasHabiles.forEach(fecha => {
+        const key = a.id + '_' + fecha;
+        if(!grupos[key]) {
+          filasPDF.push({ fecha, dni: a.id, nombre: a.nombre, nivel: a.turno||'-', grado: a.grado, seccion: a.seccion, ingreso: null, salida: null, estado: 'Sin registro' });
+        }
+      });
+    });
+  }
+
   // Ordenar por fecha desc luego nombre
-  return Object.values(grupos).sort((a,b) =>
+  return filasPDF.sort((a,b) =>
     b.fecha.localeCompare(a.fecha) || a.nombre.localeCompare(b.nombre)
   );
 }
@@ -4153,6 +4207,19 @@ async function exportXLSX() {
 // EXPORT PDF REGISTRO
 // ============================================================
 async function exportPDFRegistro() {
+  // Validar que el filtro sea individual o por aula específica
+  const grado   = document.getElementById('filter-grado').value;
+  const seccion = document.getElementById('filter-seccion').value;
+  const q       = (document.getElementById('filter-search').value||'').trim();
+
+  const esPorAlumno  = q.length > 0;
+  const esPorAula    = grado && grado !== 'TODOS' && seccion && seccion !== 'TODOS';
+
+  if(!esPorAlumno && !esPorAula) {
+    toast('Para exportar PDF selecciona un aula específica (grado + sección) o busca un alumno', 'warning');
+    return;
+  }
+
   const regs = await getRegistrosFiltrados();
   if(!regs.length){ toast('No hay registros para exportar','warning'); return; }
 
