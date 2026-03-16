@@ -4102,7 +4102,7 @@ async function renderRegistro() {
         fechasHabiles.forEach(fecha => {
           const key = a.id + '_' + fecha;
           if(!grupos[key]) {
-            filas.push({ alumnoId: a.id, nombre: a.nombre, grado: a.grado, seccion: a.seccion, turno: a.turno||'-', fecha, ingreso: null, salida: null, estadoIngreso: 'Sin registro' });
+            filas.push({ alumnoId: a.id, nombre: ((a.apellidos||'') + ' ' + (a.nombres||'')).trim() || a.nombre || '', grado: a.grado, seccion: a.seccion, turno: a.turno||'-', fecha, ingreso: null, salida: null, estadoIngreso: 'Sin registro' });
           }
         });
       });
@@ -4282,7 +4282,7 @@ async function getRegistrosFiltrados() {
       fechasHabiles.forEach(fecha => {
         const key = a.id + '_' + fecha;
         if(!grupos[key]) {
-          filasPDF.push({ fecha, dni: a.id, nombre: a.nombre, nivel: a.turno||'-', grado: a.grado, seccion: a.seccion, ingreso: null, salida: null, estado: 'Sin registro' });
+          filasPDF.push({ fecha, dni: a.id, nombre: ((a.apellidos||'') + ' ' + (a.nombres||'')).trim() || a.nombre || '', nivel: a.turno||'-', grado: a.grado, seccion: a.seccion, ingreso: null, salida: null, estado: 'Sin registro' });
         }
       });
     });
