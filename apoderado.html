@@ -279,7 +279,7 @@ function getConfigCache() {
 document.getElementById('btn-salir').addEventListener('click', function() {
   if(!confirm('Cerrar sesion?')) return;
   try { localStorage.removeItem('asmqr_apo_lastTab'); } catch(e) {}
-  auth.signOut().then(function() { window.location.href = 'index.html'; });
+  auth.signOut().then(function() { window.location.href = 'index.html?splash=1'; });
 });
 
 // Boton guardar nueva pass
@@ -342,13 +342,15 @@ function continuarCargaApoderado(user, dni) {
       // Mostrar cancelar solo si es primer ingreso (puede posponer el cambio)
       document.getElementById('btn-cancelar-pass').style.display = tieneDatos ? 'none' : 'block';
     } else {
-      document.getElementById('apo-app').style.display = '';
       var lastTab = null;
       try { lastTab = localStorage.getItem('asmqr_apo_lastTab'); } catch(e) {}
       var tabInicial = lastTab || 'resumen';
       cargarRegistros().then(function() {
         showTab(tabInicial);
+        // Mostrar app DESPUÉS de posicionar la pestaña correcta — sin flash
+        document.getElementById('apo-app').style.display = '';
       }).catch(function(e) {
+        document.getElementById('apo-app').style.display = '';
         document.getElementById('lista-ultimos').innerHTML =
           '<div style="padding:16px;text-align:center;color:#f87171;font-size:0.83rem;">Error al cargar registros: ' + e.message + '</div>';
       });

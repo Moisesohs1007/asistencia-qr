@@ -2812,6 +2812,12 @@ function iniciarSplash() {
 
 // Iniciar splash solo una vez por sesión — no en cada recarga
 document.addEventListener('DOMContentLoaded', function() {
+  var forzarSplash = new URLSearchParams(window.location.search).get('splash') === '1';
+  if(forzarSplash) {
+    // Vino de logout — limpiar param y mostrar splash
+    history.replaceState(null, '', window.location.pathname);
+    sessionStorage.removeItem('splashMostrado');
+  }
   if(!sessionStorage.getItem('splashMostrado')) {
     sessionStorage.setItem('splashMostrado', '1');
     iniciarSplash();
