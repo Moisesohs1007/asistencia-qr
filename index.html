@@ -1585,6 +1585,7 @@
             <option value="TODOS">Todos</option>
             <option value="INGRESO">Ingreso</option>
             <option value="SALIDA">Salida</option>
+            <option value="AUSENTE">Ausente</option>
           </select>
         </div>
         <div class="search-wrap" style="flex:1;min-width:160px;margin:0;">
@@ -3948,28 +3949,40 @@ async function renderRegistro() {
       }
     });
 
-    // 3. Si hay rango de fechas y filtro de alumno, agregar filas "Sin registro" para días sin datos
+    // 3. Si hay filtro de alumno, agregar filas "Sin registro" para días hábiles sin datos
     let filas = Object.values(grupos);
 
-    // Generar fechas hábiles del rango para mostrar "Sin registro"
-    if(desde && hasta && q) {
-      const alumnosEnRango = [...new Set(regs.map(r => r.alumnoId + '|' + r.nombre + '|' + r.grado + '|' + r.seccion + '|' + (r.turno||'-')))];
+    if(q) {
+      // Rango: si hay desde/hasta usar ese, si no usar el mes seleccionado hasta hoy
+      const rangoDesde = desde || mesSel + '-01';
+      const rangoHasta = hasta || (() => {
+        const [y,m] = mesSel.split('-').map(Number);
+        const hoyStr = new Date().toISOString().slice(0,10);
+        const finMes = mesSel + '-' + String(new Date(y,m,0).getDate()).padStart(2,'0');
+        return finMes < hoyStr ? finMes : hoyStr;
+      })();
+
+      // Alumnos que coinciden con la búsqueda
+      const todosAlumnos = await DB.getAlumnos();
+      const alumnosFiltrados = todosAlumnos.filter(a =>
+        (a.nombre||'').toLowerCase().includes(q.trim()) ||
+        (a.id||'').toLowerCase().includes(q.trim())
+      );
+
       const fechasHabiles = [];
-      let cur = new Date(desde + 'T00:00:00');
-      const fin = new Date(hasta + 'T00:00:00');
+      let cur = new Date(rangoDesde + 'T12:00:00');
+      const fin = new Date(rangoHasta + 'T12:00:00');
       while(cur <= fin) {
         const dia = cur.getDay();
-        if(dia !== 0 && dia !== 6) {
-          fechasHabiles.push(cur.toISOString().split('T')[0]);
-        }
+        if(dia !== 0 && dia !== 6) fechasHabiles.push(cur.toISOString().slice(0,10));
         cur.setDate(cur.getDate() + 1);
       }
-      alumnosEnRango.forEach(info => {
-        const [aId, aNombre, aGrado, aSeccion, aTurno] = info.split('|');
+
+      alumnosFiltrados.forEach(a => {
         fechasHabiles.forEach(fecha => {
-          const key = aId + '_' + fecha;
+          const key = a.id + '_' + fecha;
           if(!grupos[key]) {
-            filas.push({ alumnoId: aId, nombre: aNombre, grado: aGrado, seccion: aSeccion, turno: aTurno, fecha, ingreso: null, salida: null, estadoIngreso: 'Sin registro' });
+            filas.push({ alumnoId: a.id, nombre: a.nombre, grado: a.grado, seccion: a.seccion, turno: a.turno||'-', fecha, ingreso: null, salida: null, estadoIngreso: 'Sin registro' });
           }
         });
       });
@@ -3982,6 +3995,7 @@ async function renderRegistro() {
     if(tipo && tipo !== 'TODOS') {
       if(tipo === 'INGRESO') filas = filas.filter(f => f.ingreso);
       if(tipo === 'SALIDA')  filas = filas.filter(f => f.salida);
+      if(tipo === 'AUSENTE') filas = filas.filter(f => f.estadoIngreso === 'Sin registro');
     }
 
     const rangoTexto = (desde && hasta && desde !== hasta) ? ` (${desde} al ${hasta})` : (desde ? ` (${desde})` : '');
