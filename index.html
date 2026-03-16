@@ -3893,9 +3893,11 @@ async function onNivelChangeRegistro() {
 
 // Al cambiar GRADO → auto-detectar nivel, repoblar sección, limpiar buscador
 async function onGradoChangeRegistro() {
-  document.getElementById('filter-search').value  = '';
-  document.getElementById('filter-seccion').value = '';
+  document.getElementById('filter-search').value = '';
   const grado = document.getElementById('filter-grado').value;
+  // Guardar sección previa para restaurarla si sigue siendo válida
+  const seccionPrevia = document.getElementById('filter-seccion').value;
+
   if(grado && grado !== 'TODOS') {
     // Auto-detectar nivel del grado
     const cfg = await getConfig();
@@ -3918,6 +3920,14 @@ async function onGradoChangeRegistro() {
     el.innerHTML = '<option value="" disabled selected>-- Sección --</option><option value="TODOS">Todas</option>';
     secs.forEach(s => { el.innerHTML += `<option value="${s}">${s}</option>`; });
   }
+
+  // Restaurar sección previa si sigue siendo una opción válida
+  if(seccionPrevia) {
+    const elSec = document.getElementById('filter-seccion');
+    const opcionExiste = [...elSec.options].some(o => o.value === seccionPrevia);
+    elSec.value = opcionExiste ? seccionPrevia : '';
+  }
+
   renderRegistro();
 }
 
