@@ -428,21 +428,48 @@ function cargarRegistros(mes) {
           grupos[key].estado = est;
         }
       });
-      // Determinar estado final por día
+      // Determinar estado final por día (para grupos que SÍ tienen documento)
       Object.values(grupos).forEach(function(g) {
         if(g.estado === 'Tardanza') return; // ya definido
         if(g.horaIngreso) {
-          // Hay ingreso registrado → mínimo Puntual
           if(!g.estado || g.estado === '') g.estado = 'Puntual';
         } else {
-          // Sin ingreso → Ausente
           g.estado = 'Ausente';
         }
       });
+
+      // ── Inyectar días hábiles sin registro como Ausente ──
+      // Genera todos los lunes–viernes del mes hasta hoy (o fin de mes)
+      // sin costo extra de Firestore — solo cálculo en cliente.
+      var hoyStr = (function() {
+        var d = new Date();
+        var yy = d.getFullYear();
+        var mm = String(d.getMonth()+1).padStart(2,'0');
+        var dd = String(d.getDate()).padStart(2,'0');
+        return yy + '-' + mm + '-' + dd;
+      })();
+      var cursor = new Date(desde + 'T12:00:00'); // T12 evita saltos por DST
+      var finMes = new Date(hasta + 'T12:00:00');
+      var tope   = finMes < new Date(hoyStr + 'T12:00:00') ? finMes : new Date(hoyStr + 'T12:00:00');
+      while(cursor <= tope) {
+        var dow = cursor.getDay(); // 0=dom, 6=sab
+        if(dow !== 0 && dow !== 6) {
+          var yy2 = cursor.getFullYear();
+          var mm2 = String(cursor.getMonth()+1).padStart(2,'0');
+          var dd2 = String(cursor.getDate()).padStart(2,'0');
+          var fechaStr = yy2 + '-' + mm2 + '-' + dd2;
+          var key2 = alumno.id + '_' + fechaStr;
+          if(!grupos[key2]) {
+            grupos[key2] = { fecha: fechaStr, estado: 'Ausente', horaIngreso: null, horaSalida: null };
+          }
+        }
+        cursor.setDate(cursor.getDate() + 1);
+      }
+
       registros = Object.values(grupos).sort(function(a,b){
         return b.fecha.localeCompare(a.fecha);
       });
-      console.log('[APO] Procesados:', registros.length, 'días');
+      console.log('[APO] Procesados:', registros.length, 'días (incl. ausentes hábiles)');
     }).catch(function(e) {
       console.error('cargarRegistros error:', e);
       console.log('[APO] ERROR cargarRegistros: ', e.message);
