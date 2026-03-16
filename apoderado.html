@@ -252,6 +252,7 @@ auth.setPersistence(firebase.auth.Auth.Persistence.SESSION);
 
 var alumno    = null;
 var registros = [];
+var _registrosCargados = false; // true una vez que cargarRegistros termina
 var _configCache   = null; // config/general cacheada
 var _incidentesCache = null; // incidentes del alumno cacheados
 
@@ -396,6 +397,7 @@ function onMesChange(origen) {
 
 function cargarRegistros(mes) {
   // mes = '03' formato. Por defecto mes actual
+  _registrosCargados = false;
   var mesNum = mes || String(new Date().getMonth()+1).padStart(2,'0');
   var anio   = new Date().getFullYear();
   var desde  = anio + '-' + mesNum + '-01';
@@ -470,6 +472,7 @@ function cargarRegistros(mes) {
       registros = Object.values(grupos).sort(function(a,b){
         return b.fecha.localeCompare(a.fecha);
       });
+      _registrosCargados = true;
       console.log('[APO] Procesados:', registros.length, 'dias (incl. ausentes habiles)');
     }).catch(function(e) {
       console.error('cargarRegistros error:', e);
@@ -484,7 +487,7 @@ function showTab(tab) {
     document.getElementById('tab-'+t).classList.toggle('active', t === tab);
   });
   // Si registros aun no cargaron, esperar antes de renderizar
-  if((tab === 'resumen' || tab === 'historial') && (!registros || !registros.length)) {
+  if((tab === 'resumen' || tab === 'historial') && !_registrosCargados) {
     var mesActual = String(new Date().getMonth()+1).padStart(2,'0');
     cargarRegistros(mesActual).then(function() {
       if(tab === 'resumen')   renderResumen();
