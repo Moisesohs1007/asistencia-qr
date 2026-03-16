@@ -3960,10 +3960,18 @@ async function renderRegistro() {
     tbody.innerHTML = '';
     empty.style.display = 'block';
     empty.querySelector('p').textContent = 'Selecciona una fecha u otro filtro para ver los registros';
-    // Mostrar contador del mes actual sin nueva consulta si hay cache
     const cachedMes = DB._registrosCache['mes:' + mesSel];
     if(cachedMes) count.textContent = cachedMes.length + ' registro' + (cachedMes.length!==1?'s':'') + ' en el período';
     else DB.getRegistros({ mes: mesSel }).then(r => count.textContent = r.length + ' registro' + (r.length!==1?'s':'') + ' en el período').catch(()=>{});
+    return;
+  }
+
+  // Sección sin grado no tiene sentido — puede pertenecer a múltiples grados
+  if(seccion && seccion !== 'TODOS' && (!grado || grado === 'TODOS') && !q) {
+    tbody.innerHTML = '';
+    empty.style.display = 'block';
+    empty.querySelector('p').textContent = 'Selecciona un grado antes de filtrar por sección';
+    count.textContent = '';
     return;
   }
 
