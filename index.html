@@ -1568,13 +1568,13 @@
         </div>
         <div class="form-group" style="min-width:120px;">
           <label>Grado</label>
-          <select id="filter-grado" onchange="onAulaChangeRegistro()">
+          <select id="filter-grado" onchange="onGradoChangeRegistro()">
             <option value="" disabled selected>-- Grado --</option>
           </select>
         </div>
         <div class="form-group" style="min-width:100px;">
           <label>Sección</label>
-          <select id="filter-seccion" onchange="onAulaChangeRegistro()">
+          <select id="filter-seccion" onchange="onSeccionChangeRegistro()">
             <option value="" disabled selected>-- Sección --</option>
           </select>
         </div>
@@ -3884,8 +3884,29 @@ function onSearchRegistro() {
   renderRegistro();
 }
 
-// Al cambiar grado o sección → limpiar buscador
-function onAulaChangeRegistro() {
+// Al cambiar grado → detectar nivel automáticamente y poblar secciones
+async function onGradoChangeRegistro() {
+  document.getElementById('filter-search').value = '';
+  const grado = document.getElementById('filter-grado').value;
+  if(grado && grado !== 'TODOS') {
+    // Auto-detectar nivel del grado seleccionado
+    const cfg = await getConfig();
+    const grados = cfg.grados || {};
+    for(const [nivel, lista] of Object.entries(grados)) {
+      if(lista.includes(grado)) {
+        document.getElementById('filter-nivel').value = nivel;
+        break;
+      }
+    }
+    // Poblar secciones según el grado
+    await poblarFiltroSeccion('filter-seccion', grado);
+    document.getElementById('filter-seccion').value = '';
+  }
+  renderRegistro();
+}
+
+// Al cambiar sección → renderizar respetando grado activo
+function onSeccionChangeRegistro() {
   document.getElementById('filter-search').value = '';
   renderRegistro();
 }
@@ -3935,9 +3956,10 @@ async function renderRegistro() {
         return true;
       });
     }
-    if(grado   && grado   !== 'TODOS') regs = regs.filter(r => r.grado === grado);
-    if(seccion && seccion !== 'TODOS') regs = regs.filter(r => r.seccion === seccion);
     if(nivel   && nivel   !== 'TODOS') regs = regs.filter(r => r.turno === nivel);
+    if(grado   && grado   !== 'TODOS') regs = regs.filter(r => r.grado === grado);
+    // Sección solo aplica si hay grado seleccionado
+    if(seccion && seccion !== 'TODOS' && grado && grado !== 'TODOS') regs = regs.filter(r => r.seccion === seccion);
     if(q) regs = regs.filter(r => r.nombre.toLowerCase().includes(q.trim()) || r.alumnoId.trim().toLowerCase().includes(q.trim()));
 
     // 2. Agrupar por alumnoId + fecha → una fila por alumno por día
@@ -4074,9 +4096,10 @@ async function getRegistrosFiltrados() {
       return true;
     });
   }
-  if(grado   && grado   !== 'TODOS') regs = regs.filter(r => r.grado === grado);
-  if(seccion && seccion !== 'TODOS') regs = regs.filter(r => r.seccion === seccion);
   if(nivel   && nivel   !== 'TODOS') regs = regs.filter(r => r.turno === nivel);
+  if(grado   && grado   !== 'TODOS') regs = regs.filter(r => r.grado === grado);
+  // Sección solo aplica si hay grado seleccionado
+  if(seccion && seccion !== 'TODOS' && grado && grado !== 'TODOS') regs = regs.filter(r => r.seccion === seccion);
   if(q) regs = regs.filter(r => (r.nombre||'').toLowerCase().includes(q) || (r.alumnoId||'').includes(q));
 
   // Agrupar por alumnoId + fecha → una fila por alumno por día (igual que la tabla)
