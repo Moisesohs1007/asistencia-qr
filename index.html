@@ -4466,20 +4466,11 @@ async function exportXLSX() {
     aoa.push(Array(COLS.length).fill(''));
     aoa.push(COLS); styles[aoa.length-1]='header';
 
-    let fechaActual=null,rowCount=0;
-    regs.forEach(r=>{
-      if(r.fecha!==fechaActual){
-        fechaActual=r.fecha;
-        const fp=(r.fecha||'').split('-');
-        const ff=fp.length===3?fp[2]+'/'+fp[1]+'/'+fp[0]:r.fecha;
-        const ds=r.fecha?diasSemana[new Date(r.fecha+'T12:00:00').getDay()]:'';
-        aoa.push([`${ds}  ${ff}`,...Array(COLS.length-1).fill('')]); merges.push({s:{r:aoa.length-1,c:0},e:{r:aoa.length-1,c:COLS.length-1}});
-        styles[aoa.length-1]='daterow'; rowCount=0;
-      }
+    regs.forEach((r,i)=>{
       const fp=(r.fecha||'').split('-');
       const ff=fp.length===3?fp[2]+'/'+fp[1]+'/'+fp[0]:r.fecha;
       aoa.push([ff,r.dni,r.nombre,r.nivel,r.grado,r.seccion,r.ingreso||'-',r.salida||'-',r.estado||'Sin registro']);
-      styles[aoa.length-1]=rowCount%2===0?'even':'odd'; rowCount++;
+      styles[aoa.length-1]=i%2===0?'even':'odd';
     });
 
     aoa.push(Array(COLS.length).fill(''));
@@ -4681,22 +4672,9 @@ async function exportPDFRegistro() {
     function eColor(e){if(!e)return MUTED;const v=e.toLowerCase();if(v.includes('tiempo')||v.includes('puntual'))return GREEN;if(v.includes('tardanza'))return AMBER;if(v.includes('sin registro')||v.includes('ausente'))return RED;return TEXT;}
 
     drawH();drawTH2();
-    let fechaActual=null,rowIndex=0;
-
-    regs.forEach(r=>{
-      if(r.fecha!==fechaActual){
-        fechaActual=r.fecha;
-        if(curY+DATE_H+ROW_H>PH-10){doc.addPage();pageNum++;drawH();drawTH2();}
-        doc.setFillColor(...NAVY);doc.rect(TABLE_X,curY,TABLE_W,DATE_H,'F');
-        doc.setTextColor(...GOLD);doc.setFontSize(9);doc.setFont('helvetica','bold');
-        const fp=r.fecha?r.fecha.split('-'):[];
-        const fl=fp.length===3?`${fp[2]}/${fp[1]}/${fp[0]}`:r.fecha;
-        const ds=r.fecha?diasSemana[new Date(r.fecha+'T12:00:00').getDay()]:'';
-        doc.text(`${ds}  ${fl}`,TABLE_X+TABLE_W/2,curY+DATE_H/2+2,{align:'center'});
-        curY+=DATE_H;rowIndex=0;
-      }
+    regs.forEach((r,i)=>{
       chk2();
-      if(rowIndex%2===0){doc.setFillColor(...GRAY);doc.rect(TABLE_X,curY,TABLE_W,ROW_H,'F');}
+      if(i%2===0){doc.setFillColor(...GRAY);doc.rect(TABLE_X,curY,TABLE_W,ROW_H,'F');}
       doc.setDrawColor(220,226,238);doc.setLineWidth(0.2);doc.line(TABLE_X,curY+ROW_H,TABLE_X+TABLE_W,curY+ROW_H);
       doc.setFontSize(8);doc.setFont('helvetica','normal');
       let cx=TABLE_X;
@@ -4708,7 +4686,7 @@ async function exportPDFRegistro() {
         else{doc.setTextColor(...TEXT);doc.setFont('helvetica','normal');}
         doc.text(String(val),cx+col.w/2,curY+ROW_H/2+2,{align:'center'});cx+=col.w;
       });
-      curY+=ROW_H;rowIndex++;
+      curY+=ROW_H;
     });
 
     doc.setDrawColor(...NAVY);doc.setLineWidth(0.4);doc.rect(TABLE_X,24,TABLE_W,curY-24);
