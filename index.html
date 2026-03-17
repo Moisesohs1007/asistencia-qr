@@ -2904,7 +2904,8 @@ const DB = {
   },
   async deleteAlumno(id) {
     await db.collection('alumnos').doc(id).delete();
-    this._alumnosCache = null; // Invalidar cache
+    this._alumnosCache = null; // Invalidar cache memoria y localStorage
+    LSC.del('alumnos');
   },
   async updateAlumnoId(oldId, newData) {
     const batch = db.batch();
@@ -3863,20 +3864,20 @@ function validarRangoFecha() {
     const d = new Date(desde + 'T00:00:00');
     if(d.getDay() === 6) { // sábado → lunes
       d.setDate(d.getDate() + 2);
-      document.getElementById('filter-desde').value = d.toISOString().split('T')[0];
+      document.getElementById('filter-desde').value = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
     } else if(d.getDay() === 0) { // domingo → lunes
       d.setDate(d.getDate() + 1);
-      document.getElementById('filter-desde').value = d.toISOString().split('T')[0];
+      document.getElementById('filter-desde').value = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
     }
   }
   if(hasta) {
     const h = new Date(hasta + 'T00:00:00');
     if(h.getDay() === 6) { // sábado → viernes
       h.setDate(h.getDate() - 1);
-      document.getElementById('filter-hasta').value = h.toISOString().split('T')[0];
+      document.getElementById('filter-hasta').value = h.getFullYear()+'-'+String(h.getMonth()+1).padStart(2,'0')+'-'+String(h.getDate()).padStart(2,'0');
     } else if(h.getDay() === 0) { // domingo → viernes
       h.setDate(h.getDate() - 2);
-      document.getElementById('filter-hasta').value = h.toISOString().split('T')[0];
+      document.getElementById('filter-hasta').value = h.getFullYear()+'-'+String(h.getMonth()+1).padStart(2,'0')+'-'+String(h.getDate()).padStart(2,'0');
     }
   }
 }
@@ -4077,7 +4078,7 @@ async function renderRegistro() {
       const rangoDesde = desde || mesSel + '-01';
       const rangoHasta = hasta || (() => {
         const [y,m] = mesSel.split('-').map(Number);
-        const hoyStr = new Date().toISOString().slice(0,10);
+        const hoyStr = hoy();
         const finMes = mesSel + '-' + String(new Date(y,m,0).getDate()).padStart(2,'0');
         return finMes < hoyStr ? finMes : hoyStr;
       })();
@@ -4252,7 +4253,7 @@ async function getRegistrosFiltrados() {
     const rangoDesde = desde || mesSel + '-01';
     const rangoHasta = hasta || (() => {
       const [y,m] = mesSel.split('-').map(Number);
-      const hoyStr = new Date().toISOString().slice(0,10);
+      const hoyStr = hoy();
       const finMes = mesSel + '-' + String(new Date(y,m,0).getDate()).padStart(2,'0');
       return finMes < hoyStr ? finMes : hoyStr;
     })();
@@ -4320,7 +4321,7 @@ async function exportXLSX() {
   const desde   = document.getElementById('filter-desde').value || mesSel+'-01';
   const hasta   = document.getElementById('filter-hasta').value || (() => {
     const [y,m]=mesSel.split('-').map(Number);
-    const hs=new Date().toISOString().slice(0,10);
+    const hs=hoy();
     const fm=mesSel+'-'+String(new Date(y,m,0).getDate()).padStart(2,'0');
     return fm<hs?fm:hs;
   })();
@@ -4521,7 +4522,7 @@ async function exportPDFRegistro() {
   const desde   = document.getElementById('filter-desde').value || mesSel+'-01';
   const hasta   = document.getElementById('filter-hasta').value || (() => {
     const [y,m]=mesSel.split('-').map(Number);
-    const hs=new Date().toISOString().slice(0,10);
+    const hs=hoy();
     const fm=mesSel+'-'+String(new Date(y,m,0).getDate()).padStart(2,'0');
     return fm<hs?fm:hs;
   })();
@@ -5393,7 +5394,7 @@ async function imprimirCarnetsMasivo() {
     idx++;
   }
 
-  doc.save(`carnets_${new Date().toISOString().slice(0,10)}.pdf`);
+  doc.save(`carnets_${hoy()}.pdf`);
   toast(`✅ PDF generado con ${alumnos.length} carnet${alumnos.length!==1?'s':''}`, 'success');
   } catch(err) {
     console.error('Error generando PDF:', err);
@@ -5431,7 +5432,7 @@ function poblarSelectorMes(selectId, valorDefault) {
     const d = new Date();
     d.setDate(1);
     d.setMonth(d.getMonth() - i);
-    const val = d.toISOString().slice(0,7);
+    const val = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
     const label = d.toLocaleDateString('es-PE', { month: 'long' });
     meses.push({ val, label: label.charAt(0).toUpperCase() + label.slice(1) });
   }
@@ -5545,7 +5546,7 @@ async function renderReportes(anioCompleto=false) {
   const semana = [];
   for(let i=6;i>=0;i--){
     const d = new Date(); d.setDate(d.getDate()-i);
-    semana.push(d.toISOString().slice(0,10));
+    semana.push(d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'));
   }
   const chartSemana = document.getElementById('chart-semana');
   const maxV = Math.max(1, ...semana.map(d => new Set(registros.filter(r=>r.fecha===d&&r.tipo==='INGRESO').map(r=>r.alumnoId)).size));
@@ -5628,7 +5629,10 @@ async function updateStats() {
 // UTILS
 // ============================================================
 function hoy() {
-  return new Date().toISOString().slice(0,10);
+  const d = new Date();
+  return d.getFullYear() + '-'
+    + String(d.getMonth()+1).padStart(2,'0') + '-'
+    + String(d.getDate()).padStart(2,'0');
 }
 
 function closeModal(id) {
