@@ -1453,7 +1453,7 @@
       Inicio
     </button>
     <!-- Asistencia -->
-    <button class="nav-tab" id="tab-asistencia" onclick="toggleNavDrop('drop-asistencia',this)">
+    <button class="nav-tab" id="tab-asistencia" onmouseenter="openNavDrop('drop-asistencia',this)" onclick="openNavDrop('drop-asistencia',this)">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
       Asistencia
       <svg class="drop-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
@@ -1464,7 +1464,7 @@
       </div>
     </button>
     <!-- Aula -->
-    <button class="nav-tab" id="tab-aula" onclick="toggleNavDrop('drop-aula',this)">
+    <button class="nav-tab" id="tab-aula" onmouseenter="openNavDrop('drop-aula',this)" onclick="openNavDrop('drop-aula',this)">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
       Aula
       <svg class="drop-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
@@ -1476,7 +1476,7 @@
       </div>
     </button>
     <!-- Comunicación -->
-    <button class="nav-tab" id="tab-comunicacion" onclick="toggleNavDrop('drop-comunicacion',this)">
+    <button class="nav-tab" id="tab-comunicacion" onmouseenter="openNavDrop('drop-comunicacion',this)" onclick="openNavDrop('drop-comunicacion',this)">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
       Comunicación
       <svg class="drop-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
@@ -1487,7 +1487,7 @@
       </div>
     </button>
     <!-- Configuración -->
-    <button class="nav-tab" id="tab-config" onclick="toggleNavDrop('drop-config',this)" style="display:none;">
+    <button class="nav-tab" id="tab-config" onmouseenter="openNavDrop('drop-config',this)" onclick="openNavDrop('drop-config',this)" style="display:none;">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4"/></svg>
       Configuración
       <svg class="drop-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
@@ -3453,32 +3453,15 @@ async function cargarDashboardInicio() {
 }
 
 // ── Funciones del nuevo menú con dropdowns ──
-function toggleNavDrop(id, btn) {
-  const drop = document.getElementById(id);
-  const isOpen = drop.classList.contains('open');
+function openNavDrop(id, btn) {
   closeNavDrops();
-  if(!isOpen) {
-    drop.classList.add('open');
-    btn.classList.add('active');
-    // Cerrar al salir del nav-tab con el mouse
-    btn.addEventListener('mouseleave', function onLeave(e) {
-      // Solo cerrar si el mouse no entró al dropdown
-      setTimeout(function() {
-        if(!drop.matches(':hover') && !btn.matches(':hover')) {
-          closeNavDrops();
-        }
-      }, 100);
-      btn.removeEventListener('mouseleave', onLeave);
-    });
-    drop.addEventListener('mouseleave', function onDropLeave() {
-      setTimeout(function() {
-        if(!drop.matches(':hover') && !btn.matches(':hover')) {
-          closeNavDrops();
-        }
-      }, 100);
-      drop.removeEventListener('mouseleave', onDropLeave);
-    });
-  }
+  const drop = document.getElementById(id);
+  if(!drop) return;
+  drop.classList.add('open');
+  btn.classList.add('active');
+}
+function toggleNavDrop(id, btn) {
+  openNavDrop(id, btn);
 }
 function closeNavDrops() {
   document.querySelectorAll('.nav-dropdown').forEach(d => d.classList.remove('open'));
@@ -3490,9 +3473,15 @@ function setActiveTab(id) {
   const el = document.getElementById(id);
   if(el) el.classList.add('active');
 }
-// Cerrar dropdowns al click fuera
+// Cerrar dropdowns al salir del nav-tabs o al click fuera
+const _navTabs = document.getElementById('nav-tabs');
+if(_navTabs) {
+  _navTabs.addEventListener('mouseleave', function() {
+    setTimeout(closeNavDrops, 80);
+  });
+}
 document.addEventListener('click', function(e) {
-  if(!e.target.closest('.nav-tab')) closeNavDrops();
+  if(!e.target.closest('.nav-tab') && !e.target.closest('#nav-tabs')) closeNavDrops();
 });
 
 function showSection(id) {
