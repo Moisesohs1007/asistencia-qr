@@ -1321,12 +1321,88 @@
 
 
 
+<!-- MODAL: Cambiar contraseña (personal) -->
+<div id="modal-cambiar-pass-personal" style="display:none;position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.7);align-items:center;justify-content:center;padding:16px;">
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:28px;width:100%;max-width:380px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+      <div style="font-size:1rem;font-weight:800;color:var(--text);">Cambiar contraseña</div>
+      <button onclick="document.getElementById('modal-cambiar-pass-personal').style.display='none'" style="background:none;border:none;color:var(--muted);font-size:1.2rem;cursor:pointer;">✕</button>
+    </div>
+    <div id="err-pass-personal" style="display:none;background:rgba(248,113,113,0.15);border:1px solid rgba(248,113,113,0.3);color:var(--danger);border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:0.83rem;"></div>
+    <div class="form-group" style="margin-bottom:14px;">
+      <label>Contraseña actual</label>
+      <input type="password" id="pass-actual" placeholder="Tu contraseña actual" style="width:100%;">
+    </div>
+    <div class="form-group" style="margin-bottom:14px;">
+      <label>Nueva contraseña</label>
+      <input type="password" id="pass-nueva-1" placeholder="Mínimo 6 caracteres" style="width:100%;">
+    </div>
+    <div class="form-group" style="margin-bottom:22px;">
+      <label>Confirmar nueva contraseña</label>
+      <input type="password" id="pass-nueva-2" placeholder="Repite la contraseña" style="width:100%;">
+    </div>
+    <button class="btn btn-primary" onclick="cambiarPassPersonal()" style="width:100%;justify-content:center;padding:12px;">
+      Guardar contraseña
+    </button>
+  </div>
+</div>
+
+<!-- MODAL: Mis datos (personal) -->
+<div id="modal-mis-datos" style="display:none;position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.7);align-items:center;justify-content:center;padding:16px;">
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:28px;width:100%;max-width:380px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+      <div style="font-size:1rem;font-weight:800;color:var(--text);">Mis datos</div>
+      <button onclick="document.getElementById('modal-mis-datos').style.display='none'" style="background:none;border:none;color:var(--muted);font-size:1.2rem;cursor:pointer;">✕</button>
+    </div>
+    <div id="err-mis-datos" style="display:none;background:rgba(248,113,113,0.15);border:1px solid rgba(248,113,113,0.3);color:var(--danger);border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:0.83rem;"></div>
+    <div id="ok-mis-datos" style="display:none;background:rgba(16,185,129,0.12);border:1px solid rgba(16,185,129,0.3);color:var(--success);border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:0.83rem;"></div>
+    <div class="form-group" style="margin-bottom:14px;">
+      <label>Nombre completo</label>
+      <input type="text" id="datos-nombre" placeholder="Tu nombre" style="width:100%;">
+    </div>
+    <div class="form-group" style="margin-bottom:14px;">
+      <label>Teléfono / WhatsApp</label>
+      <input type="tel" id="datos-telefono" placeholder="Ej: 987654321" inputmode="numeric" style="width:100%;">
+    </div>
+    <div class="form-group" style="margin-bottom:22px;">
+      <label>Correo electrónico</label>
+      <input type="email" id="datos-email" placeholder="correo@ejemplo.com" style="width:100%;" disabled style="opacity:0.6;">
+      <div style="font-size:0.75rem;color:var(--muted);margin-top:4px;">El correo no se puede cambiar desde aquí</div>
+    </div>
+    <button class="btn btn-primary" onclick="guardarMisDatos()" style="width:100%;justify-content:center;padding:12px;">
+      Guardar cambios
+    </button>
+  </div>
+</div>
+
 <header id="app-header" style="display:none;">
   <div class="logo">Asistencia<span>QR</span></div>
-  <div style="display:flex;align-items:center;gap:10px;">
-    <span id="user-name-display" style="font-size:0.8rem;color:var(--muted);display:none;"></span>
-    <span id="user-rol-badge" class="rol-badge" style="display:none;"></span>
-    <button class="btn btn-ghost" onclick="doLogout()" id="btn-logout" style="display:none;padding:6px 12px;font-size:0.8rem;">🚪 Salir</button>
+  <div style="display:flex;align-items:center;gap:10px;position:relative;">
+    <span id="user-name-display" style="display:none;"></span>
+    <span id="user-rol-badge" style="display:none;"></span>
+    <span id="btn-logout" style="display:none;"></span>
+    <div id="avatar-btn" onclick="toggleUserMenu()" style="width:34px;height:34px;border-radius:50%;background:#7B1535;border:1.5px solid rgba(255,255,255,0.25);display:none;align-items:center;justify-content:center;cursor:pointer;font-size:11px;font-weight:700;color:#fff;user-select:none;flex-shrink:0;" title="Mi cuenta">
+      <span id="avatar-initials">?</span>
+    </div>
+    <div id="user-dropdown-menu" style="display:none;position:absolute;top:42px;right:0;width:220px;background:var(--surface);border:1px solid var(--border);border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,0.3);z-index:1000;overflow:hidden;">
+      <div style="background:#7B1535;padding:14px;text-align:center;">
+        <div style="width:40px;height:40px;border-radius:50%;background:#9B2045;border:2px solid rgba(255,255,255,0.2);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#fff;margin:0 auto 8px;" id="avatar-initials-menu">?</div>
+        <div style="color:#fff;font-size:12px;font-weight:600;" id="menu-user-name"></div>
+        <div style="color:rgba(255,255,255,0.55);font-size:11px;margin-top:2px;" id="menu-user-rol"></div>
+      </div>
+      <div onclick="abrirMisDatos();closeUserMenu();" style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;cursor:pointer;font-size:12px;color:var(--text);border-bottom:1px solid var(--border);" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">
+        Mis datos
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="opacity:0.4"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+      </div>
+      <div onclick="document.getElementById('modal-cambiar-pass-personal').style.display='flex';closeUserMenu();" style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;cursor:pointer;font-size:12px;color:var(--text);border-bottom:1px solid var(--border);" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">
+        Cambiar contraseña
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="opacity:0.4"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+      </div>
+      <div onclick="doLogout();closeUserMenu();" style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;cursor:pointer;font-size:12px;color:var(--danger);" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">
+        Cerrar sesión
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="opacity:0.6"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      </div>
+    </div>
   </div>
   <nav class="nav-tabs" id="nav-tabs">
     <button class="nav-tab active" id="tab-scan" onclick="showSection('scan')">📷 Escanear</button>
@@ -2575,6 +2651,97 @@ async function confirmarCambioPass() {
 }
 
 // Recuperar contraseña por WhatsApp
+// ── PERFIL DE USUARIO ──
+async function abrirMisDatos() {
+  const user = auth.currentUser;
+  if(!user) return;
+  // Pre-llenar con datos actuales
+  const doc = await db.collection('usuarios').doc(user.uid).get();
+  const data = doc.exists ? doc.data() : {};
+  document.getElementById('datos-nombre').value    = data.nombre    || '';
+  document.getElementById('datos-telefono').value  = data.telefono  || '';
+  document.getElementById('datos-email').value     = user.email     || '';
+  document.getElementById('err-mis-datos').style.display = 'none';
+  document.getElementById('ok-mis-datos').style.display  = 'none';
+  document.getElementById('modal-mis-datos').style.display = 'flex';
+}
+
+async function guardarMisDatos() {
+  const nombre   = document.getElementById('datos-nombre').value.trim();
+  const telefono = document.getElementById('datos-telefono').value.trim();
+  const errEl = document.getElementById('err-mis-datos');
+  const okEl  = document.getElementById('ok-mis-datos');
+  errEl.style.display = 'none'; okEl.style.display = 'none';
+
+  if(!nombre) { errEl.textContent = 'El nombre no puede estar vacío'; errEl.style.display = 'block'; return; }
+
+  try {
+    const user = auth.currentUser;
+    await db.collection('usuarios').doc(user.uid).update({ nombre, telefono });
+    // Actualizar nombre en el avatar
+    const partes = nombre.trim().split(' ');
+    const iniciales = partes.length >= 2
+      ? (partes[0][0] + partes[partes.length-1][0]).toUpperCase()
+      : nombre.substring(0,2).toUpperCase();
+    document.getElementById('avatar-initials').textContent = iniciales;
+    document.getElementById('avatar-initials-menu').textContent = iniciales;
+    document.getElementById('menu-user-name').textContent = nombre;
+    document.getElementById('user-name-display').textContent = nombre;
+    okEl.textContent = 'Datos actualizados correctamente'; okEl.style.display = 'block';
+    setTimeout(() => { document.getElementById('modal-mis-datos').style.display = 'none'; }, 1500);
+  } catch(e) {
+    errEl.textContent = 'Error al guardar: ' + e.message; errEl.style.display = 'block';
+  }
+}
+
+async function cambiarPassPersonal() {
+  const actual  = document.getElementById('pass-actual').value;
+  const nueva1  = document.getElementById('pass-nueva-1').value;
+  const nueva2  = document.getElementById('pass-nueva-2').value;
+  const errEl   = document.getElementById('err-pass-personal');
+  errEl.style.display = 'none';
+
+  if(!actual)        { errEl.textContent = 'Ingresa tu contraseña actual'; errEl.style.display = 'block'; return; }
+  if(nueva1.length < 6) { errEl.textContent = 'La nueva contraseña debe tener al menos 6 caracteres'; errEl.style.display = 'block'; return; }
+  if(nueva1 !== nueva2) { errEl.textContent = 'Las contraseñas no coinciden'; errEl.style.display = 'block'; return; }
+
+  try {
+    const user = auth.currentUser;
+    // Re-autenticar antes de cambiar contraseña
+    const cred = firebase.auth.EmailAuthProvider.credential(user.email, actual);
+    await user.reauthenticateWithCredential(cred);
+    await user.updatePassword(nueva1);
+    document.getElementById('modal-cambiar-pass-personal').style.display = 'none';
+    document.getElementById('pass-actual').value  = '';
+    document.getElementById('pass-nueva-1').value = '';
+    document.getElementById('pass-nueva-2').value = '';
+    toast('✅ Contraseña actualizada correctamente', 'success');
+  } catch(e) {
+    if(e.code === 'auth/wrong-password') {
+      errEl.textContent = 'La contraseña actual es incorrecta';
+    } else {
+      errEl.textContent = 'Error: ' + e.message;
+    }
+    errEl.style.display = 'block';
+  }
+}
+
+function toggleUserMenu() {
+  const menu = document.getElementById('user-dropdown-menu');
+  menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
+}
+function closeUserMenu() {
+  const menu = document.getElementById('user-dropdown-menu');
+  if(menu) menu.style.display = 'none';
+}
+document.addEventListener('click', function(e) {
+  const btn = document.getElementById('avatar-btn');
+  const menu = document.getElementById('user-dropdown-menu');
+  if(btn && menu && !btn.contains(e.target) && !menu.contains(e.target)) {
+    menu.style.display = 'none';
+  }
+});
+
 function doLogout() {
   clearTimeout(_inactTimer);
   clearTimeout(_inactWarning);
@@ -2663,10 +2830,17 @@ auth.onAuthStateChanged(async user => {
     document.getElementById('app-main').style.display = '';
     resetInactTimer(); // Iniciar contador de inactividad
     document.getElementById('user-name-display').textContent = nombre;
-    document.getElementById('user-name-display').style.display = 'inline';
     document.getElementById('user-rol-badge').textContent = currentRol.toUpperCase();
-    document.getElementById('user-rol-badge').style.display = 'inline-flex';
-    document.getElementById('btn-logout').style.display = 'inline-flex';
+    // Mostrar avatar con iniciales
+    const partes = nombre.trim().split(' ');
+    const iniciales = partes.length >= 2
+      ? (partes[0][0] + partes[partes.length-1][0]).toUpperCase()
+      : nombre.substring(0,2).toUpperCase();
+    document.getElementById('avatar-initials').textContent = iniciales;
+    document.getElementById('avatar-initials-menu').textContent = iniciales;
+    document.getElementById('menu-user-name').textContent = nombre;
+    document.getElementById('menu-user-rol').textContent = currentRol.toUpperCase();
+    document.getElementById('avatar-btn').style.display = 'inline-flex';
 
     // Aplicar permisos según rol (incluye mostrar/ocultar tab usuarios)
     aplicarPermisos(currentRol);
@@ -2712,6 +2886,8 @@ auth.onAuthStateChanged(async user => {
     document.getElementById('user-name-display').style.display = 'none';
     document.getElementById('user-rol-badge').style.display = 'none';
     document.getElementById('btn-logout').style.display = 'none';
+    document.getElementById('avatar-btn').style.display = 'none';
+    closeUserMenu();
   }
 });
 
@@ -3395,7 +3571,7 @@ function manualRegister() {
 async function autoRegistrar(alumno) {
   const now   = new Date();
   const today = hoy();
-  const nombre = alumno.nombres + ' ' + alumno.apellidos;
+  const nombre = (alumno.apellidos + ' ' + alumno.nombres).trim();
   const grado  = alumno.grado + ' ' + alumno.seccion + ' — ' + alumno.turno;
 
   try {
@@ -4072,13 +4248,18 @@ async function renderRegistro() {
     if(q) regs = regs.filter(r => r.nombre.toLowerCase().includes(q.trim()) || r.alumnoId.trim().toLowerCase().includes(q.trim()));
 
     // 2. Agrupar por alumnoId + fecha → una fila por alumno por día
+    // Mapa de alumnos para normalizar nombre (apellidos + nombres)
+    const alumnosMapa = {};
+    (await DB.getAlumnos()).forEach(a => { alumnosMapa[a.id] = a; });
     const grupos = {};
     regs.forEach(r => {
       const key = r.alumnoId + '_' + r.fecha;
+      const aDat = alumnosMapa[r.alumnoId];
+      const nombreNorm = aDat ? ((aDat.apellidos||'')+' '+(aDat.nombres||'')).trim() : r.nombre;
       if(!grupos[key]) {
         grupos[key] = {
           alumnoId: r.alumnoId,
-          nombre:   r.nombre,
+          nombre:   nombreNorm,
           grado:    r.grado,
           seccion:  r.seccion,
           turno:    r.turno || '-',
@@ -4237,14 +4418,18 @@ async function getRegistrosFiltrados() {
   if(q) regs = regs.filter(r => (r.nombre||'').toLowerCase().includes(q) || (r.alumnoId||'').includes(q));
 
   // Agrupar por alumnoId + fecha → una fila por alumno por día (igual que la tabla)
+  const alumnosMapa2 = {};
+  (await DB.getAlumnos()).forEach(a => { alumnosMapa2[a.id] = a; });
   const grupos = {};
   regs.forEach(r => {
     const key = r.alumnoId + '_' + r.fecha;
     if(!grupos[key]) {
+      const aDat2 = alumnosMapa2[r.alumnoId];
+      const nombreNorm2 = aDat2 ? ((aDat2.apellidos||'')+' '+(aDat2.nombres||'')).trim() : r.nombre;
       grupos[key] = {
         fecha:    r.fecha,
         dni:      r.alumnoId,
-        nombre:   r.nombre,
+        nombre:   nombreNorm2,
         nivel:    r.turno || '-',
         grado:    r.grado,
         seccion:  r.seccion,
