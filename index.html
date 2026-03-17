@@ -62,7 +62,7 @@
 
   /* HEADER */
   header {
-    position: sticky; top:0; z-index:500;
+    position: sticky; top:0; z-index:600;
     background: #0D1A3A;
     border-bottom: 0.5px solid rgba(255,255,255,0.1);
     padding: 0 20px;
@@ -70,7 +70,7 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    flex-wrap: wrap;
+    overflow: visible;
   }
 
   .logo {
@@ -87,13 +87,10 @@
     align-items: center;
     gap: 2px;
     background: #0D1A3A;
-    padding: 0 8px;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
+    padding: 0 4px;
+    overflow: visible;
     border-bottom: 0.5px solid rgba(255,255,255,0.08);
   }
-  .nav-tabs::-webkit-scrollbar { display: none; }
 
   .nav-tab {
     display: flex;
@@ -122,15 +119,15 @@
   .nav-dropdown {
     display: none;
     position: absolute;
-    top: 100%;
+    top: calc(100% + 2px);
     left: 0;
     background: #0D1A3A;
-    border: 0.5px solid rgba(255,255,255,0.15);
+    border: 0.5px solid rgba(255,255,255,0.2);
     border-radius: 10px;
-    min-width: 180px;
+    min-width: 190px;
     padding: 6px;
-    z-index: 500;
-    margin-top: 0;
+    z-index: 9999;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.5);
   }
   .nav-dropdown.open { display: block; }
   .nav-drop-item {
@@ -1412,11 +1409,16 @@
 </div>
 
 <header id="app-header" style="display:none;">
-  <div style="display:flex;align-items:center;gap:10px;">
-    <div style="width:34px;height:34px;border-radius:50%;background:#C9A84C;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#0D1A3A;flex-shrink:0;">SJM</div>
-    <div class="logo" style="font-size:0.95rem;">San José<span>Marello</span></div>
+  <!-- IZQUIERDA: logo + menú -->
+  <div style="display:flex;align-items:center;gap:0;flex:1;min-width:0;">
+    <div style="display:flex;align-items:center;gap:10px;padding-right:16px;flex-shrink:0;">
+      <div style="width:32px;height:32px;border-radius:50%;background:#C9A84C;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#0D1A3A;">SJM</div>
+      <div class="logo" style="font-size:0.88rem;white-space:nowrap;">San José<span>Marello</span></div>
+    </div>
   </div>
-  <div style="display:flex;align-items:center;gap:10px;position:relative;">
+  <!-- DERECHA: año + iniciales -->
+  <div style="display:flex;align-items:center;gap:10px;position:relative;flex-shrink:0;">
+    <span style="color:#C9A84C;font-size:11px;font-weight:500;border:0.5px solid rgba(201,168,76,0.4);padding:2px 8px;border-radius:4px;" id="year-badge">2026</span>
     <span id="user-name-display" style="display:none;"></span>
     <span id="user-rol-badge" style="display:none;"></span>
     <span id="btn-logout" style="display:none;"></span>
@@ -1443,7 +1445,8 @@
       </div>
     </div>
   </div>
-  <nav class="nav-tabs" id="nav-tabs">
+</header>
+<nav class="nav-tabs" id="nav-tabs" style="background:#0D1A3A;position:sticky;top:52px;z-index:599;display:none;">
     <!-- Inicio -->
     <button class="nav-tab active" id="tab-inicio" onclick="showSection('scan');setActiveTab('tab-inicio')">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
@@ -1497,8 +1500,7 @@
     <button id="tab-registro" style="display:none;"></button>
     <button id="tab-reportes" style="display:none;"></button>
     <button id="tab-incidentes" style="display:none;"></button>
-  </nav>
-</header>
+</nav>
 
 <!-- BOTTOM NAV MOBILE -->
 <div class="bottom-nav" id="bottom-nav">
@@ -2912,6 +2914,7 @@ auth.onAuthStateChanged(async user => {
     // Ocultar login, mostrar app
     document.getElementById('login-screen').style.display = 'none';
     document.getElementById('app-header').style.display = '';
+    document.getElementById('nav-tabs').style.display = '';
     document.getElementById('app-main').style.display = '';
     resetInactTimer(); // Iniciar contador de inactividad
     document.getElementById('user-name-display').textContent = nombre;
@@ -2962,6 +2965,7 @@ auth.onAuthStateChanged(async user => {
     // Resetear pantalla de login completamente
     document.getElementById('login-screen').style.display = 'flex';
     document.getElementById('app-header').style.display = 'none';
+    document.getElementById('nav-tabs').style.display = 'none';
     document.getElementById('app-main').style.display = 'none';
     document.getElementById('login-loading').style.display = 'none';
     document.getElementById('login-error').style.display = 'none';
@@ -2996,8 +3000,9 @@ function aplicarPermisos(rol) {
   // Restaurar última pestaña activa, o ir a la primera permitida
   var lastTab = null;
   try { lastTab = localStorage.getItem('asmqr_lastTab'); } catch(e) {}
-  var tabInicial = (lastTab && tabs.includes(lastTab)) ? lastTab : tabs[0];
-  showSectionDirect(tabInicial);
+  // Siempre iniciar en Inicio (scan) — no restaurar pestaña anterior
+  showSectionDirect('scan');
+  setActiveTab('tab-inicio');
 }
 
 function showSectionDirect(id) {
@@ -3356,11 +3361,7 @@ document.addEventListener('click', function(e) {
 
 function showSection(id) {
   showSectionDirect(id);
-  // mark clicked tab active
-  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
-  if(event && event.target) event.target.classList.add('active');
-  else { const t = document.getElementById('tab-'+id); if(t) t.classList.add('active'); }
-  // Guardar pestaña activa para restaurar al recargar
+  // Guardar pestaña activa
   try { localStorage.setItem('asmqr_lastTab', id); } catch(e) {}
 }
 
