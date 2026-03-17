@@ -3460,6 +3460,24 @@ function toggleNavDrop(id, btn) {
   if(!isOpen) {
     drop.classList.add('open');
     btn.classList.add('active');
+    // Cerrar al salir del nav-tab con el mouse
+    btn.addEventListener('mouseleave', function onLeave(e) {
+      // Solo cerrar si el mouse no entró al dropdown
+      setTimeout(function() {
+        if(!drop.matches(':hover') && !btn.matches(':hover')) {
+          closeNavDrops();
+        }
+      }, 100);
+      btn.removeEventListener('mouseleave', onLeave);
+    });
+    drop.addEventListener('mouseleave', function onDropLeave() {
+      setTimeout(function() {
+        if(!drop.matches(':hover') && !btn.matches(':hover')) {
+          closeNavDrops();
+        }
+      }, 100);
+      drop.removeEventListener('mouseleave', onDropLeave);
+    });
   }
 }
 function closeNavDrops() {
