@@ -1448,7 +1448,7 @@
 </header>
 <nav class="nav-tabs" id="nav-tabs" style="background:#0D1A3A;position:sticky;top:52px;z-index:599;display:none;">
     <!-- Inicio -->
-    <button class="nav-tab active" id="tab-inicio" onclick="showSection('scan');setActiveTab('tab-inicio')">
+    <button class="nav-tab active" id="tab-inicio" onclick="showSection('inicio');setActiveTab('tab-inicio')">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
       Inicio
     </button>
@@ -1511,8 +1511,50 @@
 
 <main id="app-main" style="display:none;">
 
+  <!-- ===== INICIO (DASHBOARD) ===== -->
+  <div class="section active" id="sec-inicio">
+    <div style="padding:20px;max-width:900px;margin:0 auto;">
+      <!-- Bienvenida -->
+      <div style="margin-bottom:20px;">
+        <div style="font-size:1.3rem;font-weight:700;color:var(--text);" id="inicio-bienvenida">Bienvenido</div>
+        <div style="font-size:0.85rem;color:var(--muted);margin-top:2px;" id="inicio-fecha"></div>
+      </div>
+      <!-- KPIs -->
+      <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:20px;">
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px;">
+          <div style="font-size:1.8rem;font-weight:800;color:#378ADD;" id="inicio-kpi-total">—</div>
+          <div style="font-size:0.78rem;color:var(--muted);margin-top:4px;">Total alumnos</div>
+          <div style="font-size:0.72rem;color:#378ADD;margin-top:3px;" id="inicio-kpi-aulas">— aulas</div>
+        </div>
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px;">
+          <div style="font-size:1.8rem;font-weight:800;color:#16a34a;" id="inicio-kpi-presentes">—</div>
+          <div style="font-size:0.78rem;color:var(--muted);margin-top:4px;">Presentes hoy</div>
+          <div style="font-size:0.72rem;color:#16a34a;margin-top:3px;" id="inicio-kpi-pct">— % asistencia</div>
+        </div>
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px;">
+          <div style="font-size:1.8rem;font-weight:800;color:#dc2626;" id="inicio-kpi-ausentes">—</div>
+          <div style="font-size:0.78rem;color:var(--muted);margin-top:4px;">Ausentes hoy</div>
+          <div style="font-size:0.72rem;color:#dc2626;margin-top:3px;" id="inicio-kpi-aus-pct">— % del total</div>
+        </div>
+      </div>
+      <!-- Grid 2 columnas -->
+      <div style="display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:14px;">
+        <!-- Asistencia por nivel -->
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px;">
+          <div style="font-size:0.75rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:14px;">Asistencia por nivel — hoy</div>
+          <div id="inicio-niveles-bars"></div>
+        </div>
+        <!-- Últimos ingresos -->
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px;">
+          <div style="font-size:0.75rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px;">Últimos ingresos</div>
+          <div id="inicio-ultimos-ingresos"><div style="color:var(--muted);font-size:0.82rem;text-align:center;padding:16px;">Cargando...</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- ===== SCAN ===== -->
-  <div class="section active" id="sec-scan">
+  <div class="section" id="sec-scan">
 
     <!-- FILA SUPERIOR: controles + stats (desktop) -->
     <div class="scan-top-bar">
@@ -2984,10 +3026,10 @@ function aplicarPermisos(rol) {
   setTimeout(renderBottomNav, 100);
   // Pestañas visibles según rol
   const permisos = {
-    admin:    ['scan','alumnos','registro','reportes','incidentes','usuarios','config'],
-    director: ['registro','reportes','incidentes'],
-    profesor: ['alumnos','registro','incidentes'],
-    portero:  ['scan'],
+    admin:    ['inicio','scan','alumnos','registro','reportes','incidentes','usuarios','config'],
+    director: ['inicio','registro','reportes','incidentes'],
+    profesor: ['inicio','alumnos','registro','incidentes'],
+    portero:  ['inicio','scan'],
   };
   const tabs = permisos[rol] || ['scan'];
 
@@ -3001,8 +3043,9 @@ function aplicarPermisos(rol) {
   var lastTab = null;
   try { lastTab = localStorage.getItem('asmqr_lastTab'); } catch(e) {}
   // Siempre iniciar en Inicio (scan) — no restaurar pestaña anterior
-  showSectionDirect('scan');
+  showSectionDirect('inicio');
   setActiveTab('tab-inicio');
+  cargarDashboardInicio();
 }
 
 function showSectionDirect(id) {
@@ -3332,6 +3375,83 @@ const DB = {
 // ============================================================
 // NAVIGATION
 // ============================================================
+// ── Dashboard Inicio ──
+async function cargarDashboardInicio() {
+  try {
+    const fechaStr = new Date().toLocaleDateString('es-PE',{weekday:'long',day:'2-digit',month:'long',year:'numeric'});
+    const f = document.getElementById('inicio-fecha');
+    if(f) f.textContent = fechaStr.charAt(0).toUpperCase() + fechaStr.slice(1);
+    const bienvenida = document.getElementById('inicio-bienvenida');
+    if(bienvenida && currentUser) {
+      const nombre = document.getElementById('menu-user-name')?.textContent || '';
+      bienvenida.textContent = 'Bienvenido' + (nombre ? ', ' + nombre.split(' ')[0] : '');
+    }
+
+    const [alumnos, regsHoy] = await Promise.all([DB.getAlumnos(), DB.getRegistros({fecha:hoy()})]);
+    const total = alumnos.length;
+    const presentes = new Set(regsHoy.filter(r=>r.tipo==='INGRESO').map(r=>r.alumnoId)).size;
+    const ausentes = Math.max(0, total - presentes);
+    const pct = total ? Math.round(presentes/total*100) : 0;
+
+    document.getElementById('inicio-kpi-total').textContent = total;
+    document.getElementById('inicio-kpi-presentes').textContent = presentes;
+    document.getElementById('inicio-kpi-ausentes').textContent = ausentes;
+    document.getElementById('inicio-kpi-pct').textContent = pct + '% asistencia';
+    document.getElementById('inicio-kpi-aus-pct').textContent = (100-pct) + '% del total';
+
+    // Aulas únicas
+    const aulas = new Set(alumnos.map(a=>a.grado+a.seccion));
+    const nAulasEl = document.getElementById('inicio-kpi-aulas');
+    if(nAulasEl) nAulasEl.textContent = aulas.size + ' aulas';
+
+    // Barras por nivel
+    const cfg = await getConfig();
+    const niveles = (cfg.niveles||[]).map(n=>n.nombre);
+    const barsEl = document.getElementById('inicio-niveles-bars');
+    if(barsEl && niveles.length) {
+      const colors = ['#378ADD','#16a34a','#854F0B','#534AB7'];
+      barsEl.innerHTML = niveles.map((niv,i) => {
+        const alNiv = alumnos.filter(a=>a.turno===niv);
+        const presNiv = new Set(regsHoy.filter(r=>r.tipo==='INGRESO'&&r.turno===niv).map(r=>r.alumnoId)).size;
+        const pNiv = alNiv.length ? Math.round(presNiv/alNiv.length*100) : 0;
+        const col = colors[i % colors.length];
+        return '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">' +
+          '<div style="font-size:0.78rem;color:var(--text);width:72px;flex-shrink:0;">' + niv + '</div>' +
+          '<div style="flex:1;height:7px;background:var(--surface2);border-radius:4px;overflow:hidden;">' +
+          '<div style="height:100%;border-radius:4px;background:' + col + ';width:' + pNiv + '%;"></div></div>' +
+          '<div style="font-size:0.75rem;color:' + col + ';width:32px;text-align:right;">' + pNiv + '%</div></div>';
+      }).join('');
+    }
+
+    // Últimos ingresos
+    const ultimos = regsHoy
+      .filter(r=>r.tipo==='INGRESO')
+      .sort((a,b)=>(b.hora||'').localeCompare(a.hora||''))
+      .slice(0,5);
+    const ulEl = document.getElementById('inicio-ultimos-ingresos');
+    if(ulEl) {
+      if(!ultimos.length) {
+        ulEl.innerHTML = '<div style="color:var(--muted);font-size:0.82rem;text-align:center;padding:16px;">Sin ingresos registrados hoy</div>';
+      } else {
+        const bgColors = ['#E6F1FB','#EAF3DE','#EEEDFE','#FAEEDA','#E1F5EE'];
+        const txColors = ['#0C447C','#27500A','#3C3489','#633806','#085041'];
+        ulEl.innerHTML = ultimos.map((r,i) => {
+          const initials = (r.nombre||'?').split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase();
+          const est = r.estado||'';
+          const badgeColor = est.includes('Tardanza') ? '#FAEEDA' : '#EAF3DE';
+          const badgeTx = est.includes('Tardanza') ? '#633806' : '#27500A';
+          const badgeLbl = est.includes('Tardanza') ? 'Tardanza' : 'Puntual';
+          return '<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:0.5px solid var(--border);">' +
+            '<div style="width:28px;height:28px;border-radius:50%;background:' + bgColors[i%5] + ';color:' + txColors[i%5] + ';display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;flex-shrink:0;">' + initials + '</div>' +
+            '<div style="flex:1;min-width:0;"><div style="font-size:0.8rem;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + (r.nombre||'') + '</div>' +
+            '<div style="font-size:0.72rem;color:var(--muted);">' + (r.grado||'') + ' ' + (r.seccion||'') + ' · ' + (r.hora||'') + '</div></div>' +
+            '<span style="background:' + badgeColor + ';color:' + badgeTx + ';padding:2px 7px;border-radius:4px;font-size:9px;font-weight:600;">' + badgeLbl + '</span></div>';
+        }).join('');
+      }
+    }
+  } catch(e) { console.error('cargarDashboardInicio:', e); }
+}
+
 // ── Funciones del nuevo menú con dropdowns ──
 function toggleNavDrop(id, btn) {
   const drop = document.getElementById(id);
@@ -3344,9 +3464,7 @@ function toggleNavDrop(id, btn) {
 }
 function closeNavDrops() {
   document.querySelectorAll('.nav-dropdown').forEach(d => d.classList.remove('open'));
-  document.querySelectorAll('.nav-tab').forEach(t => {
-    if(!t.id || !['tab-inicio'].includes(t.id)) t.classList.remove('active');
-  });
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
 }
 function setActiveTab(id) {
   closeNavDrops();
@@ -7475,10 +7593,10 @@ function renderBottomNav() {
     { id: 'config',     icon: '⚙',  label: 'Config'   },
   ];
   const permisos = {
-    admin:    ['scan','alumnos','registro','reportes','incidentes','usuarios','config'],
-    director: ['registro','reportes','incidentes'],
-    profesor: ['alumnos','registro','incidentes'],
-    portero:  ['scan'],
+    admin:    ['inicio','scan','alumnos','registro','reportes','incidentes','usuarios','config'],
+    director: ['inicio','registro','reportes','incidentes'],
+    profesor: ['inicio','alumnos','registro','incidentes'],
+    portero:  ['inicio','scan'],
   };
   const allowed = permisos[currentRol] || ['scan'];
   inner.innerHTML = allTabs
