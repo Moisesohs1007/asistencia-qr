@@ -4316,6 +4316,14 @@ async function exportXLSX() {
   const grado   = document.getElementById('filter-grado').value;
   const seccion = document.getElementById('filter-seccion').value;
   const q       = (document.getElementById('filter-search').value||'').trim();
+  const mesSel  = document.getElementById('reg-mes-select')?.value || mesActual();
+  const desde   = document.getElementById('filter-desde').value || mesSel+'-01';
+  const hasta   = document.getElementById('filter-hasta').value || (() => {
+    const [y,m]=mesSel.split('-').map(Number);
+    const hs=new Date().toISOString().slice(0,10);
+    const fm=mesSel+'-'+String(new Date(y,m,0).getDate()).padStart(2,'0');
+    return fm<hs?fm:hs;
+  })();
   const esPorAlumno = q.length > 0;
   const esPorAula   = grado && grado !== 'TODOS' && seccion && seccion !== 'TODOS';
 
@@ -4329,14 +4337,14 @@ async function exportXLSX() {
   }
 
   const regs = await getRegistrosFiltrados();
-  if(!regs.length){ toast('No hay registros para los filtros seleccionados','warning'); return; }
+  if(!regs.length){ toast('No hay registros','warning'); return; }
 
   if(!window.XLSX) {
     toast('Cargando libreria Excel...','info');
     await new Promise((res,rej) => {
-      const s = document.createElement('script');
-      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
-      s.onload = res; s.onerror = () => rej(new Error('No se pudo cargar SheetJS'));
+      const s=document.createElement('script');
+      s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+      s.onload=res; s.onerror=()=>rej(new Error('Error'));
       document.head.appendChild(s);
     });
   }
@@ -4346,78 +4354,170 @@ async function exportXLSX() {
   const fechaExport = new Date().toLocaleDateString('es-PE',{day:'2-digit',month:'2-digit',year:'numeric'});
   const diasSemana  = ['Domingo','Lunes','Martes','Miercoles','Jueves','Viernes','Sabado'];
 
-  const COLS = ['Fecha','DNI','Nombre','Nivel','Grado','Seccion','H. Ingreso','H. Salida','Estado'];
-  const WIDTHS = [13,12,32,12,10,10,14,12,16];
+  if(esPorAula) {
+    // ── FORMATO MATRICIAL — por aula ──
+    const todosAlumnos = await DB.getAlumnos();
+    const alumnosAula = todosAlumnos
+      .filter(a => a.grado===grado && a.seccion===seccion)
+      .sort((a,b)=>((a.apellidos||'')+(a.nombres||'')).localeCompare((b.apellidos||'')+(b.nombres||'')));
 
-  const aoa = [];
-  const merges = [];
-  const styles = {};
-
-  aoa.push([nombreColegio, ...Array(COLS.length-1).fill('')]);
-  merges.push({s:{r:0,c:0},e:{r:0,c:COLS.length-1}}); styles[0]='title';
-
-  const sub = esPorAula
-    ? `${grado} Seccion ${seccion} - Registro de Asistencia - ${fechaExport}`
-    : `${q} - Registro de Asistencia - ${fechaExport}`;
-  aoa.push([sub, ...Array(COLS.length-1).fill('')]);
-  merges.push({s:{r:1,c:0},e:{r:1,c:COLS.length-1}}); styles[1]='subtitle';
-  aoa.push(Array(COLS.length).fill(''));
-  aoa.push(COLS); styles[aoa.length-1]='header';
-
-  let fechaActual = null, rowCount = 0;
-  regs.forEach(r => {
-    if(esPorAula && r.fecha !== fechaActual) {
-      fechaActual = r.fecha;
-      const fp = (r.fecha||'').split('-');
-      const fechaFmt = fp.length===3 ? fp[2]+'/'+fp[1]+'/'+fp[0] : r.fecha;
-      const diaSem = r.fecha ? diasSemana[new Date(r.fecha+'T12:00:00').getDay()] : '';
-      aoa.push([`${diaSem}  ${fechaFmt}`, ...Array(COLS.length-1).fill('')]);
-      merges.push({s:{r:aoa.length-1,c:0},e:{r:aoa.length-1,c:COLS.length-1}});
-      styles[aoa.length-1]='daterow'; rowCount=0;
+    // Días hábiles del rango
+    const diasHabiles=[];
+    let cur=new Date(desde+'T12:00:00'), fin=new Date(hasta+'T12:00:00');
+    while(cur<=fin) {
+      const dow=cur.getDay();
+      if(dow!==0&&dow!==6) diasHabiles.push({
+        fecha:cur.toISOString().slice(0,10),
+        label:diasSemana[dow].substring(0,3)+' '+String(cur.getDate()).padStart(2,'0')
+      });
+      cur.setDate(cur.getDate()+1);
     }
-    const fp = (r.fecha||'').split('-');
-    const fechaFmt = fp.length===3 ? fp[2]+'/'+fp[1]+'/'+fp[0] : r.fecha;
-    aoa.push([fechaFmt, r.dni, r.nombre, r.nivel, r.grado, r.seccion, r.ingreso||'-', r.salida||'-', r.estado||'Sin registro']);
-    styles[aoa.length-1] = rowCount%2===0 ? 'even' : 'odd';
-    rowCount++;
-  });
 
-  aoa.push(Array(COLS.length).fill(''));
-  aoa.push([`Total: ${regs.length} registro${regs.length!==1?'s':''}`, ...Array(COLS.length-1).fill('')]);
-  styles[aoa.length-1]='total';
-
-  const ws = XLSX.utils.aoa_to_sheet(aoa);
-  ws['!cols'] = WIDTHS.map(w=>({wch:w}));
-  ws['!merges'] = merges;
-
-  aoa.forEach((row,ri) => {
-    row.forEach((_,ci) => {
-      const addr = XLSX.utils.encode_cell({r:ri,c:ci});
-      if(!ws[addr]) return;
-      const st = styles[ri];
-      let fill, font, alignment;
-      if(st==='title')    { fill={fgColor:{rgb:'0D1A3A'}}; font={bold:true,color:{rgb:'FFFFFF'},sz:13}; alignment={horizontal:'center'}; }
-      else if(st==='subtitle') { fill={fgColor:{rgb:'0D1A3A'}}; font={color:{rgb:'B0C4E8'},sz:9}; alignment={horizontal:'center'}; }
-      else if(st==='header')   { fill={fgColor:{rgb:'0D1A3A'}}; font={bold:true,color:{rgb:'FFFFFF'},sz:9}; alignment={horizontal:'center'}; }
-      else if(st==='daterow')  { fill={fgColor:{rgb:'0D1A3A'}}; font={bold:true,color:{rgb:'C9A84C'},sz:9}; alignment={horizontal:'left'}; }
-      else if(st==='even')     { fill={fgColor:{rgb:'F0F2F8'}}; font={sz:8,color:{rgb:'1E293B'}}; alignment={horizontal:'center'}; }
-      else if(st==='odd')      { fill={fgColor:{rgb:'FFFFFF'}}; font={sz:8,color:{rgb:'1E293B'}}; alignment={horizontal:'center'}; }
-      else if(st==='total')    { font={italic:true,sz:8,color:{rgb:'64748B'}}; }
-      if(ci===2 && (st==='even'||st==='odd')) alignment={horizontal:'left'};
-      if((st==='even'||st==='odd') && ci===COLS.length-1 && ws[addr].v) {
-        const v = String(ws[addr].v).toLowerCase();
-        if(v.includes('tardanza')) font={...font,color:{rgb:'D97706'},bold:true};
-        else if(v.includes('tiempo')||v.includes('puntual')) font={...font,color:{rgb:'16A34A'},bold:true};
-        else if(v.includes('sin registro')||v.includes('ausente')) font={...font,color:{rgb:'DC2626'},bold:true};
-      }
-      ws[addr].s = {fill,font,alignment,border:{bottom:{style:'thin',color:{rgb:'DCE2EE'}}}};
+    // Mapa alumnoId → fecha → cod
+    const mapa={};
+    regs.forEach(r=>{
+      if(!mapa[r.dni]) mapa[r.dni]={};
+      const st=(r.estado||'').toLowerCase();
+      let cod='A';
+      if(st.includes('tardanza')) cod='T';
+      else if(st.includes('tiempo')||st.includes('puntual')||r.ingreso) cod='P';
+      mapa[r.dni][r.fecha]=cod;
     });
-  });
 
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, 'Asistencia');
-  const sufijo = esPorAlumno ? '_'+q.substring(0,20).replace(/\s/g,'_') : '_'+grado+seccion;
-  XLSX.writeFile(wb, 'asistencia'+sufijo+'_'+hoy()+'.xlsx');
+    const nCols=2+diasHabiles.length+3;
+    const aoa=[],merges=[],styleMap={};
+
+    aoa.push([nombreColegio,...Array(nCols-1).fill('')]); merges.push({s:{r:0,c:0},e:{r:0,c:nCols-1}}); styleMap[0]='title';
+    const nivel=alumnosAula[0]?.turno||'';
+    aoa.push([`${nivel} ${grado} Seccion ${seccion} - Registro de Asistencia - ${fechaExport}`,...Array(nCols-1).fill('')]); merges.push({s:{r:1,c:0},e:{r:1,c:nCols-1}}); styleMap[1]='subtitle';
+    aoa.push(Array(nCols).fill(''));
+    aoa.push(['DNI','Alumno',...diasHabiles.map(d=>d.label),'P','T','A']); styleMap[aoa.length-1]='header';
+
+    alumnosAula.forEach((a,ai)=>{
+      const nombre=((a.apellidos||'')+' '+(a.nombres||'')).trim();
+      const row=[a.id,nombre];
+      let pC=0,tC=0,aC=0;
+      diasHabiles.forEach(d=>{
+        const cod=(mapa[a.id]&&mapa[a.id][d.fecha])||'A';
+        row.push(cod);
+        if(cod==='P') pC++; else if(cod==='T') tC++; else aC++;
+      });
+      row.push(pC,tC,aC);
+      aoa.push(row); styleMap[aoa.length-1]=ai%2===0?'even':'odd';
+    });
+
+    // Fila presentes por día
+    const totRow=['','Presentes'];
+    diasHabiles.forEach(d=>{
+      const pres=alumnosAula.filter(a=>{const c=mapa[a.id]&&mapa[a.id][d.fecha];return c==='P'||c==='T';}).length;
+      totRow.push(pres);
+    });
+    totRow.push('','','');
+    aoa.push(totRow); styleMap[aoa.length-1]='summary';
+    aoa.push(Array(nCols).fill(''));
+    aoa.push(['P = Puntual   T = Tardanza   A = Ausente',...Array(nCols-1).fill('')]); styleMap[aoa.length-1]='legend';
+    merges.push({s:{r:aoa.length-1,c:0},e:{r:aoa.length-1,c:nCols-1}});
+
+    const ws=XLSX.utils.aoa_to_sheet(aoa);
+    ws['!cols']=[{wch:12},{wch:32},...diasHabiles.map(()=>({wch:7})),{wch:5},{wch:5},{wch:5}];
+    ws['!merges']=merges;
+
+    aoa.forEach((row,ri)=>{
+      row.forEach((_,ci)=>{
+        const addr=XLSX.utils.encode_cell({r:ri,c:ci});
+        if(!ws[addr]) return;
+        const st=styleMap[ri];
+        let fill,font,alignment;
+        if(st==='title')   {fill={fgColor:{rgb:'0D1A3A'}};font={bold:true,color:{rgb:'FFFFFF'},sz:13};alignment={horizontal:'center'};}
+        else if(st==='subtitle'){fill={fgColor:{rgb:'0D1A3A'}};font={color:{rgb:'B0C4E8'},sz:9};alignment={horizontal:'center'};}
+        else if(st==='header')  {fill={fgColor:{rgb:'0D1A3A'}};font={bold:true,color:{rgb:'C9A84C'},sz:9};alignment={horizontal:'center'};}
+        else if(st==='even')    {fill={fgColor:{rgb:'F0F2F8'}};font={sz:8,color:{rgb:'1E293B'}};alignment={horizontal:'center'};}
+        else if(st==='odd')     {fill={fgColor:{rgb:'FFFFFF'}};font={sz:8,color:{rgb:'1E293B'}};alignment={horizontal:'center'};}
+        else if(st==='summary') {fill={fgColor:{rgb:'0D1A3A'}};font={bold:true,color:{rgb:'FFFFFF'},sz:8};alignment={horizontal:'center'};}
+        else if(st==='legend')  {font={italic:true,sz:8,color:{rgb:'64748B'}};}
+        if(ci===1&&(st==='even'||st==='odd'||st==='summary')) alignment={horizontal:'left'};
+        if((st==='even'||st==='odd')&&ci>=2&&ci<2+diasHabiles.length){
+          const v=ws[addr].v;
+          if(v==='P') font={...font,color:{rgb:'16A34A'},bold:true};
+          else if(v==='T') font={...font,color:{rgb:'D97706'},bold:true};
+          else if(v==='A') font={...font,color:{rgb:'DC2626'},bold:true};
+        }
+        if((st==='even'||st==='odd')&&ci>=2+diasHabiles.length){
+          if(ci===2+diasHabiles.length)   font={...font,color:{rgb:'16A34A'},bold:true};
+          else if(ci===3+diasHabiles.length) font={...font,color:{rgb:'D97706'},bold:true};
+          else if(ci===4+diasHabiles.length) font={...font,color:{rgb:'DC2626'},bold:true};
+        }
+        ws[addr].s={fill,font,alignment,border:{bottom:{style:'thin',color:{rgb:'DCE2EE'}}}};
+      });
+    });
+
+    const wb=XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb,ws,'Asistencia');
+    XLSX.writeFile(wb,'asistencia_'+grado+seccion+'_'+hoy()+'.xlsx');
+
+  } else {
+    // ── FORMATO LISTA CON SEPARADORES — alumno individual ──
+    const COLS=['Fecha','DNI','Nombre','Nivel','Grado','Seccion','H. Ingreso','H. Salida','Estado'];
+    const WIDTHS=[13,12,32,12,10,10,14,12,16];
+    const aoa=[],merges=[],styles={};
+
+    aoa.push([nombreColegio,...Array(COLS.length-1).fill('')]); merges.push({s:{r:0,c:0},e:{r:0,c:COLS.length-1}}); styles[0]='title';
+    aoa.push([`${q} - Registro de Asistencia - ${fechaExport}`,...Array(COLS.length-1).fill('')]); merges.push({s:{r:1,c:0},e:{r:1,c:COLS.length-1}}); styles[1]='subtitle';
+    aoa.push(Array(COLS.length).fill(''));
+    aoa.push(COLS); styles[aoa.length-1]='header';
+
+    let fechaActual=null,rowCount=0;
+    regs.forEach(r=>{
+      if(r.fecha!==fechaActual){
+        fechaActual=r.fecha;
+        const fp=(r.fecha||'').split('-');
+        const ff=fp.length===3?fp[2]+'/'+fp[1]+'/'+fp[0]:r.fecha;
+        const ds=r.fecha?diasSemana[new Date(r.fecha+'T12:00:00').getDay()]:'';
+        aoa.push([`${ds}  ${ff}`,...Array(COLS.length-1).fill('')]); merges.push({s:{r:aoa.length-1,c:0},e:{r:aoa.length-1,c:COLS.length-1}});
+        styles[aoa.length-1]='daterow'; rowCount=0;
+      }
+      const fp=(r.fecha||'').split('-');
+      const ff=fp.length===3?fp[2]+'/'+fp[1]+'/'+fp[0]:r.fecha;
+      aoa.push([ff,r.dni,r.nombre,r.nivel,r.grado,r.seccion,r.ingreso||'-',r.salida||'-',r.estado||'Sin registro']);
+      styles[aoa.length-1]=rowCount%2===0?'even':'odd'; rowCount++;
+    });
+
+    aoa.push(Array(COLS.length).fill(''));
+    aoa.push([`Total: ${regs.length} registro${regs.length!==1?'s':''}`,...Array(COLS.length-1).fill('')]); styles[aoa.length-1]='total';
+
+    const ws=XLSX.utils.aoa_to_sheet(aoa);
+    ws['!cols']=WIDTHS.map(w=>({wch:w}));
+    ws['!merges']=merges;
+
+    aoa.forEach((row,ri)=>{
+      row.forEach((_,ci)=>{
+        const addr=XLSX.utils.encode_cell({r:ri,c:ci});
+        if(!ws[addr]) return;
+        const st=styles[ri];
+        let fill,font,alignment;
+        if(st==='title')   {fill={fgColor:{rgb:'0D1A3A'}};font={bold:true,color:{rgb:'FFFFFF'},sz:13};alignment={horizontal:'center'};}
+        else if(st==='subtitle'){fill={fgColor:{rgb:'0D1A3A'}};font={color:{rgb:'B0C4E8'},sz:9};alignment={horizontal:'center'};}
+        else if(st==='header')  {fill={fgColor:{rgb:'0D1A3A'}};font={bold:true,color:{rgb:'FFFFFF'},sz:9};alignment={horizontal:'center'};}
+        else if(st==='daterow') {fill={fgColor:{rgb:'0D1A3A'}};font={bold:true,color:{rgb:'C9A84C'},sz:9};alignment={horizontal:'left'};}
+        else if(st==='even')    {fill={fgColor:{rgb:'F0F2F8'}};font={sz:8,color:{rgb:'1E293B'}};alignment={horizontal:'center'};}
+        else if(st==='odd')     {fill={fgColor:{rgb:'FFFFFF'}};font={sz:8,color:{rgb:'1E293B'}};alignment={horizontal:'center'};}
+        else if(st==='total')   {font={italic:true,sz:8,color:{rgb:'64748B'}};}
+        if(ci===2&&(st==='even'||st==='odd')) alignment={horizontal:'left'};
+        if((st==='even'||st==='odd')&&ci===COLS.length-1&&ws[addr].v){
+          const v=String(ws[addr].v).toLowerCase();
+          if(v.includes('tardanza')) font={...font,color:{rgb:'D97706'},bold:true};
+          else if(v.includes('tiempo')||v.includes('puntual')) font={...font,color:{rgb:'16A34A'},bold:true};
+          else if(v.includes('sin registro')||v.includes('ausente')) font={...font,color:{rgb:'DC2626'},bold:true};
+        }
+        ws[addr].s={fill,font,alignment,border:{bottom:{style:'thin',color:{rgb:'DCE2EE'}}}};
+      });
+    });
+
+    const wb=XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb,ws,'Asistencia');
+    XLSX.writeFile(wb,'asistencia_'+q.substring(0,20).replace(/\s/g,'_')+'_'+hoy()+'.xlsx');
+  }
+
   toast('Excel exportado','success');
 }
 
@@ -4426,6 +4526,14 @@ async function exportPDFRegistro() {
   const grado   = document.getElementById('filter-grado').value;
   const seccion = document.getElementById('filter-seccion').value;
   const q       = (document.getElementById('filter-search').value||'').trim();
+  const mesSel  = document.getElementById('reg-mes-select')?.value || mesActual();
+  const desde   = document.getElementById('filter-desde').value || mesSel+'-01';
+  const hasta   = document.getElementById('filter-hasta').value || (() => {
+    const [y,m]=mesSel.split('-').map(Number);
+    const hs=new Date().toISOString().slice(0,10);
+    const fm=mesSel+'-'+String(new Date(y,m,0).getDate()).padStart(2,'0');
+    return fm<hs?fm:hs;
+  })();
   const esPorAlumno = q.length > 0;
   const esPorAula   = grado && grado !== 'TODOS' && seccion && seccion !== 'TODOS';
 
@@ -4447,101 +4555,168 @@ async function exportPDFRegistro() {
   const cfg = await getConfig();
   const nombreColegio = cfg?.nombreColegio || 'I.E.P. San Jose Marello';
   const fechaExport = new Date().toLocaleDateString('es-PE',{day:'2-digit',month:'2-digit',year:'numeric'});
+  const diasSemana = ['Domingo','Lunes','Martes','Miercoles','Jueves','Viernes','Sabado'];
+  const NAVY=[13,26,58],GOLD=[201,168,76],WHITE=[255,255,255],GRAY=[240,242,248],MUTED=[100,116,139],TEXT=[30,41,59];
+  const GREEN=[22,163,74],AMBER=[202,138,4],RED=[220,38,38];
 
-  const doc = new jsPDF({ orientation:'landscape', unit:'mm', format:'a4' });
-  const PW=297, PH=210;
-  const NAVY=[13,26,58], GOLD=[201,168,76], WHITE=[255,255,255];
-  const GRAY=[240,242,248], MUTED=[100,116,139], TEXT=[30,41,59];
+  if(esPorAula) {
+    // ── FORMATO MATRICIAL — por aula ──
+    const todosAlumnos = await DB.getAlumnos();
+    const alumnosAula = todosAlumnos
+      .filter(a=>a.grado===grado&&a.seccion===seccion)
+      .sort((a,b)=>((a.apellidos||'')+(a.nombres||'')).localeCompare((b.apellidos||'')+(b.nombres||'')));
 
-  const COLS = [
-    {label:'Fecha',     key:'fecha',   w:22},
-    {label:'DNI',       key:'dni',     w:20},
-    {label:'Nombre',    key:'nombre',  w:56},
-    {label:'Nivel',     key:'nivel',   w:22},
-    {label:'Grado',     key:'grado',   w:16},
-    {label:'Seccion',   key:'seccion', w:16},
-    {label:'H. Ingreso',key:'ingreso', w:22},
-    {label:'H. Salida', key:'salida',  w:22},
-    {label:'Estado',    key:'estado',  w:28},
-  ];
-  const TABLE_X=10, TABLE_W=COLS.reduce((s,c)=>s+c.w,0);
-  const ROW_H=7, HEAD_H=8, DATE_H=6;
-  let pageNum=1, curY=0;
+    const diasHabiles=[];
+    let cur=new Date(desde+'T12:00:00'),fin=new Date(hasta+'T12:00:00');
+    while(cur<=fin){const dow=cur.getDay();if(dow!==0&&dow!==6)diasHabiles.push({fecha:cur.toISOString().slice(0,10),label:diasSemana[dow].substring(0,3)+' '+String(cur.getDate()).padStart(2,'0')});cur.setDate(cur.getDate()+1);}
 
-  function drawHeader() {
-    doc.setFillColor(...NAVY); doc.rect(0,0,PW,18,'F');
-    doc.setFillColor(...GOLD); doc.rect(0,18,PW,1,'F');
-    doc.setTextColor(...WHITE);
-    doc.setFontSize(11); doc.setFont('helvetica','bold');
-    doc.text(nombreColegio, PW/2, 8, {align:'center'});
-    doc.setFontSize(7); doc.setFont('helvetica','normal');
-    doc.setTextColor(176,196,232);
-    doc.text(`Registro de Asistencia - Exportado el ${fechaExport} - Pag. ${pageNum}`, PW/2, 14, {align:'center'});
-    curY=24;
-  }
+    const mapa={};
+    regs.forEach(r=>{if(!mapa[r.dni])mapa[r.dni]={};const st=(r.estado||'').toLowerCase();let cod='A';if(st.includes('tardanza'))cod='T';else if(st.includes('tiempo')||st.includes('puntual')||r.ingreso)cod='P';mapa[r.dni][r.fecha]=cod;});
 
-  function drawTableHeader() {
-    doc.setFillColor(...NAVY); doc.rect(TABLE_X,curY,TABLE_W,HEAD_H,'F');
-    doc.setTextColor(...WHITE); doc.setFontSize(8); doc.setFont('helvetica','bold');
-    let cx=TABLE_X;
-    COLS.forEach(col => { doc.text(col.label, cx+col.w/2, curY+HEAD_H/2+2,{align:'center'}); cx+=col.w; });
-    curY+=HEAD_H;
-  }
+    const landscape=diasHabiles.length>12;
+    const doc=new jsPDF({orientation:landscape?'landscape':'portrait',unit:'mm',format:'a4'});
+    const PW=landscape?297:210,PH=landscape?210:297;
+    const COL_DNI=18,COL_NOMBRE=landscape?50:42,COL_TOT=8;
+    const ancho=PW-20-COL_DNI-COL_NOMBRE-(COL_TOT*3);
+    const COL_DIA=Math.max(5,Math.min(10,ancho/(diasHabiles.length||1)));
+    const TABLE_X=10,TABLE_W=COL_DNI+COL_NOMBRE+(COL_DIA*diasHabiles.length)+(COL_TOT*3);
+    const ROW_H=6.5,HEAD_H=8;
+    let pageNum=1,curY=0;
+    const nivel=alumnosAula[0]?.turno||'';
 
-  function checkNewPage() {
-    if(curY+ROW_H>PH-10) { doc.addPage(); pageNum++; drawHeader(); drawTableHeader(); }
-  }
-
-  function estadoColor(estado) {
-    if(!estado) return MUTED;
-    const e=estado.toLowerCase();
-    if(e.includes('tiempo')||e.includes('puntual')) return [22,163,74];
-    if(e.includes('tardanza')) return [202,138,4];
-    if(e.includes('sin registro')||e.includes('ausente')) return [220,38,38];
-    return TEXT;
-  }
-
-  drawHeader(); drawTableHeader();
-  let fechaActual=null, rowIndex=0;
-
-  regs.forEach(r => {
-    if(esPorAula && r.fecha !== fechaActual) {
-      fechaActual=r.fecha;
-      if(curY+DATE_H+ROW_H>PH-10) { doc.addPage(); pageNum++; drawHeader(); drawTableHeader(); }
-      doc.setFillColor(13,26,58); doc.rect(TABLE_X,curY,TABLE_W,DATE_H,'F');
-      doc.setTextColor(201,168,76); doc.setFontSize(9); doc.setFont('helvetica','bold');
-      const fp=r.fecha?r.fecha.split('-'):[];
-      const fechaLabel=fp.length===3?`${fp[2]}/${fp[1]}/${fp[0]}`:r.fecha;
-      const diasSemana=['Domingo','Lunes','Martes','Miercoles','Jueves','Viernes','Sabado'];
-      const diaSem=r.fecha?diasSemana[new Date(r.fecha+'T12:00:00').getDay()]:'';
-      doc.text(`${diaSem}  ${fechaLabel}`, TABLE_X+TABLE_W/2, curY+DATE_H/2+2, {align:'center'});
-      curY+=DATE_H; rowIndex=0;
+    function drawPH(){
+      doc.setFillColor(...NAVY);doc.rect(0,0,PW,18,'F');
+      doc.setFillColor(...GOLD);doc.rect(0,18,PW,0.8,'F');
+      doc.setTextColor(...WHITE);doc.setFontSize(11);doc.setFont('helvetica','bold');
+      doc.text(nombreColegio,PW/2,8,{align:'center'});
+      doc.setFontSize(7.5);doc.setFont('helvetica','normal');doc.setTextColor(176,196,232);
+      doc.text(`${nivel} ${grado} Seccion ${seccion} - Registro de Asistencia - ${fechaExport} - Pag. ${pageNum}`,PW/2,14.5,{align:'center'});
+      curY=22;
     }
-    checkNewPage();
-    if(rowIndex%2===0) { doc.setFillColor(...GRAY); doc.rect(TABLE_X,curY,TABLE_W,ROW_H,'F'); }
-    doc.setDrawColor(220,226,238); doc.setLineWidth(0.2);
-    doc.line(TABLE_X, curY+ROW_H, TABLE_X+TABLE_W, curY+ROW_H);
-    doc.setFontSize(8); doc.setFont('helvetica','normal');
-    let cx=TABLE_X;
-    COLS.forEach(col => {
-      let val=r[col.key]||'-';
-      if(col.key==='nombre'&&val.length>30) val=val.substring(0,28)+'...';
-      if(col.key==='fecha'&&val&&val!=='-') { const fp=val.split('-'); if(fp.length===3) val=fp[2]+'/'+fp[1]+'/'+fp[0]; }
-      if(col.key==='estado') { doc.setTextColor(...estadoColor(val)); doc.setFont('helvetica','bold'); }
-      else { doc.setTextColor(...TEXT); doc.setFont('helvetica','normal'); }
-      doc.text(String(val), cx+col.w/2, curY+ROW_H/2+2,{align:'center'});
-      cx+=col.w;
+    function drawTH(){
+      doc.setFillColor(...NAVY);doc.rect(TABLE_X,curY,TABLE_W,HEAD_H,'F');
+      doc.setTextColor(...GOLD);doc.setFontSize(6.5);doc.setFont('helvetica','bold');
+      let cx=TABLE_X;
+      doc.text('DNI',cx+COL_DNI/2,curY+HEAD_H/2+2,{align:'center'});cx+=COL_DNI;
+      doc.text('Alumno',cx+4,curY+HEAD_H/2+2);cx+=COL_NOMBRE;
+      diasHabiles.forEach(d=>{doc.text(d.label,cx+COL_DIA/2,curY+HEAD_H/2+2,{align:'center'});cx+=COL_DIA;});
+      doc.setTextColor(...WHITE);
+      ['P','T','A'].forEach(l=>{doc.text(l,cx+COL_TOT/2,curY+HEAD_H/2+2,{align:'center'});cx+=COL_TOT;});
+      curY+=HEAD_H;
+    }
+    function chk(){if(curY+ROW_H>PH-12){doc.addPage();pageNum++;drawPH();drawTH();}}
+
+    drawPH();drawTH();
+
+    alumnosAula.forEach((a,ai)=>{
+      chk();
+      if(ai%2===0){doc.setFillColor(...GRAY);doc.rect(TABLE_X,curY,TABLE_W,ROW_H,'F');}
+      doc.setDrawColor(220,226,238);doc.setLineWidth(0.15);doc.line(TABLE_X,curY+ROW_H,TABLE_X+TABLE_W,curY+ROW_H);
+      let cx=TABLE_X;
+      doc.setTextColor(...MUTED);doc.setFontSize(6);doc.setFont('helvetica','normal');
+      doc.text(a.id||'-',cx+COL_DNI/2,curY+ROW_H/2+2,{align:'center'});cx+=COL_DNI;
+      const nom=((a.apellidos||'')+' '+(a.nombres||'')).trim();
+      doc.setTextColor(...TEXT);doc.setFontSize(6.5);
+      doc.text(nom.length>26?nom.substring(0,24)+'..':nom,cx+2,curY+ROW_H/2+2);cx+=COL_NOMBRE;
+      let pC=0,tC=0,aC=0;
+      diasHabiles.forEach(d=>{
+        const cod=(mapa[a.id]&&mapa[a.id][d.fecha])||'A';
+        if(cod==='P'){doc.setTextColor(...GREEN);pC++;}else if(cod==='T'){doc.setTextColor(...AMBER);tC++;}else{doc.setTextColor(...RED);aC++;}
+        doc.setFontSize(6.5);doc.setFont('helvetica','bold');
+        doc.text(cod,cx+COL_DIA/2,curY+ROW_H/2+2,{align:'center'});cx+=COL_DIA;
+      });
+      doc.setFontSize(7);doc.setFont('helvetica','bold');
+      doc.setTextColor(...GREEN);doc.text(String(pC),cx+COL_TOT/2,curY+ROW_H/2+2,{align:'center'});cx+=COL_TOT;
+      doc.setTextColor(...AMBER);doc.text(String(tC),cx+COL_TOT/2,curY+ROW_H/2+2,{align:'center'});cx+=COL_TOT;
+      doc.setTextColor(...RED);doc.text(String(aC),cx+COL_TOT/2,curY+ROW_H/2+2,{align:'center'});
+      curY+=ROW_H;
     });
-    curY+=ROW_H; rowIndex++;
-  });
 
-  doc.setDrawColor(...NAVY); doc.setLineWidth(0.4);
-  doc.rect(TABLE_X,24,TABLE_W,curY-24);
-  curY+=4;
-  doc.setTextColor(...MUTED); doc.setFontSize(8.5); doc.setFont('helvetica','italic');
-  doc.text(`Total: ${regs.length} registro${regs.length!==1?'s':''}`, TABLE_X, curY);
+    // Fila presentes
+    chk();
+    doc.setFillColor(...NAVY);doc.rect(TABLE_X,curY,TABLE_W,ROW_H,'F');
+    let cx2=TABLE_X;
+    doc.setTextColor(...GOLD);doc.setFontSize(6);doc.setFont('helvetica','bold');
+    doc.text('',cx2+COL_DNI/2,curY+ROW_H/2+2,{align:'center'});cx2+=COL_DNI;
+    doc.text('Presentes',cx2+2,curY+ROW_H/2+2);cx2+=COL_NOMBRE;
+    diasHabiles.forEach(d=>{
+      const pres=alumnosAula.filter(a=>{const c=mapa[a.id]&&mapa[a.id][d.fecha];return c==='P'||c==='T';}).length;
+      doc.setTextColor(...WHITE);doc.text(String(pres),cx2+COL_DIA/2,curY+ROW_H/2+2,{align:'center'});cx2+=COL_DIA;
+    });
+    curY+=ROW_H;
 
-  doc.save(`registro_asistencia_${hoy()}.pdf`);
+    doc.setDrawColor(...NAVY);doc.setLineWidth(0.4);doc.rect(TABLE_X,22,TABLE_W,curY-22);
+    curY+=4;doc.setFontSize(7);doc.setFont('helvetica','italic');
+    doc.setTextColor(...GREEN);doc.text('P = Puntual',TABLE_X,curY);
+    doc.setTextColor(...AMBER);doc.text('T = Tardanza',TABLE_X+22,curY);
+    doc.setTextColor(...RED);doc.text('A = Ausente',TABLE_X+46,curY);
+    doc.setTextColor(...MUTED);doc.text(`Total: ${alumnosAula.length} alumnos / ${diasHabiles.length} dias habiles`,TABLE_X+70,curY);
+    doc.save(`asistencia_${grado}${seccion}_${hoy()}.pdf`);
+
+  } else {
+    // ── FORMATO LISTA CON SEPARADORES — alumno individual ──
+    const COLS=[{label:'Fecha',key:'fecha',w:22},{label:'DNI',key:'dni',w:20},{label:'Nombre',key:'nombre',w:56},{label:'Nivel',key:'nivel',w:22},{label:'Grado',key:'grado',w:16},{label:'Seccion',key:'seccion',w:16},{label:'H. Ingreso',key:'ingreso',w:22},{label:'H. Salida',key:'salida',w:22},{label:'Estado',key:'estado',w:28}];
+    const TABLE_X=10,TABLE_W=COLS.reduce((s,c)=>s+c.w,0),ROW_H=7,HEAD_H=8,DATE_H=6;
+    const doc=new jsPDF({orientation:'landscape',unit:'mm',format:'a4'});
+    const PW=297,PH=210;
+    let pageNum=1,curY=0;
+
+    function drawH(){
+      doc.setFillColor(...NAVY);doc.rect(0,0,PW,18,'F');
+      doc.setFillColor(...GOLD);doc.rect(0,18,PW,1,'F');
+      doc.setTextColor(...WHITE);doc.setFontSize(11);doc.setFont('helvetica','bold');
+      doc.text(nombreColegio,PW/2,8,{align:'center'});
+      doc.setFontSize(7);doc.setFont('helvetica','normal');doc.setTextColor(176,196,232);
+      doc.text(`Registro de Asistencia - ${q} - ${fechaExport} - Pag. ${pageNum}`,PW/2,14,{align:'center'});
+      curY=24;
+    }
+    function drawTH2(){
+      doc.setFillColor(...NAVY);doc.rect(TABLE_X,curY,TABLE_W,HEAD_H,'F');
+      doc.setTextColor(...WHITE);doc.setFontSize(8);doc.setFont('helvetica','bold');
+      let cx=TABLE_X;
+      COLS.forEach(col=>{doc.text(col.label,cx+col.w/2,curY+HEAD_H/2+2,{align:'center'});cx+=col.w;});
+      curY+=HEAD_H;
+    }
+    function chk2(){if(curY+ROW_H>PH-10){doc.addPage();pageNum++;drawH();drawTH2();}}
+    function eColor(e){if(!e)return MUTED;const v=e.toLowerCase();if(v.includes('tiempo')||v.includes('puntual'))return GREEN;if(v.includes('tardanza'))return AMBER;if(v.includes('sin registro')||v.includes('ausente'))return RED;return TEXT;}
+
+    drawH();drawTH2();
+    let fechaActual=null,rowIndex=0;
+
+    regs.forEach(r=>{
+      if(r.fecha!==fechaActual){
+        fechaActual=r.fecha;
+        if(curY+DATE_H+ROW_H>PH-10){doc.addPage();pageNum++;drawH();drawTH2();}
+        doc.setFillColor(...NAVY);doc.rect(TABLE_X,curY,TABLE_W,DATE_H,'F');
+        doc.setTextColor(...GOLD);doc.setFontSize(9);doc.setFont('helvetica','bold');
+        const fp=r.fecha?r.fecha.split('-'):[];
+        const fl=fp.length===3?`${fp[2]}/${fp[1]}/${fp[0]}`:r.fecha;
+        const ds=r.fecha?diasSemana[new Date(r.fecha+'T12:00:00').getDay()]:'';
+        doc.text(`${ds}  ${fl}`,TABLE_X+TABLE_W/2,curY+DATE_H/2+2,{align:'center'});
+        curY+=DATE_H;rowIndex=0;
+      }
+      chk2();
+      if(rowIndex%2===0){doc.setFillColor(...GRAY);doc.rect(TABLE_X,curY,TABLE_W,ROW_H,'F');}
+      doc.setDrawColor(220,226,238);doc.setLineWidth(0.2);doc.line(TABLE_X,curY+ROW_H,TABLE_X+TABLE_W,curY+ROW_H);
+      doc.setFontSize(8);doc.setFont('helvetica','normal');
+      let cx=TABLE_X;
+      COLS.forEach(col=>{
+        let val=r[col.key]||'-';
+        if(col.key==='nombre'&&val.length>30)val=val.substring(0,28)+'...';
+        if(col.key==='fecha'&&val&&val!=='-'){const fp=val.split('-');if(fp.length===3)val=fp[2]+'/'+fp[1]+'/'+fp[0];}
+        if(col.key==='estado'){doc.setTextColor(...eColor(val));doc.setFont('helvetica','bold');}
+        else{doc.setTextColor(...TEXT);doc.setFont('helvetica','normal');}
+        doc.text(String(val),cx+col.w/2,curY+ROW_H/2+2,{align:'center'});cx+=col.w;
+      });
+      curY+=ROW_H;rowIndex++;
+    });
+
+    doc.setDrawColor(...NAVY);doc.setLineWidth(0.4);doc.rect(TABLE_X,24,TABLE_W,curY-24);
+    curY+=4;doc.setTextColor(...MUTED);doc.setFontSize(8.5);doc.setFont('helvetica','italic');
+    doc.text(`Total: ${regs.length} registro${regs.length!==1?'s':''}`,TABLE_X,curY);
+    doc.save(`asistencia_${q.substring(0,15).replace(/\s/g,'_')}_${hoy()}.pdf`);
+  }
+
   toast('PDF exportado','success');
 }
 
