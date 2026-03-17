@@ -63,14 +63,14 @@
   /* HEADER */
   header {
     position: sticky; top:0; z-index:500;
-    background: rgba(10,14,26,0.85);
-    backdrop-filter: blur(16px);
-    border-bottom: 1px solid var(--border);
-    padding: 0 24px;
-    height: 64px;
+    background: #0D1A3A;
+    border-bottom: 0.5px solid rgba(255,255,255,0.1);
+    padding: 0 20px;
+    height: 52px;
     display: flex;
     align-items: center;
     justify-content: space-between;
+    flex-wrap: wrap;
   }
 
   .logo {
@@ -81,39 +81,73 @@
   }
   .logo span { color: var(--accent); }
 
+  /* ── NUEVO MENÚ SUPERIOR ── */
   .nav-tabs {
     display: flex;
-    gap: 4px;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 4px;
+    align-items: center;
+    gap: 2px;
+    background: #0D1A3A;
+    padding: 0 8px;
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
+    border-bottom: 0.5px solid rgba(255,255,255,0.08);
   }
   .nav-tabs::-webkit-scrollbar { display: none; }
 
   .nav-tab {
-    padding: 7px 14px;
-    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 13px;
     border: none;
     background: transparent;
-    color: var(--muted);
+    color: rgba(255,255,255,0.6);
     font-family: var(--font-body);
     font-size: 0.82rem;
     font-weight: 500;
     cursor: pointer;
-    transition: all 0.2s;
+    transition: all 0.15s;
     white-space: nowrap;
     flex-shrink: 0;
+    border-bottom: 2px solid transparent;
+    position: relative;
   }
-  .nav-tab.active {
-    background: var(--accent);
-    color: #0a0e1a;
-    font-weight: 700;
+  .nav-tab svg { width:14px; height:14px; flex-shrink:0; }
+  .nav-tab .drop-arrow { width:10px; height:10px; opacity:0.5; }
+  .nav-tab.active { color: #C9A84C; border-bottom-color: #C9A84C; }
+  .nav-tab:not(.active):hover { color: #fff; background: rgba(255,255,255,0.06); }
+
+  /* Dropdowns del menú */
+  .nav-dropdown {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    background: #0D1A3A;
+    border: 0.5px solid rgba(255,255,255,0.15);
+    border-radius: 10px;
+    min-width: 180px;
+    padding: 6px;
+    z-index: 500;
+    margin-top: 0;
   }
-  .nav-tab:not(.active):hover { color: var(--text); background: var(--surface2); }
+  .nav-dropdown.open { display: block; }
+  .nav-drop-item {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 9px 11px;
+    border-radius: 7px;
+    cursor: pointer;
+    color: rgba(255,255,255,0.7);
+    font-size: 0.82rem;
+    font-family: var(--font-body);
+    transition: all 0.12s;
+  }
+  .nav-drop-item:hover { background: rgba(255,255,255,0.09); color: #fff; }
+  .nav-drop-item svg { width:14px; height:14px; opacity:0.65; flex-shrink:0; }
+  .nav-drop-sep { height:0.5px; background:rgba(255,255,255,0.1); margin:4px 0; }
 
   /* MAIN */
   main {
@@ -1378,7 +1412,10 @@
 </div>
 
 <header id="app-header" style="display:none;">
-  <div class="logo">Asistencia<span>QR</span></div>
+  <div style="display:flex;align-items:center;gap:10px;">
+    <div style="width:34px;height:34px;border-radius:50%;background:#C9A84C;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#0D1A3A;flex-shrink:0;">SJM</div>
+    <div class="logo" style="font-size:0.95rem;">San José<span>Marello</span></div>
+  </div>
   <div style="display:flex;align-items:center;gap:10px;position:relative;">
     <span id="user-name-display" style="display:none;"></span>
     <span id="user-rol-badge" style="display:none;"></span>
@@ -1407,13 +1444,59 @@
     </div>
   </div>
   <nav class="nav-tabs" id="nav-tabs">
-    <button class="nav-tab active" id="tab-scan" onclick="showSection('scan')">📷 Escanear</button>
-    <button class="nav-tab" id="tab-alumnos" onclick="showSection('alumnos')">👥 Alumnos</button>
-    <button class="nav-tab" id="tab-registro" onclick="showSection('registro')">📋 Registro</button>
-    <button class="nav-tab" id="tab-reportes" onclick="showSection('reportes')">📊 Reportes</button>
-    <button class="nav-tab" id="tab-incidentes" onclick="showSection('incidentes')">🚨 Incidentes</button>
-    <button class="nav-tab" id="tab-usuarios" onclick="showSection('usuarios')" style="display:none;">👤 Usuarios</button>
-    <button class="nav-tab" id="tab-config" onclick="showSection('config')" style="display:none;">⚙ Configuración</button>
+    <!-- Inicio -->
+    <button class="nav-tab active" id="tab-inicio" onclick="showSection('scan');setActiveTab('tab-inicio')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+      Inicio
+    </button>
+    <!-- Asistencia -->
+    <button class="nav-tab" id="tab-asistencia" onclick="toggleNavDrop('drop-asistencia',this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+      Asistencia
+      <svg class="drop-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+      <div class="nav-dropdown" id="drop-asistencia">
+        <div class="nav-drop-item" onclick="showSection('scan');closeNavDrops()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>Escanear QR</div>
+        <div class="nav-drop-item" onclick="showSection('registro');closeNavDrops()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Registro del día</div>
+        <div class="nav-drop-item" onclick="showSection('reportes');closeNavDrops()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>Reportes</div>
+      </div>
+    </button>
+    <!-- Aula -->
+    <button class="nav-tab" id="tab-aula" onclick="toggleNavDrop('drop-aula',this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+      Aula
+      <svg class="drop-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+      <div class="nav-dropdown" id="drop-aula">
+        <div class="nav-drop-item" id="tab-alumnos" onclick="showSection('alumnos');closeNavDrops()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>Alumnos</div>
+        <div class="nav-drop-item" id="tab-usuarios" onclick="showSection('usuarios');closeNavDrops()" style="display:none;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Usuarios</div>
+        <div class="nav-drop-sep"></div>
+        <div class="nav-drop-item" onclick="showSection('incidentes');closeNavDrops()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>Incidentes</div>
+      </div>
+    </button>
+    <!-- Comunicación -->
+    <button class="nav-tab" id="tab-comunicacion" onclick="toggleNavDrop('drop-comunicacion',this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      Comunicación
+      <svg class="drop-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+      <div class="nav-dropdown" id="drop-comunicacion">
+        <div class="nav-drop-item" style="opacity:0.45;cursor:not-allowed;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Mensajería <span style="font-size:9px;color:#C9A84C;margin-left:4px;">Próx.</span></div>
+        <div class="nav-drop-item" style="opacity:0.45;cursor:not-allowed;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Agenda <span style="font-size:9px;color:#C9A84C;margin-left:4px;">Próx.</span></div>
+        <div class="nav-drop-item" style="opacity:0.45;cursor:not-allowed;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/></svg>Comunicados <span style="font-size:9px;color:#C9A84C;margin-left:4px;">Próx.</span></div>
+      </div>
+    </button>
+    <!-- Configuración -->
+    <button class="nav-tab" id="tab-config" onclick="toggleNavDrop('drop-config',this)" style="display:none;">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4"/></svg>
+      Configuración
+      <svg class="drop-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+      <div class="nav-dropdown" id="drop-config">
+        <div class="nav-drop-item" onclick="showSection('config');closeNavDrops()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/></svg>General</div>
+      </div>
+    </button>
+    <!-- Tabs ocultos para compatibilidad con aplicarPermisos -->
+    <button id="tab-scan" style="display:none;"></button>
+    <button id="tab-registro" style="display:none;"></button>
+    <button id="tab-reportes" style="display:none;"></button>
+    <button id="tab-incidentes" style="display:none;"></button>
   </nav>
 </header>
 
@@ -3244,6 +3327,33 @@ const DB = {
 // ============================================================
 // NAVIGATION
 // ============================================================
+// ── Funciones del nuevo menú con dropdowns ──
+function toggleNavDrop(id, btn) {
+  const drop = document.getElementById(id);
+  const isOpen = drop.classList.contains('open');
+  closeNavDrops();
+  if(!isOpen) {
+    drop.classList.add('open');
+    btn.classList.add('active');
+  }
+}
+function closeNavDrops() {
+  document.querySelectorAll('.nav-dropdown').forEach(d => d.classList.remove('open'));
+  document.querySelectorAll('.nav-tab').forEach(t => {
+    if(!t.id || !['tab-inicio'].includes(t.id)) t.classList.remove('active');
+  });
+}
+function setActiveTab(id) {
+  closeNavDrops();
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  const el = document.getElementById(id);
+  if(el) el.classList.add('active');
+}
+// Cerrar dropdowns al click fuera
+document.addEventListener('click', function(e) {
+  if(!e.target.closest('.nav-tab')) closeNavDrops();
+});
+
 function showSection(id) {
   showSectionDirect(id);
   // mark clicked tab active
