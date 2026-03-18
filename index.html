@@ -3099,7 +3099,10 @@ auth.onAuthStateChanged(async user => {
       doc = await db.collection('usuarios').doc(user.uid).get();
     } catch(e) {
       console.error('Firestore error:', e);
-      document.getElementById('login-screen').style.display = 'flex';
+      var _ldFE = document.getElementById('app-loading');
+      if(_ldFE) _ldFE.style.display = 'none';
+      var _lsFE = document.getElementById('login-screen');
+      if(_lsFE) { _lsFE.style.display = 'flex'; _lsFE.style.zIndex = '10005'; startBanner(); }
       document.getElementById('login-loading').style.display = 'none';
       document.getElementById('btn-login').disabled = false;
       const errEl = document.getElementById('login-error');
@@ -3115,6 +3118,11 @@ auth.onAuthStateChanged(async user => {
       errEl.style.display = 'block';
       document.getElementById('login-loading').style.display = 'none';
       document.getElementById('btn-login').disabled = false;
+      // Mostrar login explícitamente
+      var _lsND = document.getElementById('login-screen');
+      if(_lsND) { _lsND.style.display = 'flex'; _lsND.style.zIndex = '10005'; startBanner(); }
+      var _ldND = document.getElementById('app-loading');
+      if(_ldND) _ldND.style.display = 'none';
       return;
     }
     currentUser = user;
@@ -3393,10 +3401,19 @@ document.addEventListener('DOMContentLoaded', function() {
   } else {
     // Splash ya se mostró antes y no hay sesión marcada
     // NO mostrar login todavía — esperar a que Firebase onAuthStateChanged responda
-    // Firebase llamará al callback en ~200-500ms y ahí se decide
     var splash = document.getElementById('splash-screen');
     if(splash) splash.style.display = 'none';
-    // login permanece oculto hasta que Firebase confirme que no hay sesión
+    // Timeout de seguridad: si Firebase no responde en 3s, mostrar login
+    setTimeout(function() {
+      if(!_firebaseReady) {
+        var _lsTO = document.getElementById('login-screen');
+        var _ldTO = document.getElementById('app-loading');
+        if(_ldTO) _ldTO.style.display = 'none';
+        if(_lsTO && _lsTO.style.display === 'none') {
+          _lsTO.style.display = 'flex'; _lsTO.style.zIndex = '10005'; startBanner();
+        }
+      }
+    }, 3000);
   }
 });
 
