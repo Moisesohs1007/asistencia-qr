@@ -1319,6 +1319,271 @@
     .logo { font-size: 1.1rem; }
     .page-title { font-size: 1.4rem; }
   }
+
+  /* ===== SIDEBAR MÓVIL ESTILO SIEWEB ===== */
+  @media(max-width:700px){
+    /* Ocultar elementos de escritorio */
+    header nav.nav-tabs { display: none !important; }
+    .bottom-nav { display: none !important; }
+
+    /* Empujar contenido principal */
+    #app-main {
+      margin-left: 52px !important;
+      transition: margin-left 0.3s ease;
+    }
+    #app-main.sidebar-open {
+      margin-left: 240px !important;
+    }
+
+    /* Header: solo mostrar hamburger + año + avatar */
+    header {
+      position: fixed !important;
+      top: 0; left: 52px; right: 0;
+      height: 48px !important;
+      padding: 0 14px !important;
+      z-index: 601 !important;
+      transition: left 0.3s ease;
+    }
+    header.sidebar-open {
+      left: 240px !important;
+    }
+    #app-main {
+      padding-top: 48px;
+    }
+
+    /* Sidebar colapsado */
+    #mobile-sidebar {
+      position: fixed;
+      top: 0; left: 0; bottom: 0;
+      width: 52px;
+      background: #0D1A3A;
+      z-index: 700;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      transition: width 0.3s cubic-bezier(0.4,0,0.2,1);
+      box-shadow: 2px 0 12px rgba(0,0,0,0.3);
+    }
+    #mobile-sidebar.expanded {
+      width: 240px;
+    }
+
+    /* Hamburger top */
+    #sb-hamburger {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 52px;
+      height: 48px;
+      flex-shrink: 0;
+      cursor: pointer;
+      color: rgba(255,255,255,0.8);
+      transition: color 0.2s;
+    }
+    #sb-hamburger:hover { color: #C9A84C; }
+    #sb-hamburger svg { width: 20px; height: 20px; flex-shrink: 0; }
+
+    /* Logo header dentro del sidebar (visible al expandir) */
+    #sb-logo-block {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 0 12px 0 0;
+      height: 48px;
+      flex-shrink: 0;
+      overflow: hidden;
+      opacity: 0;
+      transition: opacity 0.2s 0.05s;
+      white-space: nowrap;
+      min-width: 0;
+    }
+    #mobile-sidebar.expanded #sb-logo-block { opacity: 1; }
+
+    #sb-logo-block img {
+      width: 28px; height: 28px;
+      object-fit: contain;
+      flex-shrink: 0;
+    }
+    #sb-logo-text {
+      font-size: 0.65rem;
+      font-weight: 700;
+      color: #fff;
+      line-height: 1.2;
+      max-width: 150px;
+    }
+
+    /* Header row (hamburger + logo) */
+    #sb-header-row {
+      display: flex;
+      align-items: center;
+      border-bottom: 0.5px solid rgba(255,255,255,0.1);
+      flex-shrink: 0;
+    }
+
+    /* Info del usuario */
+    #sb-user-block {
+      padding: 12px 8px 10px;
+      border-bottom: 0.5px solid rgba(255,255,255,0.1);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-shrink: 0;
+      overflow: hidden;
+      min-height: 60px;
+    }
+    #sb-avatar {
+      width: 32px; height: 32px;
+      border-radius: 50%;
+      background: #7B1535;
+      border: 1.5px solid rgba(255,255,255,0.2);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px; font-weight: 700; color: #fff;
+      flex-shrink: 0;
+    }
+    #sb-user-info {
+      overflow: hidden;
+      opacity: 0;
+      transition: opacity 0.2s 0.05s;
+      white-space: nowrap;
+    }
+    #mobile-sidebar.expanded #sb-user-info { opacity: 1; }
+    #sb-user-name { font-size: 0.72rem; font-weight: 600; color: #fff; }
+    #sb-user-rol  { font-size: 0.62rem; color: rgba(255,255,255,0.5); margin-top: 1px; }
+
+    /* Items del menú */
+    #sb-menu {
+      flex: 1;
+      overflow-y: auto;
+      overflow-x: hidden;
+      padding: 6px 0;
+    }
+    #sb-menu::-webkit-scrollbar { display: none; }
+
+    .sb-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 0 14px;
+      height: 44px;
+      cursor: pointer;
+      color: rgba(255,255,255,0.65);
+      font-size: 0.82rem;
+      font-weight: 500;
+      transition: background 0.15s, color 0.15s;
+      white-space: nowrap;
+      position: relative;
+      border-left: 3px solid transparent;
+    }
+    .sb-item:hover {
+      background: rgba(255,255,255,0.06);
+      color: #fff;
+    }
+    .sb-item.active {
+      background: rgba(201,168,76,0.12);
+      color: #C9A84C;
+      border-left-color: #C9A84C;
+    }
+    .sb-item svg {
+      width: 18px; height: 18px;
+      flex-shrink: 0;
+      opacity: 0.8;
+    }
+    .sb-item.active svg { opacity: 1; }
+    .sb-item-label {
+      opacity: 0;
+      transition: opacity 0.15s 0.05s;
+      flex: 1;
+    }
+    #mobile-sidebar.expanded .sb-item-label { opacity: 1; }
+
+    .sb-sub-arrow {
+      opacity: 0;
+      transition: opacity 0.15s, transform 0.2s;
+      flex-shrink: 0;
+    }
+    #mobile-sidebar.expanded .sb-sub-arrow { opacity: 0.5; }
+    .sb-item.sb-open .sb-sub-arrow { transform: rotate(180deg); opacity: 0.8; }
+
+    /* Subitems */
+    .sb-subitems {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.25s ease;
+    }
+    .sb-subitems.open { max-height: 300px; }
+
+    .sb-subitem {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 0 14px 0 48px;
+      height: 40px;
+      cursor: pointer;
+      color: rgba(255,255,255,0.55);
+      font-size: 0.78rem;
+      transition: background 0.15s, color 0.15s;
+      white-space: nowrap;
+    }
+    .sb-subitem:hover {
+      background: rgba(255,255,255,0.05);
+      color: rgba(255,255,255,0.9);
+    }
+    .sb-subitem.active {
+      color: #C9A84C;
+      background: rgba(201,168,76,0.08);
+    }
+    .sb-subitem svg {
+      width: 14px; height: 14px;
+      flex-shrink: 0;
+      opacity: 0.7;
+    }
+    .sb-subitem-label {
+      opacity: 0;
+      transition: opacity 0.15s 0.05s;
+    }
+    #mobile-sidebar.expanded .sb-subitem-label { opacity: 1; }
+
+    /* Separador */
+    .sb-sep {
+      height: 0.5px;
+      background: rgba(255,255,255,0.08);
+      margin: 4px 0;
+    }
+
+    /* Bottom del sidebar: logout */
+    #sb-bottom {
+      border-top: 0.5px solid rgba(255,255,255,0.1);
+      padding: 4px 0;
+    }
+    .sb-item.sb-logout { color: rgba(231,76,60,0.75); }
+    .sb-item.sb-logout:hover { color: #e74c3c; }
+
+    /* Overlay cuando está expandido */
+    #sb-overlay {
+      display: none;
+      position: fixed;
+      inset: 0 0 0 240px;
+      z-index: 699;
+      background: transparent;
+    }
+    #sb-overlay.visible { display: block; }
+  }
+  @media(min-width:701px){
+    #mobile-sidebar { display: none !important; }
+    #sb-overlay { display: none !important; }
+  }
+
+  @media(max-width:700px){
+    /* Main debe arrancar debajo del header fixed */
+    #app-main {
+      padding-top: 56px !important;
+    }
+    /* El sidebar cubre toda la altura */
+    #mobile-sidebar {
+      height: 100dvh;
+      height: 100vh;
+    }
+  }
 </style>
 </head>
 <body>
@@ -1531,6 +1796,103 @@
   </div>
 </div>
 
+
+<!-- ===== SIDEBAR MÓVIL ===== -->
+<div id="mobile-sidebar">
+  <!-- Header row: hamburger + logo -->
+  <div id="sb-header-row">
+    <div id="sb-hamburger" onclick="toggleSidebar()" title="Menú">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+        <line x1="3" y1="6" x2="21" y2="6"/>
+        <line x1="3" y1="12" x2="21" y2="12"/>
+        <line x1="3" y1="18" x2="21" y2="18"/>
+      </svg>
+    </div>
+    <div id="sb-logo-block">
+      <img id="sb-logo-img" src="" alt="Logo" onerror="this.style.display='none'">
+      <div id="sb-logo-text">I.E.P.<br>Santo Domingo<br>de Guzmán</div>
+    </div>
+  </div>
+
+  <!-- Info usuario -->
+  <div id="sb-user-block">
+    <div id="sb-avatar" title="Mi cuenta" onclick="if(typeof toggleUserMenu==='function')toggleUserMenu()">
+      <span id="sb-avatar-initials">?</span>
+    </div>
+    <div id="sb-user-info">
+      <div id="sb-user-name">—</div>
+      <div id="sb-user-rol">—</div>
+    </div>
+  </div>
+
+  <!-- Menú principal -->
+  <div id="sb-menu">
+    <!-- Inicio -->
+    <div class="sb-item active" id="sbi-inicio" onclick="showSection('inicio');setSidebarActive('inicio');closeSidebarIfNarrow()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+      <span class="sb-item-label">Inicio</span>
+    </div>
+
+    <!-- Asistencia -->
+    <div class="sb-item" id="sbi-asistencia" onclick="toggleSbSub('asistencia')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+      <span class="sb-item-label">Asistencia</span>
+      <svg class="sb-sub-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:14px;height:14px;"><polyline points="6 9 12 15 18 9"/></svg>
+    </div>
+    <div class="sb-subitems" id="sbsub-asistencia">
+      <div class="sb-subitem" id="sbsi-scan" onclick="showSection('scan');setSidebarActive('scan');closeSidebarIfNarrow()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+        <span class="sb-subitem-label">Escanear QR</span>
+      </div>
+      <div class="sb-subitem" id="sbsi-registro" onclick="showSection('registro');setSidebarActive('registro');closeSidebarIfNarrow()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        <span class="sb-subitem-label">Registro del día</span>
+      </div>
+      <div class="sb-subitem" id="sbsi-reportes" onclick="showSection('reportes');setSidebarActive('reportes');closeSidebarIfNarrow()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        <span class="sb-subitem-label">Reportes</span>
+      </div>
+    </div>
+
+    <!-- Aula -->
+    <div class="sb-item" id="sbi-aula" onclick="toggleSbSub('aula')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+      <span class="sb-item-label">Aula</span>
+      <svg class="sb-sub-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:14px;height:14px;"><polyline points="6 9 12 15 18 9"/></svg>
+    </div>
+    <div class="sb-subitems" id="sbsub-aula">
+      <div class="sb-subitem" id="sbsi-alumnos" onclick="showSection('alumnos');setSidebarActive('alumnos');closeSidebarIfNarrow()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+        <span class="sb-subitem-label">Alumnos</span>
+      </div>
+      <div class="sb-subitem" id="sbsi-usuarios" style="display:none;" onclick="showSection('usuarios');setSidebarActive('usuarios');closeSidebarIfNarrow()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        <span class="sb-subitem-label">Usuarios</span>
+      </div>
+      <div class="sb-subitem" id="sbsi-incidentes" onclick="showSection('incidentes');setSidebarActive('incidentes');closeSidebarIfNarrow()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>
+        <span class="sb-subitem-label">Incidentes</span>
+      </div>
+    </div>
+
+    <div class="sb-sep"></div>
+
+    <!-- Config (solo admin) -->
+    <div class="sb-item" id="sbi-config" style="display:none;" onclick="showSection('config');setSidebarActive('config');closeSidebarIfNarrow()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.68 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      <span class="sb-item-label">Configuración</span>
+    </div>
+  </div>
+
+  <!-- Bottom: cerrar sesión -->
+  <div id="sb-bottom">
+    <div class="sb-item sb-logout" onclick="doLogout()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      <span class="sb-item-label">Cerrar sesión</span>
+    </div>
+  </div>
+</div>
+<div id="sb-overlay" onclick="closeSidebar()"></div>
 <header id="app-header" style="display:none;">
   <!-- IZQUIERDA: logo + menú -->
   <div style="display:flex;align-items:center;gap:0;flex:1;min-width:0;">
@@ -3119,6 +3481,10 @@ auth.onAuthStateChanged(async user => {
     // Ocultar login, mostrar app
     document.getElementById('login-screen').style.display = 'none';
     document.getElementById('app-header').style.display = '';
+    // Init sidebar móvil
+    var _sbEl = document.getElementById('mobile-sidebar');
+    if(_sbEl) _sbEl.style.display = 'flex';
+    setTimeout(function(){ if(typeof initSidebarUser==='function') initSidebarUser(); }, 300);
     const navEl = document.getElementById('nav-tabs');
     if(navEl) navEl.style.display = '';
     document.getElementById('app-main').style.display = '';
@@ -3243,10 +3609,14 @@ function aplicarPermisos(rol) {
     setActiveTab('tab-inicio');
     cargarDashboardInicio();
   }
+
+  // Actualizar sidebar móvil
+  if(typeof applySidebarPermisos==='function') applySidebarPermisos();
 }
 
 function showSectionDirect(id) {
   currentSection = id;
+  if(typeof setSidebarActive==='function' && window.innerWidth<=700) setSidebarActive(id);
   document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
   document.getElementById('scan-action-bar').style.display = 'none';
   document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
@@ -3351,6 +3721,8 @@ function iniciarSplash() {
 
 // Mostrar login (helper usado en varios lugares)
 function mostrarLogin() {
+  var _sbEl2 = document.getElementById('mobile-sidebar');
+  if(_sbEl2) _sbEl2.style.display = 'none';
   var _sp = document.getElementById('splash-screen');
   var _ls = document.getElementById('login-screen');
   if(_sp) _sp.style.display = 'none';
@@ -3362,6 +3734,8 @@ document.addEventListener('DOMContentLoaded', function() {
   ['app-header','app-main','nav-tabs','bottom-nav'].forEach(function(id) {
     var el = document.getElementById(id); if(el) el.style.display = 'none';
   });
+  var _sb = document.getElementById('mobile-sidebar');
+  if(_sb) _sb.style.display = 'none';
 
   var forzarSplash = new URLSearchParams(window.location.search).get('splash') === '1';
   if(forzarSplash) {
@@ -8168,6 +8542,158 @@ function closeMobileMenu() {
   if(panel) panel.style.display = 'none';
   if(overlay) overlay.style.display = 'none';
 }
+
+// ===== SIDEBAR MÓVIL =====
+var _sbExpanded = false;
+
+function toggleSidebar() {
+  _sbExpanded ? closeSidebar() : openSidebar();
+}
+
+function openSidebar() {
+  var sb = document.getElementById('mobile-sidebar');
+  var ov = document.getElementById('sb-overlay');
+  var hdr = document.getElementById('app-header');
+  var main = document.getElementById('app-main');
+  if(sb) { sb.classList.add('expanded'); }
+  if(ov) { ov.classList.add('visible'); }
+  if(hdr) { hdr.classList.add('sidebar-open'); }
+  if(main) { main.classList.add('sidebar-open'); }
+  _sbExpanded = true;
+}
+
+function closeSidebar() {
+  var sb = document.getElementById('mobile-sidebar');
+  var ov = document.getElementById('sb-overlay');
+  var hdr = document.getElementById('app-header');
+  var main = document.getElementById('app-main');
+  if(sb) { sb.classList.remove('expanded'); }
+  if(ov) { ov.classList.remove('visible'); }
+  if(hdr) { hdr.classList.remove('sidebar-open'); }
+  if(main) { main.classList.remove('sidebar-open'); }
+  _sbExpanded = false;
+}
+
+function closeSidebarIfNarrow() {
+  if(window.innerWidth <= 700) closeSidebar();
+}
+
+function toggleSbSub(id) {
+  // Solo funciona cuando el sidebar está expandido
+  if(!_sbExpanded) { openSidebar(); setTimeout(function(){ toggleSbSub(id); }, 320); return; }
+  var sub = document.getElementById('sbsub-' + id);
+  var item = document.getElementById('sbi-' + id);
+  if(!sub) return;
+  var isOpen = sub.classList.contains('open');
+  // Cerrar todos los subitems
+  document.querySelectorAll('.sb-subitems').forEach(function(el){ el.classList.remove('open'); });
+  document.querySelectorAll('.sb-item').forEach(function(el){ el.classList.remove('sb-open'); });
+  if(!isOpen) {
+    sub.classList.add('open');
+    if(item) item.classList.add('sb-open');
+  }
+}
+
+function setSidebarActive(section) {
+  // Quitar activos
+  document.querySelectorAll('.sb-item, .sb-subitem').forEach(function(el){
+    el.classList.remove('active');
+  });
+  // Activar el item o subitem correspondiente
+  var el = document.getElementById('sbi-' + section) || document.getElementById('sbsi-' + section);
+  if(el) { el.classList.add('active'); }
+  // Si es subitem, activar también el padre
+  var parents = { 'scan':'asistencia','registro':'asistencia','reportes':'asistencia',
+                  'alumnos':'aula','usuarios':'aula','incidentes':'aula','config':null };
+  if(parents[section]) {
+    var parentEl = document.getElementById('sbi-' + parents[section]);
+    if(parentEl) parentEl.classList.add('active');
+  }
+}
+
+function initSidebarUser() {
+  // Logo
+  var logoImg = document.getElementById('sb-logo-img');
+  if(logoImg && typeof COLEGIO_LOGO !== 'undefined' && COLEGIO_LOGO) {
+    logoImg.src = 'data:image/png;base64,' + COLEGIO_LOGO;
+  } else if(logoImg && typeof LOGO_B64 !== 'undefined' && LOGO_B64) {
+    logoImg.src = 'data:image/png;base64,' + LOGO_B64;
+  }
+
+  // Usuario (esperar a que currentUser esté disponible)
+  var tryUser = function() {
+    var nameEl = document.getElementById('sb-user-name');
+    var rolEl  = document.getElementById('sb-user-rol');
+    var initEl = document.getElementById('sb-avatar-initials');
+    var avatarEl = document.getElementById('sb-avatar');
+
+    if(!nameEl) return;
+
+    // Obtener nombre/rol del DOM del header (ya renderizado)
+    var headerName = document.getElementById('menu-user-name');
+    var headerRol  = document.getElementById('menu-user-rol');
+    var headerInit = document.getElementById('avatar-initials');
+    var headerAvatarColor = document.getElementById('avatar-btn');
+
+    if(headerName && headerName.textContent.trim()) {
+      nameEl.textContent = headerName.textContent;
+    }
+    if(headerRol && headerRol.textContent.trim()) {
+      rolEl.textContent  = headerRol.textContent;
+    }
+    if(headerInit && headerInit.textContent.trim() && headerInit.textContent !== '?') {
+      initEl.textContent = headerInit.textContent;
+    }
+    // Color del avatar: tomar el bg del header avatar
+    if(headerAvatarColor) {
+      var bg = headerAvatarColor.style.background;
+      if(bg && avatarEl) avatarEl.style.background = bg;
+    }
+    // Si aún no hay nombre, reintentar
+    if(!headerName || !headerName.textContent.trim()) {
+      setTimeout(tryUser, 800);
+    }
+  };
+  setTimeout(tryUser, 1200);
+
+  // Aplicar permisos de visibilidad
+  applySidebarPermisos();
+}
+
+function applySidebarPermisos() {
+  var rol = (typeof currentRol !== 'undefined') ? currentRol : 'profesor';
+  var sbItems = {
+    admin:    ['inicio','asistencia','aula','config'],
+    director: ['inicio','asistencia'],
+    profesor: ['inicio','aula'],
+    portero:  ['inicio','asistencia'],
+  };
+  var allowed = sbItems[rol] || ['inicio','asistencia'];
+
+  // Ocultar items no permitidos
+  ['asistencia','aula','config'].forEach(function(id) {
+    var el = document.getElementById('sbi-' + id);
+    var sub = document.getElementById('sbsub-' + id);
+    if(el) el.style.display = allowed.includes(id) ? 'flex' : 'none';
+    if(sub) sub.style.display = allowed.includes(id) ? '' : 'none';
+  });
+
+  // Usuarios solo para admin
+  var usuariosEl = document.getElementById('sbsi-usuarios');
+  if(usuariosEl) usuariosEl.style.display = (rol === 'admin') ? 'flex' : 'none';
+
+  // Config solo admin/director
+  var configEl = document.getElementById('sbi-config');
+  if(configEl) configEl.style.display = (rol === 'admin' || rol === 'director') ? 'flex' : 'none';
+}
+
+// Inicializar sidebar cuando la app carga
+document.addEventListener('DOMContentLoaded', function() {
+  // Mostrar sidebar solo en móvil cuando la app esté activa
+  var sb = document.getElementById('mobile-sidebar');
+  if(sb) sb.style.display = 'flex'; // siempre visible en móvil (CSS lo oculta en desktop)
+});
+
 
 function updateBottomNavActive(id) {
   document.querySelectorAll('.bnav-btn').forEach(b => b.classList.remove('active'));
