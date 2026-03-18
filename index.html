@@ -1138,12 +1138,10 @@
   
     50%      { border-color: #38bdf8; box-shadow: 0 0 0 9999px rgba(0,0,0,0.4), 0 0 28px rgba(129,140,248,0.6); }
   }
-  @media(max-width:700px){
-    
-  }
   #qr-shaded-region div[style*="border-left"],
   #qr-shaded-region div[style*="border-right"],
-  #qr-shaded-region div[style*="border-top"],
+  #qr-shaded-region div[style*="border-top"] { display: none !important; }
+
   /* BOTTOM NAV - Mobile */
   .bottom-nav {
     display: none;
