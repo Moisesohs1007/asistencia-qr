@@ -62,23 +62,25 @@
 <div id="apo-app" style="display:block;">
 
 <!-- HEADER -->
-<header id="apo-header" style="background:#0D1A3A;padding:0 20px;height:52px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:600;border-bottom:0.5px solid rgba(255,255,255,0.1);">
-  <div style="display:flex;align-items:center;gap:10px;">
+<header id="apo-header" style="background:#0D1A3A;padding:0 20px;height:52px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:600;border-bottom:0.5px solid rgba(255,255,255,0.1);overflow:visible;">
+  <!-- IZQUIERDA: foto alumno + nombre -->
+  <div style="display:flex;align-items:center;gap:10px;flex:1;min-width:0;">
     <div style="width:32px;height:32px;border-radius:50%;background:#334155;overflow:hidden;border:2px solid rgba(255,255,255,0.15);flex-shrink:0;">
       <img id="apo-foto-header" src="" style="width:100%;height:100%;object-fit:cover;" onerror="this.style.display='none'">
     </div>
-    <div>
-      <div id="apo-nombre-header" style="font-weight:500;color:#fff;font-size:0.85rem;"></div>
-      <div id="apo-grado-header"  style="color:#B0C4E8;font-size:0.72rem;"></div>
+    <div style="min-width:0;">
+      <div id="apo-nombre-header" style="font-weight:500;color:#fff;font-size:0.85rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></div>
+      <div id="apo-grado-header" style="color:#B0C4E8;font-size:0.72rem;"></div>
     </div>
   </div>
-  <div style="position:relative;display:flex;align-items:center;gap:10px;">
+  <!-- DERECHA: iniciales apoderado + menú -->
+  <div style="display:flex;align-items:center;gap:10px;position:relative;flex-shrink:0;">
     <div id="apo-avatar-btn" onclick="toggleApoMenu()" style="width:30px;height:30px;border-radius:50%;background:#C9A84C;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:10px;font-weight:700;color:#0D1A3A;user-select:none;flex-shrink:0;" title="Mi cuenta">
       <span id="apo-avatar-initials">?</span>
     </div>
     <div id="apo-user-menu" style="display:none;position:absolute;top:42px;right:0;width:220px;background:var(--surface);border:1px solid var(--border);border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,0.4);z-index:1000;overflow:hidden;">
-      <div style="background:#7B1535;padding:14px;text-align:center;">
-        <div style="width:40px;height:40px;border-radius:50%;background:#9B2045;border:2px solid rgba(255,255,255,0.2);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#fff;margin:0 auto 8px;" id="apo-avatar-initials-menu">?</div>
+      <div style="background:#0D1A3A;padding:14px;text-align:center;">
+        <div style="width:40px;height:40px;border-radius:50%;background:#C9A84C;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#0D1A3A;margin:0 auto 8px;" id="apo-avatar-initials-menu">?</div>
         <div style="color:#fff;font-size:12px;font-weight:600;" id="apo-menu-nombre"></div>
         <div style="color:rgba(255,255,255,0.55);font-size:11px;margin-top:2px;">Apoderado</div>
       </div>
@@ -90,51 +92,85 @@
         Cambiar contraseña
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="opacity:0.4"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
       </div>
-      <div onclick="if(!confirm('Cerrar sesion?')) return; try{localStorage.removeItem('asmqr_apo_lastTab');}catch(e){} auth.signOut().then(function(){window.location.href='index.html?splash=1';});" style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;cursor:pointer;font-size:12px;color:var(--danger);" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">
+      <div onclick="if(!confirm('Cerrar sesion?'))return;try{localStorage.removeItem('asmqr_apo_lastTab');}catch(e){}auth.signOut().then(function(){window.location.href='index.html?splash=1';});" style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;cursor:pointer;font-size:12px;color:var(--danger);" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">
         Cerrar sesión
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="opacity:0.6"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
       </div>
     </div>
-    </div>
+  </div>
 </header>
 
-<!-- NAV TABS NUEVO MENÚ -->
-<nav style="background:#0D1A3A;display:flex;align-items:center;overflow:visible;padding:0 6px;border-bottom:0.5px solid rgba(255,255,255,0.08);position:sticky;top:52px;z-index:599;" id="apo-nav-tabs">
-  <button onclick="showTab('resumen')" id="tab-resumen" style="display:flex;align-items:center;gap:5px;padding:9px 12px;border:none;background:transparent;color:#C9A84C;border-bottom:2px solid #C9A84C;font-size:0.82rem;font-weight:500;cursor:pointer;white-space:nowrap;flex-shrink:0;">
-    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>Inicio
+<!-- NAV TABS — igual estructura que index.html -->
+<nav id="apo-nav-tabs" style="background:#0D1A3A;display:flex;align-items:center;overflow:visible;padding:0 6px;border-bottom:0.5px solid rgba(255,255,255,0.08);position:sticky;top:52px;z-index:599;">
+  <style>
+    .apo-nav-tab { display:flex;align-items:center;gap:6px;padding:10px 13px;border:none;background:transparent;color:rgba(255,255,255,0.6);font-family:inherit;font-size:0.82rem;font-weight:500;cursor:pointer;white-space:nowrap;flex-shrink:0;border-bottom:2px solid transparent;position:relative; }
+    .apo-nav-tab svg { width:14px;height:14px;flex-shrink:0; }
+    .apo-nav-tab .drop-arrow { width:10px;height:10px;opacity:0.5; }
+    .apo-nav-tab.active { color:#C9A84C;border-bottom-color:#C9A84C; }
+    .apo-nav-tab:hover { color:#fff;background:rgba(255,255,255,0.06); }
+    .apo-nav-dropdown { display:none;position:absolute;top:calc(100% + 2px);left:0;background:#0D1A3A;border:0.5px solid rgba(255,255,255,0.2);border-radius:10px;min-width:180px;padding:6px;z-index:9999;box-shadow:0 8px 24px rgba(0,0,0,0.5); }
+    .apo-nav-dropdown.open { display:block; }
+    .apo-drop-item { display:flex;align-items:center;gap:9px;padding:9px 11px;border-radius:7px;cursor:pointer;color:rgba(255,255,255,0.7);font-size:0.82rem;font-family:inherit; }
+    .apo-drop-item:hover { background:rgba(255,255,255,0.09);color:#fff; }
+    .apo-drop-item.active { color:#C9A84C;background:rgba(201,168,76,0.1); }
+    .apo-drop-item svg { width:14px;height:14px;opacity:0.65;flex-shrink:0; }
+  </style>
+
+  <button class="apo-nav-tab active" id="apo-tab-inicio" onclick="showTab('resumen');setApoTabActive('inicio')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+    Inicio
   </button>
-  <button id="btn-asistencia" onclick="toggleApoSubMenu('sub-asistencia',this)" style="display:flex;align-items:center;gap:5px;padding:9px 12px;border:none;background:transparent;color:rgba(255,255,255,0.6);border-bottom:2px solid transparent;font-size:0.82rem;font-weight:500;cursor:pointer;white-space:nowrap;flex-shrink:0;position:relative;">
-    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>Asistencia
-    <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
-    <div id="sub-asistencia" style="display:none;position:absolute;top:100%;left:0;background:#0D1A3A;border:0.5px solid rgba(255,255,255,0.2);border-radius:10px;min-width:160px;padding:6px;z-index:9999;box-shadow:0 8px 24px rgba(0,0,0,0.5);">
-      <div id="drop-resumen" onclick="event.stopPropagation();showTab('resumen');closeApoDrops()" style="display:flex;align-items:center;gap:8px;padding:9px 11px;border-radius:7px;cursor:pointer;color:rgba(255,255,255,0.7);font-size:0.82rem;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/></svg>Resumen</div>
-      <div id="drop-historial" onclick="event.stopPropagation();showTab('historial');closeApoDrops()" style="display:flex;align-items:center;gap:8px;padding:9px 11px;border-radius:7px;cursor:pointer;color:rgba(255,255,255,0.7);font-size:0.82rem;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Historial</div>
+
+  <button class="apo-nav-tab" id="apo-tab-asistencia" onmouseenter="openApoDropdown('apo-drop-asistencia',this)" onclick="openApoDropdown('apo-drop-asistencia',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+    Asistencia
+    <svg class="drop-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+    <div class="apo-nav-dropdown" id="apo-drop-asistencia">
+      <div class="apo-drop-item" id="apo-drop-resumen" onclick="event.stopPropagation();showTab('resumen');setApoTabActive('asistencia','resumen')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/></svg>Resumen
+      </div>
+      <div class="apo-drop-item" id="apo-drop-historial" onclick="event.stopPropagation();showTab('historial');setApoTabActive('asistencia','historial')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Historial
+      </div>
     </div>
   </button>
-  <button id="btn-academico" onclick="toggleApoSubMenu('sub-academico',this)" style="display:flex;align-items:center;gap:5px;padding:9px 12px;border:none;background:transparent;color:rgba(255,255,255,0.6);border-bottom:2px solid transparent;font-size:0.82rem;font-weight:500;cursor:pointer;white-space:nowrap;flex-shrink:0;position:relative;">
-    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg>Académico
-    <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
-    <div id="sub-academico" style="display:none;position:absolute;top:100%;left:0;background:#0D1A3A;border:0.5px solid rgba(255,255,255,0.2);border-radius:10px;min-width:160px;padding:6px;z-index:9999;box-shadow:0 8px 24px rgba(0,0,0,0.5);">
-      <div id="drop-incidentes" onclick="event.stopPropagation();showTab('incidentes');closeApoDrops()" style="display:flex;align-items:center;gap:8px;padding:9px 11px;border-radius:7px;cursor:pointer;color:rgba(255,255,255,0.7);font-size:0.82rem;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>Incidencias</div>
+
+  <button class="apo-nav-tab" id="apo-tab-academico" onmouseenter="openApoDropdown('apo-drop-academico',this)" onclick="openApoDropdown('apo-drop-academico',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg>
+    Académico
+    <svg class="drop-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+    <div class="apo-nav-dropdown" id="apo-drop-academico">
+      <div class="apo-drop-item" id="apo-drop-incidentes" onclick="event.stopPropagation();showTab('incidentes');setApoTabActive('academico','incidentes')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>Incidencias
+      </div>
     </div>
   </button>
-  <button id="btn-comunicacion" onclick="toggleApoSubMenu('sub-comunicacion',this)" style="display:flex;align-items:center;gap:5px;padding:9px 12px;border:none;background:transparent;color:rgba(255,255,255,0.6);border-bottom:2px solid transparent;font-size:0.82rem;font-weight:500;cursor:pointer;white-space:nowrap;flex-shrink:0;position:relative;">
-    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Comunicación
-    <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
-    <div id="sub-comunicacion" style="display:none;position:absolute;top:100%;left:0;background:#0D1A3A;border:0.5px solid rgba(255,255,255,0.2);border-radius:10px;min-width:160px;padding:6px;z-index:9999;box-shadow:0 8px 24px rgba(0,0,0,0.5);">
-      <div id="drop-comunicados" onclick="event.stopPropagation();showTab('comunicados');closeApoDrops()" style="display:flex;align-items:center;gap:8px;padding:9px 11px;border-radius:7px;cursor:pointer;color:rgba(255,255,255,0.7);font-size:0.82rem;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/></svg>Comunicados</div>
+
+  <button class="apo-nav-tab" id="apo-tab-comunicacion" onmouseenter="openApoDropdown('apo-drop-comunicacion',this)" onclick="openApoDropdown('apo-drop-comunicacion',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+    Comunicación
+    <svg class="drop-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+    <div class="apo-nav-dropdown" id="apo-drop-comunicacion">
+      <div class="apo-drop-item" id="apo-drop-comunicados" onclick="event.stopPropagation();showTab('comunicados');setApoTabActive('comunicacion','comunicados')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/></svg>Comunicados
+      </div>
     </div>
   </button>
-  <button id="btn-cuenta" onclick="toggleApoSubMenu('sub-cuenta',this)" style="display:flex;align-items:center;gap:5px;padding:9px 12px;border:none;background:transparent;color:rgba(255,255,255,0.6);border-bottom:2px solid transparent;font-size:0.82rem;font-weight:500;cursor:pointer;white-space:nowrap;flex-shrink:0;position:relative;">
-    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>Mi cuenta
-    <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
-    <div id="sub-cuenta" style="display:none;position:absolute;top:100%;left:0;background:#0D1A3A;border:0.5px solid rgba(255,255,255,0.2);border-radius:10px;min-width:160px;padding:6px;z-index:9999;box-shadow:0 8px 24px rgba(0,0,0,0.5);">
-      <div id="drop-carnet" onclick="event.stopPropagation();showTab('carnet');closeApoDrops()" style="display:flex;align-items:center;gap:8px;padding:9px 11px;border-radius:7px;cursor:pointer;color:rgba(255,255,255,0.7);font-size:0.82rem;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>Carnet</div>
-      <div id="drop-contacto" onclick="event.stopPropagation();showTab('contacto');closeApoDrops()" style="display:flex;align-items:center;gap:8px;padding:9px 11px;border-radius:7px;cursor:pointer;color:rgba(255,255,255,0.7);font-size:0.82rem;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13"/></svg>Contacto</div>
+
+  <button class="apo-nav-tab" id="apo-tab-cuenta" onmouseenter="openApoDropdown('apo-drop-cuenta',this)" onclick="openApoDropdown('apo-drop-cuenta',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+    Mi cuenta
+    <svg class="drop-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+    <div class="apo-nav-dropdown" id="apo-drop-cuenta">
+      <div class="apo-drop-item" id="apo-drop-carnet" onclick="event.stopPropagation();showTab('carnet');setApoTabActive('cuenta','carnet')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>Carnet
+      </div>
+      <div class="apo-drop-item" id="apo-drop-contacto" onclick="event.stopPropagation();showTab('contacto');setApoTabActive('cuenta','contacto')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13"/></svg>Contacto
+      </div>
     </div>
   </button>
 </nav>
-
 
 <!-- CONTENIDO -->
 <div style="max-width:680px;margin:0 auto;padding:16px;">
@@ -641,90 +677,52 @@ function cargarRegistros(mes) {
     });
 }
 
-// ── Menú apoderado con dropdowns ──
-function toggleApoSubMenu(id, btn) {
-  closeApoMenu(); // cerrar user menu si está abierto
+// ── Menú apoderado — igual lógica que index.html ──
+function openApoDropdown(id, btn) {
+  closeApoDropdowns();
   var drop = document.getElementById(id);
-  var isOpen = drop.style.display === 'block';
-  closeApoDrops();
-  if(!isOpen) {
-    drop.style.display = 'block';
-    btn.style.color = '#C9A84C';
-    btn.style.borderBottomColor = '#C9A84C';
+  if(!drop) return;
+  drop.classList.add('open');
+  btn.classList.add('active');
+}
+function closeApoDropdowns() {
+  document.querySelectorAll('.apo-nav-dropdown').forEach(function(d){ d.classList.remove('open'); });
+  document.querySelectorAll('.apo-nav-tab').forEach(function(b){ b.classList.remove('active'); });
+}
+function setApoTabActive(tabId, subId) {
+  closeApoDropdowns();
+  var btn = document.getElementById('apo-tab-' + tabId);
+  if(btn) btn.classList.add('active');
+  // Resaltar subitem
+  document.querySelectorAll('.apo-drop-item').forEach(function(el){ el.classList.remove('active'); });
+  if(subId) {
+    var dropItem = document.getElementById('apo-drop-' + subId);
+    if(dropItem) dropItem.classList.add('active');
   }
 }
-function closeApoDrops() {
-  ['sub-asistencia','sub-academico','sub-comunicacion','sub-cuenta'].forEach(function(id) {
-    var el = document.getElementById(id);
-    if(el) el.style.display = 'none';
-  });
-  document.querySelectorAll('#apo-nav-tabs button').forEach(function(b) {
-    if(b.id !== 'tab-resumen') {
-      b.style.color = 'rgba(255,255,255,0.6)';
-      b.style.borderBottomColor = 'transparent';
-    }
-  });
-}
-document.addEventListener('click', function(e) {
-  if(!e.target.closest('#apo-nav-tabs')) closeApoDrops();
-  var btn = document.getElementById('apo-avatar-btn');
-  var menu = document.getElementById('apo-user-menu');
-  if(btn && menu && !btn.contains(e.target) && !menu.contains(e.target)) {
-    menu.style.display = 'none';
-  }
+
+// Cerrar al salir del nav
+document.addEventListener('DOMContentLoaded', function() {
+  var nav = document.getElementById('apo-nav-tabs');
+  if(nav) nav.addEventListener('mouseleave', function(){ setTimeout(closeApoDropdowns, 80); });
 });
 
-// Mapa de qué pestaña pertenece a qué menú padre
-var _apoMenuMap = {
-  'resumen':      'inicio',
-  'historial':    'asistencia',
-  'incidentes':   'academico',
-  'comunicados':  'comunicacion',
-  'carnet':       'cuenta',
-  'contacto':     'cuenta'
-};
-
-function setApoNavActive(menuId, tabId) {
-  // Resetear todos los botones del nav
-  document.querySelectorAll('#apo-nav-tabs > button').forEach(function(b) {
-    b.style.color = 'rgba(255,255,255,0.6)';
-    b.style.borderBottomColor = 'transparent';
-    b.style.background = 'transparent';
-  });
-  // Resetear todos los drop-items
-  ['resumen','historial','incidentes','comunicados','carnet','contacto'].forEach(function(t) {
-    var el = document.getElementById('drop-'+t);
-    if(el) { el.style.color = 'rgba(255,255,255,0.7)'; el.style.background = 'transparent'; }
-  });
-  // Resaltar el botón padre
-  var map = {
-    'inicio':        'tab-resumen',
-    'asistencia':    'btn-asistencia',
-    'academico':     'btn-academico',
-    'comunicacion':  'btn-comunicacion',
-    'cuenta':        'btn-cuenta'
-  };
-  var btnId = map[menuId];
-  if(btnId) {
-    var btn = document.getElementById(btnId);
-    if(btn) { btn.style.color = '#C9A84C'; btn.style.borderBottomColor = '#C9A84C'; }
-  }
-  // Resaltar el drop-item activo
-  if(tabId && tabId !== 'resumen') {
-    var dropEl = document.getElementById('drop-'+tabId);
-    if(dropEl) { dropEl.style.color = '#C9A84C'; dropEl.style.background = 'rgba(201,168,76,0.1)'; }
-  }
-}
+// Cerrar al click fuera
+document.addEventListener('click', function(e) {
+  if(!e.target.closest('#apo-nav-tabs')) closeApoDropdowns();
+  var btn = document.getElementById('apo-avatar-btn');
+  var menu = document.getElementById('apo-user-menu');
+  if(btn && menu && !btn.contains(e.target) && !menu.contains(e.target)) menu.style.display = 'none';
+});
 
 function showTab(tab) {
   ['resumen','historial','incidentes','carnet','comunicados','contacto'].forEach(function(t) {
     var panel = document.getElementById('panel-'+t);
     if(panel) panel.style.display = t === tab ? 'block' : 'none';
   });
-  // Resaltar menú padre activo y sub-item
-  var menuPadre = _apoMenuMap[tab] || 'inicio';
-  setApoNavActive(menuPadre, tab);
-  closeApoDrops();
+  // Resaltar menú activo
+  var _map = {resumen:'inicio',historial:'asistencia',incidentes:'academico',comunicados:'comunicacion',carnet:'cuenta',contacto:'cuenta'};
+  setApoTabActive(_map[tab]||'inicio', tab);
   try { localStorage.setItem('asmqr_apo_lastTab', tab); } catch(e) {}
   // Si registros aun no cargaron, esperar antes de renderizar
   if((tab === 'resumen' || tab === 'historial') && !_registrosCargados) {
