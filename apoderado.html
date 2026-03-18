@@ -538,8 +538,10 @@ function llenarDatos() {
   document.getElementById('apo-grado-card').textContent    = grado;
   document.getElementById('apo-dni-card').textContent      = 'DNI: ' + alumno.id;
   if(alumno.foto) {
-    document.getElementById('apo-foto-header').src = alumno.foto;
-    document.getElementById('apo-foto-card').src   = alumno.foto;
+    var fotoH = document.getElementById('apo-foto-header');
+    var fotoC = document.getElementById('apo-foto-card');
+    if(fotoH) fotoH.src = alumno.foto;
+    if(fotoC) fotoC.src = alumno.foto;
   }
   poblarMeses();
   // Iniciales del apoderado
@@ -980,7 +982,7 @@ function renderCarnet() {
   getConfigCache().then(function(cfg) {
     document.getElementById('carnet-colegio').textContent = cfg.nombreColegio || 'I.E.P. San Jose Marello';
   }).catch(function(){ document.getElementById('carnet-colegio').textContent='I.E.P. San Jose Marello'; });
-  if(alumno.foto) document.getElementById('carnet-foto').src = alumno.foto;
+  if(alumno.foto) { var cf = document.getElementById('carnet-foto'); if(cf) cf.src = alumno.foto; }
   document.getElementById('carnet-nombre').textContent = alumno.nombres+' '+alumno.apellidos;
   document.getElementById('carnet-grado').textContent  = alumno.grado+' '+alumno.seccion+' - '+alumno.turno;
   document.getElementById('carnet-dni').textContent    = 'DNI: '+alumno.id;
