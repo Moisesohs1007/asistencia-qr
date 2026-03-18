@@ -2007,7 +2007,7 @@
   </div>
 
   <!-- Modal Usuario -->
-  <div class="modal-bg" id="modal-usuario" onclick="closeModal('modal-usuario')">
+  <div class="modal-bg" id="modal-usuario">
     <div class="modal" onclick="event.stopPropagation()" style="max-width:440px;">
       <div class="modal-header">
         <div class="modal-title" id="modal-usuario-title">Nuevo Usuario</div>
@@ -2138,7 +2138,7 @@
   </div>
 
   <!-- ===== MODAL INCIDENTE ===== -->
-  <div class="modal-bg" id="modal-incidente" onclick="if(event.target===this)closeModal('modal-incidente')">
+  <div class="modal-bg" id="modal-incidente">
     <div class="modal" onclick="event.stopPropagation()" style="max-width:560px;">
       <div class="modal-header">
         <div class="modal-title">🚨 Nuevo Reporte de Incidente</div>
@@ -2305,7 +2305,7 @@
 </main>
 
 <!-- MODAL ALUMNO -->
-<div class="modal-bg" id="modal-alumno" onclick="if(event.target===this)closeModal('modal-alumno')">
+<div class="modal-bg" id="modal-alumno">
   <div class="modal">
     <div class="modal-title">
       <span id="modal-title-text">Nuevo Alumno</span>
@@ -2392,7 +2392,7 @@
 </div>
 
 <!-- MODAL QR -->
-<div class="modal-bg" id="modal-qr" onclick="if(event.target===this)closeModal('modal-qr')">
+<div class="modal-bg" id="modal-qr">
   <div class="modal" style="max-width:320px;">
     <div class="modal-title">
       <span>Carnet del Alumno</span>
@@ -3995,7 +3995,9 @@ async function openModalAlumno(id) {
     document.getElementById('f-seccion').value = 'A';
     document.getElementById('f-turno').value = '';
   }
-  document.getElementById('modal-alumno').classList.add('open');
+  const mAlumno = document.getElementById('modal-alumno');
+  mAlumno.style.display = ''; // reset por si closeModal dejó display:none
+  mAlumno.classList.add('open');
 }
 
 async function saveAlumno() {
@@ -4022,18 +4024,22 @@ async function saveAlumno() {
     };
 
     if(editingId && editingId !== id) {
+      // Editar alumno con cambio de DNI
       await DB.updateAlumnoId(editingId, alumno);
-      // Actualizar registros con nuevo ID
       const snap = await db.collection('registros').where('alumnoId','==',editingId).get();
       const batch = db.batch();
       snap.docs.forEach(d => batch.update(d.ref, {alumnoId: id}));
       await batch.commit();
       toast('Alumno actualizado','success');
-    } else {
+    } else if(editingId && editingId === id) {
+      // Editar alumno con mismo DNI — solo actualizar datos, NO tocar cuenta apoderado
       await DB.saveAlumno(alumno);
-      // Crear cuenta apoderado automáticamente
+      toast('Alumno actualizado','success');
+    } else {
+      // Nuevo alumno — crear datos y cuenta apoderado
+      await DB.saveAlumno(alumno);
       await crearCuentaApoderadoSilencioso(alumno);
-      toast(editingId ? 'Alumno actualizado' : 'Alumno registrado','success');
+      toast('Alumno registrado','success');
     }
     closeModal('modal-alumno');
     renderAlumnos();
@@ -4308,7 +4314,9 @@ async function showQR(id) {
   const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(a.id)}&bgcolor=ffffff&color=000000&margin=6&ecc=H`;
   document.getElementById('carnet-qr').src = qrUrl;
 
-  document.getElementById('modal-qr').classList.add('open');
+  const mQr = document.getElementById('modal-qr');
+  mQr.style.display = '';
+  mQr.classList.add('open');
 }
 
 function printCarnet() {
@@ -4324,7 +4332,7 @@ function printCarnet() {
     </style>
   </head><body>${carnet}<script>window.onload=()=>window.print();<\/script>
   <!-- ===== MODAL PRIVILEGIOS PROFESOR ===== -->
-  <div class="modal-bg" id="modal-privilegios" onclick="if(event.target===this)closeModal('modal-privilegios')">
+  <div class="modal-bg" id="modal-privilegios">
     <div class="modal" onclick="event.stopPropagation()" style="max-width:520px;">
       <div class="modal-header">
         <div class="modal-title">📚 Grados y Secciones asignados</div>
@@ -6362,7 +6370,7 @@ function closeModal(id) {
   if(!el) return;
   el.classList.remove('open');
   el.classList.remove('active');
-  el.style.display = 'none';
+  el.style.display = ''; // reset inline style para que CSS tome control
 }
 
 function toast(msg, type='success') {
@@ -6444,7 +6452,8 @@ async function openModalUsuario(uid, nombre, rol, email) {
   await cargarCheckboxesPrivilegios(uid);
   togglePrivilegios();
   toggleBtnConfigurar();
-  document.getElementById('modal-usuario').classList.add('open');
+  const mUsr = document.getElementById('modal-usuario');
+  if(mUsr) { mUsr.style.display = ''; mUsr.classList.add('open'); }
 }
 
 async function saveUsuario() {
@@ -7212,7 +7221,7 @@ function abrirModalIncidente() {
   document.getElementById('inc-foto-grid').innerHTML = '';
   document.getElementById('inc-foto').value = '';
   document.querySelector('input[name="inc-sev"][value="Moderado"]').checked = true;
-  document.getElementById('modal-incidente').classList.add('open');
+  const mInc = document.getElementById('modal-incidente'); if(mInc){mInc.style.display='';mInc.classList.add('open');}
 }
 
 async function buscarAlumnoIncidente(q) {
@@ -8101,7 +8110,7 @@ async function resetearTodoElSistema() {
 </script>
 
   <!-- ===== MODAL PRIVILEGIOS PROFESOR ===== -->
-  <div class="modal-bg" id="modal-privilegios" onclick="if(event.target===this)closeModal('modal-privilegios')">
+  <div class="modal-bg" id="modal-privilegios">
     <div class="modal" onclick="event.stopPropagation()" style="max-width:520px;">
       <div class="modal-header">
         <div class="modal-title">📚 Grados y Secciones asignados</div>
