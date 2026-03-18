@@ -107,30 +107,30 @@
     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>Asistencia
     <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
     <div id="sub-asistencia" style="display:none;position:absolute;top:100%;left:0;background:#0D1A3A;border:0.5px solid rgba(255,255,255,0.2);border-radius:10px;min-width:160px;padding:6px;z-index:9999;box-shadow:0 8px 24px rgba(0,0,0,0.5);">
-      <div onclick="event.stopPropagation();showTab('resumen');closeApoDrops()" style="display:flex;align-items:center;gap:8px;padding:9px 11px;border-radius:7px;cursor:pointer;color:rgba(255,255,255,0.7);font-size:0.82rem;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/></svg>Resumen</div>
-      <div onclick="event.stopPropagation();showTab('historial');closeApoDrops()" style="display:flex;align-items:center;gap:8px;padding:9px 11px;border-radius:7px;cursor:pointer;color:rgba(255,255,255,0.7);font-size:0.82rem;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Historial</div>
+      <div id="drop-resumen" onclick="event.stopPropagation();showTab('resumen');closeApoDrops()" style="display:flex;align-items:center;gap:8px;padding:9px 11px;border-radius:7px;cursor:pointer;color:rgba(255,255,255,0.7);font-size:0.82rem;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/></svg>Resumen</div>
+      <div id="drop-historial" onclick="event.stopPropagation();showTab('historial');closeApoDrops()" style="display:flex;align-items:center;gap:8px;padding:9px 11px;border-radius:7px;cursor:pointer;color:rgba(255,255,255,0.7);font-size:0.82rem;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Historial</div>
     </div>
   </button>
   <button id="btn-academico" onclick="toggleApoSubMenu('sub-academico',this)" style="display:flex;align-items:center;gap:5px;padding:9px 12px;border:none;background:transparent;color:rgba(255,255,255,0.6);border-bottom:2px solid transparent;font-size:0.82rem;font-weight:500;cursor:pointer;white-space:nowrap;flex-shrink:0;position:relative;">
     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg>Académico
     <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
     <div id="sub-academico" style="display:none;position:absolute;top:100%;left:0;background:#0D1A3A;border:0.5px solid rgba(255,255,255,0.2);border-radius:10px;min-width:160px;padding:6px;z-index:9999;box-shadow:0 8px 24px rgba(0,0,0,0.5);">
-      <div onclick="event.stopPropagation();showTab('incidentes');closeApoDrops()" style="display:flex;align-items:center;gap:8px;padding:9px 11px;border-radius:7px;cursor:pointer;color:rgba(255,255,255,0.7);font-size:0.82rem;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>Incidencias</div>
+      <div id="drop-incidentes" onclick="event.stopPropagation();showTab('incidentes');closeApoDrops()" style="display:flex;align-items:center;gap:8px;padding:9px 11px;border-radius:7px;cursor:pointer;color:rgba(255,255,255,0.7);font-size:0.82rem;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>Incidencias</div>
     </div>
   </button>
   <button id="btn-comunicacion" onclick="toggleApoSubMenu('sub-comunicacion',this)" style="display:flex;align-items:center;gap:5px;padding:9px 12px;border:none;background:transparent;color:rgba(255,255,255,0.6);border-bottom:2px solid transparent;font-size:0.82rem;font-weight:500;cursor:pointer;white-space:nowrap;flex-shrink:0;position:relative;">
     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Comunicación
     <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
     <div id="sub-comunicacion" style="display:none;position:absolute;top:100%;left:0;background:#0D1A3A;border:0.5px solid rgba(255,255,255,0.2);border-radius:10px;min-width:160px;padding:6px;z-index:9999;box-shadow:0 8px 24px rgba(0,0,0,0.5);">
-      <div onclick="event.stopPropagation();showTab('comunicados');closeApoDrops()" style="display:flex;align-items:center;gap:8px;padding:9px 11px;border-radius:7px;cursor:pointer;color:rgba(255,255,255,0.7);font-size:0.82rem;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/></svg>Comunicados</div>
+      <div id="drop-comunicados" onclick="event.stopPropagation();showTab('comunicados');closeApoDrops()" style="display:flex;align-items:center;gap:8px;padding:9px 11px;border-radius:7px;cursor:pointer;color:rgba(255,255,255,0.7);font-size:0.82rem;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/></svg>Comunicados</div>
     </div>
   </button>
   <button id="btn-cuenta" onclick="toggleApoSubMenu('sub-cuenta',this)" style="display:flex;align-items:center;gap:5px;padding:9px 12px;border:none;background:transparent;color:rgba(255,255,255,0.6);border-bottom:2px solid transparent;font-size:0.82rem;font-weight:500;cursor:pointer;white-space:nowrap;flex-shrink:0;position:relative;">
     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>Mi cuenta
     <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
     <div id="sub-cuenta" style="display:none;position:absolute;top:100%;left:0;background:#0D1A3A;border:0.5px solid rgba(255,255,255,0.2);border-radius:10px;min-width:160px;padding:6px;z-index:9999;box-shadow:0 8px 24px rgba(0,0,0,0.5);">
-      <div onclick="event.stopPropagation();showTab('carnet');closeApoDrops()" style="display:flex;align-items:center;gap:8px;padding:9px 11px;border-radius:7px;cursor:pointer;color:rgba(255,255,255,0.7);font-size:0.82rem;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>Carnet</div>
-      <div onclick="event.stopPropagation();showTab('contacto');closeApoDrops()" style="display:flex;align-items:center;gap:8px;padding:9px 11px;border-radius:7px;cursor:pointer;color:rgba(255,255,255,0.7);font-size:0.82rem;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13"/></svg>Contacto</div>
+      <div id="drop-carnet" onclick="event.stopPropagation();showTab('carnet');closeApoDrops()" style="display:flex;align-items:center;gap:8px;padding:9px 11px;border-radius:7px;cursor:pointer;color:rgba(255,255,255,0.7);font-size:0.82rem;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>Carnet</div>
+      <div id="drop-contacto" onclick="event.stopPropagation();showTab('contacto');closeApoDrops()" style="display:flex;align-items:center;gap:8px;padding:9px 11px;border-radius:7px;cursor:pointer;color:rgba(255,255,255,0.7);font-size:0.82rem;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13"/></svg>Contacto</div>
     </div>
   </button>
 </nav>
@@ -684,14 +684,19 @@ var _apoMenuMap = {
   'contacto':     'cuenta'
 };
 
-function setApoNavActive(menuId) {
+function setApoNavActive(menuId, tabId) {
   // Resetear todos los botones del nav
   document.querySelectorAll('#apo-nav-tabs > button').forEach(function(b) {
     b.style.color = 'rgba(255,255,255,0.6)';
     b.style.borderBottomColor = 'transparent';
     b.style.background = 'transparent';
   });
-  // Resaltar el botón correspondiente
+  // Resetear todos los drop-items
+  ['resumen','historial','incidentes','comunicados','carnet','contacto'].forEach(function(t) {
+    var el = document.getElementById('drop-'+t);
+    if(el) { el.style.color = 'rgba(255,255,255,0.7)'; el.style.background = 'transparent'; }
+  });
+  // Resaltar el botón padre
   var map = {
     'inicio':        'tab-resumen',
     'asistencia':    'btn-asistencia',
@@ -702,10 +707,12 @@ function setApoNavActive(menuId) {
   var btnId = map[menuId];
   if(btnId) {
     var btn = document.getElementById(btnId);
-    if(btn) {
-      btn.style.color = '#C9A84C';
-      btn.style.borderBottomColor = '#C9A84C';
-    }
+    if(btn) { btn.style.color = '#C9A84C'; btn.style.borderBottomColor = '#C9A84C'; }
+  }
+  // Resaltar el drop-item activo
+  if(tabId && tabId !== 'resumen') {
+    var dropEl = document.getElementById('drop-'+tabId);
+    if(dropEl) { dropEl.style.color = '#C9A84C'; dropEl.style.background = 'rgba(201,168,76,0.1)'; }
   }
 }
 
@@ -714,9 +721,9 @@ function showTab(tab) {
     var panel = document.getElementById('panel-'+t);
     if(panel) panel.style.display = t === tab ? 'block' : 'none';
   });
-  // Resaltar menú padre activo
+  // Resaltar menú padre activo y sub-item
   var menuPadre = _apoMenuMap[tab] || 'inicio';
-  setApoNavActive(menuPadre);
+  setApoNavActive(menuPadre, tab);
   closeApoDrops();
   try { localStorage.setItem('asmqr_apo_lastTab', tab); } catch(e) {}
   // Si registros aun no cargaron, esperar antes de renderizar
