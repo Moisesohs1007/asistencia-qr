@@ -2010,6 +2010,27 @@
       <button class="btn btn-primary" onclick="guardarInfoColegio()" style="margin-top:8px;">💾 Guardar</button>
     </div>
 
+    <!-- Insignia del colegio -->
+    <div class="card" style="margin-bottom:20px;padding:20px 24px;">
+      <div style="font-family:var(--font-display);font-size:1rem;font-weight:700;margin-bottom:4px;color:var(--accent);">🏅 Insignia / Escudo del Colegio</div>
+      <div style="color:var(--muted);font-size:0.82rem;margin-bottom:16px;">Se usará en el splash, pantalla de login y carnets de alumnos. Formato PNG o JPG, fondo transparente recomendado.</div>
+      <div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap;">
+        <div id="cfg-logo-preview-wrap" style="width:96px;height:96px;border-radius:12px;border:1px solid var(--border);background:var(--surface2);display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;">
+          <img id="cfg-logo-preview" src="" style="max-width:100%;max-height:100%;object-fit:contain;display:none;" onerror="this.style.display='none'">
+          <span id="cfg-logo-placeholder" style="font-size:2rem;opacity:0.3;">🏅</span>
+        </div>
+        <div>
+          <label style="cursor:pointer;">
+            <input type="file" id="cfg-logo-input" accept="image/*" style="display:none;" onchange="previsualizarLogo(this)">
+            <span class="btn btn-ghost" style="font-size:0.82rem;">📁 Seleccionar imagen</span>
+          </label>
+          <button class="btn btn-primary" onclick="guardarLogo()" style="font-size:0.82rem;margin-left:8px;">💾 Guardar insignia</button>
+          <button id="cfg-logo-eliminar-btn" class="btn" onclick="eliminarLogo()" style="font-size:0.82rem;margin-left:8px;background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.4);color:#ef4444;display:none;">🗑 Eliminar</button>
+          <div id="cfg-logo-status" style="font-size:0.78rem;color:var(--muted);margin-top:6px;"></div>
+        </div>
+      </div>
+    </div>
+
     <!-- WhatsApp Factiliza -->
     <div class="card" style="margin-bottom:20px;padding:20px 24px;">
       <div style="font-family:var(--font-display);font-size:1rem;font-weight:700;margin-bottom:4px;color:var(--accent);">📱 WhatsApp — Factiliza</div>
@@ -2593,6 +2614,9 @@
 // FIREBASE CONFIG
 // ============================================================
 const LOGO_B64 = 'data:image/png;base64,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';
+
+// Logo activo: usa el subido en config si existe, si no el hardcodeado
+function getLogo() { return window._logoB64Override || LOGO_B64; }
 const firebaseConfig = {
   apiKey: "AIzaSyBLI0I41vWjMK2q1ZjH1c1BK4SAFno7sfY",
   authDomain: "asistencia-qr-a3346.firebaseapp.com",
@@ -2753,19 +2777,17 @@ let _apoderadoAlumno = null; // datos del alumno del apoderado
 // Cargar nombre/logo del colegio en login
 async function cargarInfoColegioLogin() {
   try {
-    // Directo a Firestore para garantizar el valor más reciente
-    const snap = await db.collection('config').doc('general').get();
-    const d = snap.exists ? snap.data() : {};
+    // El splash ya pobló getConfig() con caché — se lee instantáneo sin ir a Firestore
+    const d = await getConfig();
     const nombre = d.nombreColegio || d.nombre || '';
     if(nombre) {
       document.getElementById('login-titulo-colegio').textContent = nombre;
-      invalidateConfig(); // limpiar caché para que el resto del sistema lo recargue
     }
     if(d.logo) {
       document.getElementById('login-img-colegio').src = d.logo;
       document.getElementById('login-logo-colegio').style.display = 'block';
     }
-  } catch(e) { /* sin conexión — campo queda vacío */ }
+  } catch(e) { /* sin conexión */ }
 }
 cargarInfoColegioLogin();
 
@@ -3290,6 +3312,8 @@ function iniciarSplash() {
       if(nomEl) nomEl.textContent = cfg.nombreColegio;
     }
     if(cfg && cfg.logo) {
+      // Cargar logo en memoria para carnets/PDFs
+      window._logoB64Override = cfg.logo;
       const img = document.getElementById('splash-img');
       const ini = document.getElementById('splash-initials');
       if(img) { img.src = cfg.logo; img.style.display = 'block'; }
@@ -4422,16 +4446,16 @@ async function showQR(id) {
   const anio = cfg?.anio || new Date().getFullYear();
 
   // Logo y marca de agua
-  document.getElementById('carnet-logo').src = LOGO_B64;
+  document.getElementById('carnet-logo').src = getLogo();
   document.getElementById('carnet-school').textContent = nombreColegio;
 
   // Marca de agua en body
   const body = document.querySelector('#carnet-print .carnet-body-wm');
-  if(body) body.style.setProperty('--wm', `url('${LOGO_B64}')`);
+  if(body) body.style.setProperty('--wm', `url('${getLogo()}')`);
   // Aplicar via style directo al div con position absolute
   const wmDiv = document.querySelector('#carnet-print [style*="--wm"]');
-  if(wmDiv) wmDiv.style.backgroundImage = `url('${LOGO_B64}')`;
-
+  if(wmDiv) wmDiv.style.backgroundImage = `url('${getLogo()}');
+`
   // Foto o iniciales
   const fotoEl = document.getElementById('carnet-foto');
   const initEl = document.getElementById('carnet-initials');
@@ -5914,7 +5938,7 @@ async function imprimirCarnetsMasivo() {
     const img = new Image();
     img.onload = () => resolve(img);
     img.onerror = () => resolve(null);
-    img.src = LOGO_B64;
+    img.src = getLogo();
   });
 
   const [qrResults, logoImg] = await Promise.all([Promise.all(qrPromises), logoPromise]);
@@ -7125,6 +7149,21 @@ async function renderConfig() {
   document.getElementById('cfg-nombre-colegio').value = cfg.nombreColegio || '';
   document.getElementById('cfg-anio').value = cfg.anio || '';
 
+  // Insignia
+  const logoPreview = document.getElementById('cfg-logo-preview');
+  const logoPlaceholder = document.getElementById('cfg-logo-placeholder');
+  const logoElimBtn = document.getElementById('cfg-logo-eliminar-btn');
+  if(cfg.logo && logoPreview) {
+    logoPreview.src = cfg.logo;
+    logoPreview.style.display = 'block';
+    if(logoPlaceholder) logoPlaceholder.style.display = 'none';
+    if(logoElimBtn) logoElimBtn.style.display = 'inline-flex';
+  } else {
+    if(logoPreview) logoPreview.style.display = 'none';
+    if(logoPlaceholder) logoPlaceholder.style.display = 'block';
+    if(logoElimBtn) logoElimBtn.style.display = 'none';
+  }
+
   // Niveles y horarios
   const nivelesEl = document.getElementById('cfg-niveles-list');
   nivelesEl.innerHTML = (cfg.niveles||[]).map((n,i) => `
@@ -7278,6 +7317,73 @@ function aplicarImagenesBanner() {
     firstSlide.classList.add('active');
     dots[0] && dots[0].classList.add('active');
   }
+}
+
+// ── Insignia del colegio ──
+function previsualizarLogo(input) {
+  const file = input.files[0];
+  if(!file) return;
+  const MAX = 300 * 1024; // 300 KB
+  if(file.size > MAX) { toast('La imagen supera 300 KB. Reduce el tamaño.','warning'); input.value=''; return; }
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const src = e.target.result;
+    const prev = document.getElementById('cfg-logo-preview');
+    const ph   = document.getElementById('cfg-logo-placeholder');
+    if(prev) { prev.src = src; prev.style.display = 'block'; }
+    if(ph)   ph.style.display = 'none';
+    document.getElementById('cfg-logo-status').textContent = '✔ Imagen lista para guardar';
+  };
+  reader.readAsDataURL(file);
+}
+
+async function guardarLogo() {
+  const input = document.getElementById('cfg-logo-input');
+  const file  = input.files[0];
+  if(!file) { toast('Selecciona una imagen primero','warning'); return; }
+  const statusEl = document.getElementById('cfg-logo-status');
+  statusEl.textContent = 'Guardando…';
+  try {
+    const reader = new FileReader();
+    reader.onload = async function(e) {
+      const base64 = e.target.result;
+      await db.collection('config').doc('general').set({ logo: base64 }, { merge: true });
+      invalidateConfig();
+      // Actualizar LOGO_B64 en memoria para carnets/PDFs sin recargar
+      if(typeof LOGO_B64 !== 'undefined') window._logoB64Override = base64;
+      // Actualizar splash y login de inmediato
+      const splashImg = document.getElementById('splash-img');
+      const splashIni = document.getElementById('splash-initials');
+      if(splashImg) { splashImg.src = base64; splashImg.style.display = 'block'; }
+      if(splashIni) splashIni.style.display = 'none';
+      const loginImg  = document.getElementById('login-img-colegio');
+      const loginWrap = document.getElementById('login-logo-colegio');
+      if(loginImg)  { loginImg.src = base64; }
+      if(loginWrap) loginWrap.style.display = 'block';
+      document.getElementById('cfg-logo-eliminar-btn').style.display = 'inline-flex';
+      statusEl.textContent = '';
+      toast('Insignia guardada correctamente','success');
+    };
+    reader.readAsDataURL(file);
+  } catch(e) { statusEl.textContent = ''; toast('Error al guardar insignia','error'); }
+}
+
+async function eliminarLogo() {
+  if(!confirm('¿Eliminar la insignia del colegio?')) return;
+  try {
+    await db.collection('config').doc('general').update({ logo: firebase.firestore.FieldValue.delete() });
+    invalidateConfig();
+    window._logoB64Override = null;
+    const prev = document.getElementById('cfg-logo-preview');
+    const ph   = document.getElementById('cfg-logo-placeholder');
+    const btn  = document.getElementById('cfg-logo-eliminar-btn');
+    if(prev) { prev.src = ''; prev.style.display = 'none'; }
+    if(ph)   ph.style.display = 'block';
+    if(btn)  btn.style.display = 'none';
+    document.getElementById('cfg-logo-status').textContent = '';
+    document.getElementById('cfg-logo-input').value = '';
+    toast('Insignia eliminada','success');
+  } catch(e) { toast('Error al eliminar','error'); }
 }
 
 async function guardarInfoColegio() {
