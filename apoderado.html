@@ -537,19 +537,25 @@ function llenarDatos() {
   }
   poblarMeses();
   // Inicializar avatar con iniciales del apoderado
-  var apoNombres = (typeof apoData !== 'undefined' && apoData && apoData.nombres) ? apoData.nombres : '';
-  var apoApellidos = (typeof apoData !== 'undefined' && apoData && apoData.apellidos) ? apoData.apellidos : '';
-  var nombreCompleto = (apoApellidos + ' ' + apoNombres).trim() 
-    || (alumno && alumno.apoderadoNombres) || 
-    ((alumno && alumno.apellidos) ? alumno.apellidos + ' ' + (alumno.nombres||'') : '');
+  // Prioridad: apoData.nombres/apellidos > alumno.apoderadoNombres/Apellidos > alumno.apellidos > DNI
+  var apoNombres    = (apoData && apoData.nombres)    ? apoData.nombres    : (alumno.apoderadoNombres   || '');
+  var apoApellidos  = (apoData && apoData.apellidos)  ? apoData.apellidos  : (alumno.apoderadoApellidos || '');
+  var nombreCompleto = (apoApellidos + ' ' + apoNombres).trim();
+  // Si no hay nombre del apoderado, usar nombre del alumno como placeholder
+  if(!nombreCompleto) nombreCompleto = ((alumno.apellidos||'') + ' ' + (alumno.nombres||'')).trim();
   var partes = nombreCompleto.split(' ').filter(function(p){ return p.length > 0; });
-  var iniciales = partes.length >= 2
-    ? (partes[0][0] + partes[partes.length-1][0]).toUpperCase()
-    : nombreCompleto.substring(0,2).toUpperCase() || 'AP';
-  var avatarEl = document.getElementById('apo-avatar-initials');
+  var iniciales;
+  if(partes.length >= 2) {
+    iniciales = (partes[0][0] + partes[partes.length-1][0]).toUpperCase();
+  } else if(partes.length === 1) {
+    iniciales = partes[0].substring(0,2).toUpperCase();
+  } else {
+    iniciales = (alumno.id || 'AP').substring(0,2).toUpperCase();
+  }
+  var avatarEl     = document.getElementById('apo-avatar-initials');
   var avatarMenuEl = document.getElementById('apo-avatar-initials-menu');
   var menuNombreEl = document.getElementById('apo-menu-nombre');
-  if(avatarEl) avatarEl.textContent = iniciales;
+  if(avatarEl)     avatarEl.textContent     = iniciales;
   if(avatarMenuEl) avatarMenuEl.textContent = iniciales;
   if(menuNombreEl) menuNombreEl.textContent = nombreCompleto || 'Apoderado';
 }
