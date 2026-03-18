@@ -3289,10 +3289,9 @@ function iniciarSplash() {
 
   // Cargar config del colegio (ya cacheada después)
   getConfig().then(function(cfg) {
-    if(cfg && cfg.nombreColegio) {
-      const nomEl = document.getElementById('splash-nombre');
-      if(nomEl) nomEl.textContent = cfg.nombreColegio;
-    }
+    // Nombre hardcodeado — no sobreescribir desde Firestore
+    const nomEl = document.getElementById('splash-nombre');
+    if(nomEl) nomEl.textContent = COLEGIO_NOMBRE;
     if(false && cfg && cfg.logo) { // logo hardcodeado — no sobreescribir desde Firestore
       window._logoB64Override = cfg.logo;
       const img = document.getElementById('splash-img');
