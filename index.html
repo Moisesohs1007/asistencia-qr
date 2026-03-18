@@ -1356,7 +1356,7 @@
         <img id="login-img-colegio" src="" style="height:56px;object-fit:contain;border-radius:8px;" onerror="this.style.display='none'">
       </div>
       <div style="width:64px;height:64px;border-radius:50%;background:#C9A84C;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:#0D1A3A;margin-bottom:12px;flex-shrink:0;" id="login-logo-circle">SJM</div>
-      <div style="color:#fff;font-size:0.95rem;font-weight:500;text-align:center;line-height:1.3;margin-bottom:3px;" id="login-titulo-colegio">San José Marello</div>
+      <div style="color:#fff;font-size:0.95rem;font-weight:500;text-align:center;line-height:1.3;margin-bottom:3px;" id="login-titulo-colegio"></div>
       <div style="color:#B0C4E8;font-size:0.68rem;text-align:center;margin-bottom:3px;" id="login-sub-colegio">Sistema de Gestión Escolar</div>
       <div style="color:rgba(255,255,255,0.25);font-size:0.63rem;font-style:italic;text-align:center;margin-bottom:20px;">"Educando la mente y el corazón"</div>
       <div style="width:36px;height:1px;background:rgba(201,168,76,0.4);margin-bottom:18px;"></div>
@@ -2096,7 +2096,7 @@
       <div style="margin-top:12px;font-size:0.78rem;color:var(--muted);background:rgba(245,158,11,0.08);border-radius:8px;padding:10px 14px;">
         <strong style="color:#f59e0b;">¿Cómo borrarlas?</strong><br>
         1. Ve a <a href="https://console.firebase.google.com/project/asistencia-qr-a3346/authentication/users" target="_blank" style="color:#60a5fa;">Firebase Console → Authentication</a><br>
-        2. Busca los emails con formato <code>DNI@apo.marello.pe</code><br>
+        2. Busca los emails con formato <code><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="60242e292001100f4e0d0112050c0c0f4e1005">[email&#160;protected]</a></code><br>
         3. Elimina los que correspondan a alumnos ya borrados
       </div>
     </div>
@@ -2588,7 +2588,7 @@
 <!-- INPUT CSV oculto -->
 <input type="file" id="excel-input" accept=".xlsx,.xls" style="display:none" onchange="handleExcel(event)">
 
-<script>
+<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
 // ============================================================
 // FIREBASE CONFIG
 // ============================================================
@@ -2753,19 +2753,17 @@ let _apoderadoAlumno = null; // datos del alumno del apoderado
 // Cargar nombre/logo del colegio en login
 async function cargarInfoColegioLogin() {
   try {
-    const cfg = await db.collection('config').doc('general').get();
-    if(cfg.exists) {
-      const d = cfg.data();
-      if(d.nombre) {
-        document.getElementById('login-titulo-colegio').textContent = d.nombre;
-        document.getElementById('login-sub-colegio').textContent = 'Sistema de Registro Escolar';
-      }
-      if(d.logo) {
-        document.getElementById('login-img-colegio').src = d.logo;
-        document.getElementById('login-logo-colegio').style.display = 'block';
-      }
+    const d = await getConfig();
+    const nombre = d.nombreColegio || d.nombre || '';
+    if(nombre) {
+      document.getElementById('login-titulo-colegio').textContent = nombre;
+      document.getElementById('login-sub-colegio').textContent = 'Sistema de Gestión Escolar';
     }
-  } catch(e) { /* sin conexión, se muestra default */ }
+    if(d.logo) {
+      document.getElementById('login-img-colegio').src = d.logo;
+      document.getElementById('login-logo-colegio').style.display = 'block';
+    }
+  } catch(e) { /* sin conexión */ }
 }
 cargarInfoColegioLogin();
 
@@ -8397,12 +8395,4 @@ async function resetearTodoElSistema() {
       </div>
       <div id="u-niveles-checks" style="max-height:60vh;overflow-y:auto;"></div>
       <div style="display:flex;gap:10px;margin-top:20px;">
-        <button class="btn btn-primary" onclick="savePrivilegios()" style="flex:1;justify-content:center;">💾 Guardar privilegios</button>
-        <button class="btn btn-ghost" onclick="closeModal('modal-privilegios')" style="flex:1;justify-content:center;">Cancelar</button>
-      </div>
-    </div>
-  </div>
-
-
-</body>
-</html>
+        <button class="btn btn-primary" onclick="savePrivilegios()" style="flex:1;justify-content:c
