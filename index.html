@@ -1200,15 +1200,14 @@
     filter: drop-shadow(0 0 6px var(--accent));
   }
   @media(max-width:700px){
-    .bottom-nav:not([style*="display: none"]):not([style*="display:none"]) { display: block; }
+    .bottom-nav { display: none !important; }
     header nav.nav-tabs { display: none !important; }
-    nav.nav-tabs { display: none !important; }
     header {
       height: 52px;
       flex-wrap: nowrap;
       padding: 0 14px;
     }
-    main { padding-bottom: 90px; }
+    main { padding-bottom: 16px; }
   }
   @media(max-width:700px){
     header {
