@@ -4028,13 +4028,46 @@ async function saveAlumno() {
 }
 
 async function deleteAlumno(id) {
-  if(!confirm('¿Eliminar este alumno?')) return;
+  if(!confirm('¿Eliminar este alumno y todos sus registros de asistencia?')) return;
   try {
+    toast('Eliminando...','info');
+    // Eliminar registros de asistencia del alumno
+    const regsSnap = await db.collection('registros').where('alumnoId','==',id).get();
+    if(!regsSnap.empty) {
+      // Firestore permite máx 500 por batch
+      const batches = [];
+      let batch = db.batch();
+      let count = 0;
+      regsSnap.docs.forEach(doc => {
+        batch.delete(doc.ref);
+        count++;
+        if(count === 499) {
+          batches.push(batch.commit());
+          batch = db.batch();
+          count = 0;
+        }
+      });
+      if(count > 0) batches.push(batch.commit());
+      await Promise.all(batches);
+    }
+    // Eliminar incidentes del alumno
+    const incSnap = await db.collection('incidentes').where('alumnoId','==',id).get();
+    if(!incSnap.empty) {
+      const batchInc = db.batch();
+      incSnap.docs.forEach(doc => batchInc.delete(doc.ref));
+      await batchInc.commit();
+    }
+    // Eliminar cuenta de apoderado si existe
+    await db.collection('apoderados').doc(id).delete().catch(()=>{});
+    // Eliminar alumno
     await DB.deleteAlumno(id);
-    toast('Alumno eliminado','info');
+    toast('Alumno y sus registros eliminados','info');
     renderAlumnos();
     updateStats();
-  } catch(e) { toast('Error al eliminar','error'); }
+  } catch(e) { 
+    console.error('Error al eliminar alumno:', e);
+    toast('Error al eliminar: ' + e.message,'error'); 
+  }
 }
 
 
