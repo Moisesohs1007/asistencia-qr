@@ -338,6 +338,7 @@ var db   = firebase.firestore();
 auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
 
 var alumno    = null;
+var apoData   = {};
 var registros = [];
 var _registrosCargados = false; // true una vez que cargarRegistros termina
 var _configCache   = null; // config/general cacheada
@@ -419,7 +420,7 @@ function continuarCargaApoderado(user, dni) {
     return db.collection('apoderados').doc(dni).get();
   }).then(function(apoSnap) {
     if(!apoSnap) return;
-    var apoData = apoSnap.exists ? apoSnap.data() : {};
+    apoData = apoSnap.exists ? apoSnap.data() : {};
     var esPrimerIngreso = !apoSnap.exists || apoData.primerIngreso !== false;
     console.log('[APO] primerIngreso=', esPrimerIngreso + ' | existe=' + apoSnap.exists);
 
@@ -473,9 +474,11 @@ function llenarDatos() {
   }
   poblarMeses();
   // Inicializar avatar con iniciales del apoderado
-  var apoNombres = (apoData && apoData.nombres) ? apoData.nombres : '';
-  var apoApellidos = (apoData && apoData.apellidos) ? apoData.apellidos : '';
-  var nombreCompleto = (apoApellidos + ' ' + apoNombres).trim() || alumno.apoderadoNombres || '';
+  var apoNombres = (typeof apoData !== 'undefined' && apoData && apoData.nombres) ? apoData.nombres : '';
+  var apoApellidos = (typeof apoData !== 'undefined' && apoData && apoData.apellidos) ? apoData.apellidos : '';
+  var nombreCompleto = (apoApellidos + ' ' + apoNombres).trim() 
+    || (alumno && alumno.apoderadoNombres) || 
+    ((alumno && alumno.apellidos) ? alumno.apellidos + ' ' + (alumno.nombres||'') : '');
   var partes = nombreCompleto.split(' ').filter(function(p){ return p.length > 0; });
   var iniciales = partes.length >= 2
     ? (partes[0][0] + partes[partes.length-1][0]).toUpperCase()
