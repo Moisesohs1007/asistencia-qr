@@ -3159,6 +3159,11 @@ function iniciarSplash() {
     splash.classList.add('ocultar');
     setTimeout(function() {
       splash.style.display = 'none';
+      // Forzar login visible si no hay sesión activa
+      if(!firebase.auth().currentUser) {
+        var ls = document.getElementById('login-screen');
+        if(ls) { ls.style.display = 'flex'; ls.style.zIndex = '10005'; }
+      }
     }, 600);
   }, 5000);
 }
