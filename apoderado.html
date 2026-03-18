@@ -59,7 +59,7 @@
 <body>
 
 <!-- APP CONTENT: oculto hasta confirmar sesión -->
-<div id="apo-app" style="display:none;">
+<div id="apo-app" style="display:block;">
 
 <!-- HEADER -->
 <div style="background:var(--navy);padding:14px 20px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;box-shadow:0 2px 12px rgba(0,0,0,0.4);">
@@ -381,7 +381,12 @@ setTimeout(function() {
 // Verificar sesion
 auth.onAuthStateChanged(function(user) {
   console.log('[APO] auth state:', user ? user.email : 'NO SESSION');
-  if(!user) { window.location.href = 'index.html'; return; }
+  if(!user) { 
+    // Sin sesión — mostrar loading antes de redirigir
+    document.getElementById('apo-app').style.display = 'none';
+    window.location.href = 'index.html'; 
+    return; 
+  }
   var dni = null;
   if(user.email.indexOf('@apo.marello.pe') !== -1) {
     dni = user.email.replace('@apo.marello.pe', '');

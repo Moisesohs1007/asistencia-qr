@@ -2903,44 +2903,11 @@ function doLogout() {
 
 // Escuchar cambios de sesión
 auth.onAuthStateChanged(async user => {
-  // DEBUG VISUAL — mostrar qué path toma Firebase
-  var dbg = document.createElement('div');
-  dbg.style.cssText = 'position:fixed;top:10px;left:10px;right:10px;background:#1e293b;color:#fff;padding:10px;border-radius:8px;font-size:12px;z-index:99999;border:2px solid #f59e0b;';
-  dbg.id = 'debug-auth';
-  dbg.textContent = 'Firebase: ' + (user ? 'USUARIO=' + user.email : 'SIN SESION');
-  document.body.appendChild(dbg);
-  setTimeout(function(){ var d=document.getElementById('debug-auth'); if(d) d.remove(); }, 8000);
-
   if(user) {
     // Detectar si es apoderado (email virtual) o personal
     if(user.email && user.email.includes('@apo.marello.pe')) {
-      // ── ES APODERADO ──
-      const dni = user.email.replace('@apo.marello.pe','');
-      _apoderadoUID = user.uid;
-      try {
-        const alumnoSnap = await db.collection('alumnos').doc(dni).get();
-        if(!alumnoSnap.exists) {
-          auth.signOut();
-          const errEl = document.getElementById('login-error');
-          errEl.textContent = 'No se encontró el alumno asociado a este DNI.';
-          errEl.style.display = 'block';
-          document.getElementById('login-loading').style.display = 'none';
-          document.getElementById('btn-login-apoderado').disabled = false;
-          return;
-        }
-        _apoderadoAlumno = { id: dni, ...alumnoSnap.data() };
-        // Redirigir a apoderado.html — la sesión Firebase se mantiene
-        document.getElementById('login-loading').style.display = 'none';
-        window.location.href = 'apoderado.html';
-      } catch(e) {
-        console.error('Error apoderado auth:', e);
-        auth.signOut();
-        document.getElementById('login-loading').style.display = 'none';
-        document.getElementById('btn-login-apoderado').disabled = false;
-        const errEl = document.getElementById('login-error');
-        errEl.textContent = 'Error de conexión: ' + e.message;
-        errEl.style.display = 'block';
-      }
+      // ── ES APODERADO — redirigir a apoderado.html ──
+      window.location.href = 'apoderado.html';
       return;
     }
 
@@ -3006,45 +2973,47 @@ auth.onAuthStateChanged(async user => {
     initSessionControl();   // Iniciar control de sesión duplicada
     anunciarSesion();        // Avisar a otras pestañas
   } else {
-    currentUser = null;
-    currentRol = null;
-    if(_cameraChannel) { _cameraChannel.close(); _cameraChannel = null; }
-    // Ocultar todas las pestañas al cerrar sesión
-    ['scan','alumnos','registro','reportes','incidentes','usuarios','config'].forEach(t => {
-      const el = document.getElementById('tab-'+t);
-      if(el) el.style.display = 'none';
-    });
-    // Resetear modo carnets completamente
-    const toggleCarnets = document.getElementById('toggle-modo-carnets');
-    if(toggleCarnets) toggleCarnets.checked = false;
-    toggleModoCarnets(false);
-    // Desmarcar todos los checkboxes de alumnos
-    document.querySelectorAll('.chk-alumno').forEach(c => c.checked = false);
-    // Resetear botón imprimir carnets
-    const btnImprimir = document.getElementById('btn-imprimir-carnets');
-    if(btnImprimir) { btnImprimir.style.display = 'none'; btnImprimir.disabled = true; btnImprimir.textContent = '🖨 Imprimir Carnets'; }
-    // Limpiar tabla alumnos
-    const tbody = document.querySelector('#tabla-alumnos tbody');
-    if(tbody) tbody.innerHTML = '';
-    // Resetear pantalla de login completamente
+    // SIN SESION — siempre mostrar login primero
     var _ls = document.getElementById('login-screen');
     if(_ls) { _ls.style.display = 'flex'; _ls.style.zIndex = '10005'; }
-    document.getElementById('app-header').style.display = 'none';
-    const navEl2 = document.getElementById('nav-tabs');
-    if(navEl2) navEl2.style.display = 'none';
-    document.getElementById('app-main').style.display = 'none';
-    const bnav2 = document.getElementById('bottom-nav');
-    if(bnav2) bnav2.style.display = 'none';
-    document.getElementById('login-loading').style.display = 'none';
-    document.getElementById('login-error').style.display = 'none';
-    document.getElementById('btn-login').disabled = false;
-    document.getElementById('login-email').value = '';
-    document.getElementById('login-pass').value = '';
-    document.getElementById('user-name-display').style.display = 'none';
-    document.getElementById('user-rol-badge').style.display = 'none';
-    document.getElementById('btn-logout').style.display = 'none';
-    document.getElementById('avatar-btn').style.display = 'none';
-    closeUserMenu();
+    // Luego resetear el resto con protección de errores
+    try {
+      currentUser = null;
+      currentRol = null;
+      if(_cameraChannel) { _cameraChannel.close(); _cameraChannel = null; }
+      ['scan','alumnos','registro','reportes','incidentes','usuarios','config'].forEach(t => {
+        const el = document.getElementById('tab-'+t);
+        if(el) el.style.display = 'none';
+      });
+      const toggleCarnets = document.getElementById('toggle-modo-carnets');
+      if(toggleCarnets) toggleCarnets.checked = false;
+      try { toggleModoCarnets(false); } catch(e2) {}
+      document.querySelectorAll('.chk-alumno').forEach(c => c.checked = false);
+      const btnImprimir = document.getElementById('btn-imprimir-carnets');
+      if(btnImprimir) { btnImprimir.style.display = 'none'; btnImprimir.disabled = true; btnImprimir.textContent = '🖨 Imprimir Carnets'; }
+      const tbody = document.querySelector('#tabla-alumnos tbody');
+      if(tbody) tbody.innerHTML = '';
+      document.getElementById('app-header').style.display = 'none';
+      const navEl2 = document.getElementById('nav-tabs');
+      if(navEl2) navEl2.style.display = 'none';
+      document.getElementById('app-main').style.display = 'none';
+      const bnav2 = document.getElementById('bottom-nav');
+      if(bnav2) bnav2.style.display = 'none';
+      document.getElementById('login-loading').style.display = 'none';
+      document.getElementById('login-error').style.display = 'none';
+      document.getElementById('btn-login').disabled = false;
+      document.getElementById('login-email').value = '';
+      document.getElementById('login-pass').value = '';
+      document.getElementById('user-name-display').style.display = 'none';
+      document.getElementById('user-rol-badge').style.display = 'none';
+      document.getElementById('btn-logout').style.display = 'none';
+      document.getElementById('avatar-btn').style.display = 'none';
+      try { closeUserMenu(); } catch(e3) {}
+    } catch(e) {
+      console.error('Error en bloque sin sesion:', e);
+    }
+    // Garantizar login visible al final pase lo que pase
+    if(_ls) { _ls.style.display = 'flex'; _ls.style.zIndex = '10005'; }
   }
 });
 
