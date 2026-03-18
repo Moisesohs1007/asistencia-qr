@@ -7590,30 +7590,106 @@ async function generarPDFIncidente(inc) {
 function renderBottomNav() {
   const inner = document.getElementById('bottom-nav-inner');
   if(!inner) return;
-  const allTabs = [
-    { id: 'scan',       icon: '📷', label: 'Escanear'  },
-    { id: 'alumnos',    icon: '👥', label: 'Alumnos'   },
-    { id: 'registro',   icon: '📋', label: 'Registro'  },
-    { id: 'reportes',   icon: '📊', label: 'Reportes'  },
-    { id: 'incidentes', icon: '🚨', label: 'Incidentes'},
-    { id: 'usuarios',   icon: '👤', label: 'Usuarios'  },
-    { id: 'config',     icon: '⚙',  label: 'Config'   },
+
+  // Menús con submenús para mobile
+  const menus = [
+    { id: 'inicio', icon: '🏠', label: 'Inicio', action: () => { showSection('inicio'); closeMobileMenu(); } },
+    { id: 'asistencia', icon: '✅', label: 'Asistencia', sub: [
+      { id: 'scan',      icon: '📷', label: 'Escanear QR' },
+      { id: 'registro',  icon: '📋', label: 'Registro del día' },
+      { id: 'reportes',  icon: '📊', label: 'Reportes' },
+    ]},
+    { id: 'aula', icon: '👥', label: 'Aula', sub: [
+      { id: 'alumnos',    icon: '👥', label: 'Alumnos' },
+      { id: 'usuarios',   icon: '👤', label: 'Usuarios' },
+      { id: 'incidentes', icon: '🚨', label: 'Incidentes' },
+    ]},
+    { id: 'mas', icon: '⋯', label: 'Más', sub: [
+      { id: 'config', icon: '⚙', label: 'Configuración' },
+    ]},
   ];
+
   const permisos = {
-    admin:    ['inicio','scan','alumnos','registro','reportes','incidentes','usuarios','config'],
-    director: ['inicio','registro','reportes','incidentes'],
-    profesor: ['inicio','alumnos','registro','incidentes'],
-    portero:  ['inicio','scan'],
+    admin:    ['inicio','asistencia','aula','mas'],
+    director: ['inicio','asistencia','mas'],
+    profesor: ['inicio','aula'],
+    portero:  ['inicio','asistencia'],
   };
-  const allowed = permisos[currentRol] || ['scan'];
-  inner.innerHTML = allTabs
-    .filter(t => allowed.includes(t.id))
-    .map(t => `
-      <button class="bnav-btn ${currentSection===t.id?'active':''}" id="bnav-${t.id}" onclick="showSection('${t.id}')">
-        <span class="bnav-icon">${t.icon}</span>
-        <span>${t.label}</span>
+  const allowed = permisos[currentRol] || ['inicio','asistencia'];
+
+  inner.innerHTML = menus
+    .filter(m => allowed.includes(m.id))
+    .map(m => `
+      <button class="bnav-btn ${currentSection===m.id?'active':''}" id="bnav-${m.id}"
+        onclick="${m.action ? `(${m.action.toString()})()` : `openMobileMenu('${m.id}')`}">
+        <span class="bnav-icon">${m.icon}</span>
+        <span>${m.label}</span>
       </button>
     `).join('');
+
+  // Crear panel de submenús si no existe
+  if(!document.getElementById('mobile-submenu-panel')) {
+    const panel = document.createElement('div');
+    panel.id = 'mobile-submenu-panel';
+    panel.style.cssText = 'display:none;position:fixed;bottom:0;left:0;right:0;background:#0D1A3A;border-radius:16px 16px 0 0;z-index:9000;padding:0 0 env(safe-area-inset-bottom);box-shadow:0 -4px 20px rgba(0,0,0,0.5);';
+    panel.innerHTML = '<div id="mobile-submenu-content"></div>';
+    panel.addEventListener('click', function(e){ if(e.target===panel) closeMobileMenu(); });
+    document.body.appendChild(panel);
+  }
+
+  // Overlay
+  if(!document.getElementById('mobile-menu-overlay')) {
+    const ov = document.createElement('div');
+    ov.id = 'mobile-menu-overlay';
+    ov.style.cssText = 'display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:8999;';
+    ov.addEventListener('click', closeMobileMenu);
+    document.body.appendChild(ov);
+  }
+}
+
+function openMobileMenu(menuId) {
+  const menus = {
+    asistencia: [
+      { id: 'scan',      icon: '📷', label: 'Escanear QR' },
+      { id: 'registro',  icon: '📋', label: 'Registro del día' },
+      { id: 'reportes',  icon: '📊', label: 'Reportes' },
+    ],
+    aula: [
+      { id: 'alumnos',    icon: '👥', label: 'Alumnos' },
+      { id: 'usuarios',   icon: '👤', label: 'Usuarios' },
+      { id: 'incidentes', icon: '🚨', label: 'Incidentes' },
+    ],
+    mas: [
+      { id: 'config', icon: '⚙', label: 'Configuración' },
+    ],
+  };
+  const items = menus[menuId] || [];
+  const panel = document.getElementById('mobile-submenu-panel');
+  const content = document.getElementById('mobile-submenu-content');
+  const overlay = document.getElementById('mobile-menu-overlay');
+  if(!panel || !content) return;
+
+  content.innerHTML =
+    '<div style="display:flex;justify-content:center;padding:10px 0 6px;">' +
+    '<div style="width:36px;height:4px;background:rgba(255,255,255,0.2);border-radius:2px;"></div></div>' +
+    items.map(item =>
+      '<button onclick="showSection(\'' + item.id + '\');closeMobileMenu();" ' +
+      'style="display:flex;align-items:center;gap:14px;width:100%;padding:14px 20px;background:none;border:none;' +
+      'border-bottom:0.5px solid rgba(255,255,255,0.08);color:rgba(255,255,255,0.85);font-size:14px;cursor:pointer;font-family:inherit;">' +
+      '<span style="font-size:18px;">' + item.icon + '</span>' +
+      '<span>' + item.label + '</span></button>'
+    ).join('') +
+    '<div style="height:16px;"></div>';
+
+  panel.style.display = 'block';
+  overlay.style.display = 'block';
+}
+
+function closeMobileMenu() {
+  const panel = document.getElementById('mobile-submenu-panel');
+  const overlay = document.getElementById('mobile-menu-overlay');
+  if(panel) panel.style.display = 'none';
+  if(overlay) overlay.style.display = 'none';
 }
 
 function updateBottomNavActive(id) {
