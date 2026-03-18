@@ -965,7 +965,7 @@
   #splash-screen {
     position: fixed; inset: 0; z-index: 10004;
     background: linear-gradient(145deg, #0a1628 0%, #0d1f3c 50%, #0a1628 100%);
-    display: flex; flex-direction: column;
+    display: none; flex-direction: column;
     align-items: center; justify-content: center;
     gap: 0;
     transition: opacity 0.6s ease, transform 0.6s ease;
@@ -1324,6 +1324,10 @@
 
 <!-- LOGIN SCREEN -->
 <!-- Aviso inactividad -->
+<div id="app-loading" style="display:none;position:fixed;inset:0;z-index:10003;background:#0D1A3A;align-items:center;justify-content:center;flex-direction:column;gap:12px;">
+  <div style="width:36px;height:36px;border:3px solid rgba(201,168,76,0.2);border-top-color:#C9A84C;border-radius:50%;animation:spin 0.8s linear infinite;"></div>
+</div>
+<style>@keyframes spin{to{transform:rotate(360deg);}}</style>
 <div id="inact-warning" style="display:none;position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:9999;background:#1e293b;border:2px solid #f59e0b;border-radius:14px;padding:14px 22px;color:#fff;font-family:sans-serif;font-size:0.88rem;display:none;align-items:center;gap:14px;box-shadow:0 8px 32px rgba(0,0,0,0.45);max-width:360px;width:92%;">
   <span>⏱️ Tu sesión cerrará en <strong>2 min</strong> por inactividad.</span>
   <button onclick="resetInactTimer()" style="background:#f59e0b;border:none;border-radius:8px;padding:6px 14px;color:#000;font-weight:700;cursor:pointer;font-size:0.83rem;white-space:nowrap;">Seguir activo</button>
@@ -3106,7 +3110,9 @@ auth.onAuthStateChanged(async user => {
 
     // Marcar sesión activa para evitar splash al refrescar
     try { sessionStorage.setItem('asmqr_haySession', '1'); } catch(e) {}
-    // Ocultar login, mostrar app
+    // Ocultar loader y login, mostrar app
+    var _loader = document.getElementById('app-loading');
+    if(_loader) _loader.style.display = 'none';
     document.getElementById('login-screen').style.display = 'none';
     document.getElementById('app-header').style.display = '';
     const navEl = document.getElementById('nav-tabs');
@@ -3144,6 +3150,8 @@ auth.onAuthStateChanged(async user => {
     // SIN SESION — mostrar login solo si splash ya terminó
     var _ls = document.getElementById('login-screen');
     var _sp = document.getElementById('splash-screen');
+    var _ld = document.getElementById('app-loading');
+    if(_ld) _ld.style.display = 'none';
     var splashActivo = _sp && _sp.style.display !== 'none';
     if(_ls && !splashActivo) { _ls.style.display = 'flex'; _ls.style.zIndex = '10005'; startBanner(); }
     else if(_ls && splashActivo) {
@@ -3342,8 +3350,8 @@ document.addEventListener('DOMContentLoaded', function() {
   if(main)   main.style.display   = 'none';
   if(nav)    nav.style.display    = 'none';
   if(bnav)   bnav.style.display   = 'none';
-  // Ocultar login — el splash lo tapa primero, luego aparece el login
   if(login)  login.style.display = 'none';
+  // Splash siempre oculto por CSS — solo se activa con display:flex cuando se necesita
 
   var forzarSplash = new URLSearchParams(window.location.search).get('splash') === '1';
   if(forzarSplash) {
@@ -3354,10 +3362,11 @@ document.addEventListener('DOMContentLoaded', function() {
   // Si hay sesión activa, Firebase onAuthStateChanged se encargará de mostrar la app
   var haySession = sessionStorage.getItem('asmqr_haySession') === '1';
   if(haySession) {
-    // Hay sesión → ocultar splash y esperar a que Firebase restaure
+    // Hay sesión → mostrar loader mínimo mientras Firebase restaura
     var splash = document.getElementById('splash-screen');
     if(splash) splash.style.display = 'none';
-    // login también oculto — Firebase restaurará la app
+    var loader = document.getElementById('app-loading');
+    if(loader) loader.style.display = 'flex';
   } else if(!sessionStorage.getItem('splashMostrado')) {
     sessionStorage.setItem('splashMostrado', '1');
     // Splash visible, login oculto hasta que splash termine
