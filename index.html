@@ -963,7 +963,7 @@
   /* LOGIN */
   /* ── SPLASH SCREEN ── */
   #splash-screen {
-    position: fixed; inset: 0; z-index: 500;
+    position: fixed; inset: 0; z-index: 10004;
     background: linear-gradient(145deg, #0a1628 0%, #0d1f3c 50%, #0a1628 100%);
     display: flex; flex-direction: column;
     align-items: center; justify-content: center;
@@ -1093,6 +1093,17 @@
     width: 100%; max-width: 380px;
     position: relative; z-index: 1;
     box-shadow: 0 24px 64px rgba(0,0,0,0.4);
+  }
+  @media(max-width:480px) {
+    .login-box {
+      padding: 24px 18px;
+      border-radius: 14px;
+    }
+    #login-screen {
+      padding: 12px;
+      align-items: flex-start;
+      padding-top: 40px;
+    }
   }
   .login-logo {
     font-family: var(--font-display);
@@ -3143,13 +3154,13 @@ function iniciarSplash() {
     if(bar) bar.classList.add('go');
   }, 100);
 
-  // Ocultar splash después de 1 segundo (modo diagnóstico)
+  // Ocultar splash después de 5 segundos
   setTimeout(function() {
     splash.classList.add('ocultar');
     setTimeout(function() {
       splash.style.display = 'none';
-    }, 300);
-  }, 1000);
+    }, 600);
+  }, 5000);
 }
 
 // Iniciar splash solo una vez por sesión — no en cada recarga
@@ -4230,8 +4241,6 @@ function printCarnet() {
     </div>
   </div>
 
-<script src="https://cdn.jsdelivr.net/npm/eruda"></script>
-<script>eruda.init();</script>
 </body></html>`);
   win.document.close();
 }
