@@ -1962,6 +1962,20 @@
       <div style="font-size:0.75rem;color:var(--muted);margin-top:6px;">Separadas por coma. Ej: A, B, C, D</div>
       <button class="btn btn-primary" onclick="guardarSecciones()" style="margin-top:12px;">💾 Guardar secciones</button>
     </div>
+
+    <!-- Cuentas de apoderado huérfanas -->
+    <div class="card" style="margin-top:20px;padding:20px 24px;border:1px solid rgba(245,158,11,0.3);">
+      <div style="font-family:var(--font-display);font-size:1rem;font-weight:700;margin-bottom:4px;color:#f59e0b;">👻 Cuentas de apoderado huérfanas</div>
+      <div style="color:var(--muted);font-size:0.82rem;margin-bottom:14px;">Cuentas de Firebase Auth de apoderados cuyos alumnos ya no existen. Deben borrarse manualmente desde la consola de Firebase.</div>
+      <button class="btn" style="background:rgba(245,158,11,0.15);color:#f59e0b;border:1px solid rgba(245,158,11,0.3);margin-bottom:12px;" onclick="verificarCuentasHuerfanas()">🔍 Verificar cuentas huérfanas</button>
+      <div id="huerfanas-result" style="font-size:0.82rem;color:var(--muted);"></div>
+      <div style="margin-top:12px;font-size:0.78rem;color:var(--muted);background:rgba(245,158,11,0.08);border-radius:8px;padding:10px 14px;">
+        <strong style="color:#f59e0b;">¿Cómo borrarlas?</strong><br>
+        1. Ve a <a href="https://console.firebase.google.com/project/asistencia-qr-a3346/authentication/users" target="_blank" style="color:#60a5fa;">Firebase Console → Authentication</a><br>
+        2. Busca los emails con formato <code>DNI@apo.marello.pe</code><br>
+        3. Elimina los que correspondan a alumnos ya borrados
+      </div>
+    </div>
   </div>
 
   <!-- ===== USUARIOS ===== -->
@@ -4025,6 +4039,45 @@ async function saveAlumno() {
     renderAlumnos();
     updateStats();
   } catch(e) { toast('Error al guardar','error'); console.error(e); }
+}
+
+async function verificarCuentasHuerfanas() {
+  const el = document.getElementById('huerfanas-result');
+  el.innerHTML = '<span style="color:var(--muted);">Verificando...</span>';
+  try {
+    // Obtener todos los alumnos actuales
+    const alumnos = await DB.getAlumnos();
+    const dnisActivos = new Set(alumnos.map(a => a.id));
+    // Obtener todos los documentos de apoderados en Firestore
+    const apoSnap = await db.collection('apoderados').get();
+    const huerfanos = apoSnap.docs.filter(d => !dnisActivos.has(d.id));
+    if(huerfanos.length === 0) {
+      el.innerHTML = '<span style="color:var(--success);">✅ No hay cuentas huérfanas en Firestore.</span>';
+    } else {
+      el.innerHTML = '<div style="color:#f59e0b;margin-bottom:8px;">⚠️ Se encontraron <strong>' + huerfanos.length + '</strong> documentos de apoderados huérfanos en Firestore:</div>' +
+        huerfanos.map(d => '<div style="font-family:monospace;font-size:0.78rem;color:var(--muted);padding:2px 0;">• DNI: ' + d.id + ' → <code>' + d.id + '@apo.marello.pe</code></div>').join('') +
+        '<button class="btn" style="margin-top:10px;background:rgba(239,68,68,0.15);color:#f87171;border:1px solid rgba(239,68,68,0.3);font-size:0.8rem;" onclick="limpiarApoderadosHuerfanos()">🗑 Limpiar documentos huérfanos de Firestore</button>';
+    }
+  } catch(e) {
+    el.innerHTML = '<span style="color:var(--danger);">Error: ' + e.message + '</span>';
+  }
+}
+
+async function limpiarApoderadosHuerfanos() {
+  if(!confirm('¿Eliminar los documentos de apoderados huérfanos de Firestore? Los emails en Firebase Auth deberás borrarlos manualmente.')) return;
+  try {
+    const alumnos = await DB.getAlumnos();
+    const dnisActivos = new Set(alumnos.map(a => a.id));
+    const apoSnap = await db.collection('apoderados').get();
+    const huerfanos = apoSnap.docs.filter(d => !dnisActivos.has(d.id));
+    const batch = db.batch();
+    huerfanos.forEach(d => batch.delete(d.ref));
+    await batch.commit();
+    toast('✅ ' + huerfanos.length + ' documentos huérfanos eliminados', 'success');
+    verificarCuentasHuerfanas();
+  } catch(e) {
+    toast('Error: ' + e.message, 'error');
+  }
 }
 
 async function deleteAlumno(id) {
@@ -7778,15 +7831,51 @@ async function crearCuentaApoderado(alumno) {
         await tmpAuth.createUserWithEmailAndPassword(email, pass);
       } catch(e) {
         if(e.code !== 'auth/email-already-in-use') throw e;
-        // Ya existe — solo asegurar Firestore
+        // Ya existe en Firebase Auth — mostrar aviso al admin
+        await tmpAuth.signOut().catch(()=>{});
+        await tmpApp.delete().catch(()=>{});
+        // Mostrar modal de aviso
+        const overlay = document.createElement('div');
+        overlay.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;padding:20px;';
+        overlay.innerHTML = `
+          <div style="background:var(--surface);border:1px solid rgba(245,158,11,0.5);border-radius:16px;padding:28px 24px;max-width:420px;width:100%;">
+            <div style="font-size:1.5rem;margin-bottom:12px;text-align:center;">⚠️</div>
+            <div style="font-weight:700;font-size:1rem;margin-bottom:8px;color:#f59e0b;">Cuenta de apoderado ya existe</div>
+            <div style="font-size:0.85rem;color:var(--muted);margin-bottom:16px;line-height:1.6;">
+              El alumno fue registrado correctamente, pero la cuenta del portal apoderado 
+              (<strong style="color:var(--text);">${email}</strong>) ya existe en Firebase Auth 
+              con una contraseña desconocida.
+            </div>
+            <div style="background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3);border-radius:10px;padding:12px 14px;font-size:0.82rem;color:var(--muted);margin-bottom:20px;line-height:1.7;">
+              <strong style="color:#f59e0b;">Para que el apoderado pueda ingresar:</strong><br>
+              1. Ve a <a href="https://console.firebase.google.com/project/asistencia-qr-a3346/authentication/users" target="_blank" style="color:#60a5fa;">Firebase Console → Authentication</a><br>
+              2. Busca el email <code style="color:#f59e0b;">${email}</code><br>
+              3. Elimínalo y vuelve a registrar el alumno<br><br>
+              <em>O el apoderado puede entrar con su contraseña anterior si la recuerda.</em>
+            </div>
+            <button onclick="this.closest('div[style*=fixed]').remove()" 
+              style="width:100%;background:#f59e0b;color:#000;border:none;border-radius:8px;padding:10px;font-size:0.9rem;font-weight:700;cursor:pointer;">
+              Entendido
+            </button>
+          </div>`;
+        overlay.addEventListener('click', function(e){ if(e.target===overlay) overlay.remove(); });
+        document.body.appendChild(overlay);
+        // Aun así actualizar Firestore con primerIngreso:true
+        await db.collection('apoderados').doc(alumno.id).set({
+          alumnoId: alumno.id, email, primerIngreso: true,
+          telefono: alumno.telefono || '',
+          creadoEn: firebase.firestore.FieldValue.serverTimestamp()
+        }, { merge: false });
+        return true;
       }
       await tmpAuth.signOut();
       await tmpApp.delete();
+      // Al reingresar alumno: resetear primerIngreso a true para forzar cambio de contraseña
       await db.collection('apoderados').doc(alumno.id).set({
         alumnoId: alumno.id, email, primerIngreso: true,
         telefono: alumno.telefono || '',
         creadoEn: firebase.firestore.FieldValue.serverTimestamp()
-      }, { merge: true });
+      }, { merge: false }); // merge:false para resetear completamente
       return true;
     } catch(e) {
       intentos++;
