@@ -3159,10 +3159,11 @@ function iniciarSplash() {
     splash.classList.add('ocultar');
     setTimeout(function() {
       splash.style.display = 'none';
-      // Forzar login visible si no hay sesión activa
-      if(!firebase.auth().currentUser) {
-        var ls = document.getElementById('login-screen');
-        if(ls) { ls.style.display = 'flex'; ls.style.zIndex = '10005'; }
+      splash.style.pointerEvents = 'none';
+      // Forzar login visible
+      var ls = document.getElementById('login-screen');
+      if(ls) {
+        ls.style.cssText = 'display:flex !important; position:fixed; inset:0; z-index:10005; background:#0a0e1a; align-items:center; justify-content:center; padding:20px;';
       }
     }, 600);
   }, 5000);
@@ -3170,9 +3171,20 @@ function iniciarSplash() {
 
 // Iniciar splash solo una vez por sesión — no en cada recarga
 document.addEventListener('DOMContentLoaded', function() {
+  // Siempre asegurar estado inicial correcto
+  var header = document.getElementById('app-header');
+  var main   = document.getElementById('app-main');
+  var nav    = document.getElementById('nav-tabs');
+  var bnav   = document.getElementById('bottom-nav');
+  var login  = document.getElementById('login-screen');
+  if(header) header.style.display = 'none';
+  if(main)   main.style.display   = 'none';
+  if(nav)    nav.style.display    = 'none';
+  if(bnav)   bnav.style.display   = 'none';
+  if(login)  { login.style.display = 'flex'; login.style.zIndex = '10005'; }
+
   var forzarSplash = new URLSearchParams(window.location.search).get('splash') === '1';
   if(forzarSplash) {
-    // Vino de logout — limpiar param y mostrar splash
     history.replaceState(null, '', window.location.pathname);
     sessionStorage.removeItem('splashMostrado');
   }
@@ -3180,7 +3192,6 @@ document.addEventListener('DOMContentLoaded', function() {
     sessionStorage.setItem('splashMostrado', '1');
     iniciarSplash();
   } else {
-    // Ya se mostró — ocultar splash inmediatamente
     var splash = document.getElementById('splash-screen');
     if(splash) splash.style.display = 'none';
   }
