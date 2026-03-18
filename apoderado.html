@@ -179,8 +179,9 @@
   <!-- RESUMEN -->
   <div id="panel-resumen">
     <div class="card" style="padding:18px;display:flex;gap:14px;align-items:center;margin-bottom:12px;">
-      <div style="width:60px;height:60px;border-radius:50%;background:#334155;overflow:hidden;flex-shrink:0;border:3px solid var(--accent);">
-        <img id="apo-foto-card" src="" style="width:100%;height:100%;object-fit:cover;" onerror="this.parentElement.innerHTML='<div style=\'display:flex;align-items:center;justify-content:center;height:100%;font-size:1.6rem;\'>&#128100;</div>'">
+      <div style="width:60px;height:60px;border-radius:50%;background:#185FA5;overflow:hidden;flex-shrink:0;border:3px solid var(--accent);display:flex;align-items:center;justify-content:center;position:relative;" id="apo-foto-card-wrap">
+        <img id="apo-foto-card" src="" style="width:100%;height:100%;object-fit:cover;position:absolute;inset:0;" onerror="this.style.display='none';document.getElementById('apo-inicial-card').style.display='flex'">
+        <span id="apo-inicial-card" style="display:flex;align-items:center;justify-content:center;width:100%;height:100%;font-size:16px;font-weight:700;color:#fff;letter-spacing:0.5px;"></span>
       </div>
       <div>
         <div id="apo-nombre-card" style="font-weight:800;font-size:1rem;"></div>
@@ -531,32 +532,38 @@ function continuarCargaApoderado(user, dni) {
 }
 
 function llenarDatos() {
-  var nombre = alumno.nombres + ' ' + alumno.apellidos;
-  var grado  = alumno.grado + ' ' + alumno.seccion + ' - ' + alumno.turno;
+  // Nombre completo: nombres + apellidos
+  var nombre = ((alumno.nombres||'') + ' ' + (alumno.apellidos||'')).trim();
+  var grado  = (alumno.grado||'') + ' ' + (alumno.seccion||'') + (alumno.turno ? ' - ' + alumno.turno : '');
+  // Iniciales: primer nombre + primer apellido
+  var partsN = (alumno.nombres||'').trim().split(' ');
+  var partsA = (alumno.apellidos||'').trim().split(' ');
+  var inicialesAlumno = ((partsN[0]||'')[0]||'').toUpperCase() + ((partsA[0]||'')[0]||'').toUpperCase();
+  if(!inicialesAlumno) inicialesAlumno = (alumno.id||'').substring(0,2).toUpperCase();
+
   document.getElementById('apo-nombre-header').textContent = nombre;
   document.getElementById('apo-grado-header').textContent  = grado;
   document.getElementById('apo-nombre-card').textContent   = nombre;
   document.getElementById('apo-grado-card').textContent    = grado;
   document.getElementById('apo-dni-card').textContent      = 'DNI: ' + alumno.id;
-  // Iniciales del alumno en el círculo del header
-  var inicialEl = document.getElementById('apo-inicial-header');
-  if(inicialEl) {
-    var partsAlumno = ((alumno.apellidos||'') + ' ' + (alumno.nombres||'')).trim().split(' ').filter(function(p){return p.length>0;});
-    var inicsAlumno = partsAlumno.length >= 2
-      ? (partsAlumno[0][0] + partsAlumno[partsAlumno.length-1][0]).toUpperCase()
-      : (alumno.nombres||alumno.id||'').substring(0,2).toUpperCase();
-    inicialEl.textContent = inicsAlumno;
-  }
+  // Iniciales del alumno en header y card
+  var inicialH = document.getElementById('apo-inicial-header');
+  var inicialC = document.getElementById('apo-inicial-card');
+  if(inicialH) inicialH.textContent = inicialesAlumno;
+  if(inicialC) inicialC.textContent = inicialesAlumno;
+
   if(alumno.foto) {
     var fotoH = document.getElementById('apo-foto-header');
     var fotoC = document.getElementById('apo-foto-card');
-    if(fotoH) { fotoH.src = alumno.foto; fotoH.style.display = ''; if(inicialEl) inicialEl.style.display='none'; }
-    if(fotoC) fotoC.src = alumno.foto;
+    if(fotoH) { fotoH.src = alumno.foto; fotoH.style.display = ''; if(inicialH) inicialH.style.display='none'; }
+    if(fotoC) { fotoC.src = alumno.foto; fotoC.style.display = ''; if(inicialC) inicialC.style.display='none'; }
   } else {
-    // Sin foto — mostrar iniciales
     var fotoH = document.getElementById('apo-foto-header');
+    var fotoC = document.getElementById('apo-foto-card');
     if(fotoH) fotoH.style.display = 'none';
-    if(inicialEl) inicialEl.style.display = 'flex';
+    if(fotoC) fotoC.style.display = 'none';
+    if(inicialH) inicialH.style.display = 'flex';
+    if(inicialC) inicialC.style.display = 'flex';
   }
   poblarMeses();
   // Iniciales del apoderado
