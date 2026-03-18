@@ -3264,7 +3264,8 @@ const DB = {
     const cleanId = (alumno.id||'').trim().replace(/\s+/g,'');
     const cleanAlumno = { ...alumno, id: cleanId };
     await db.collection('alumnos').doc(cleanId).set(cleanAlumno);
-    this._alumnosCache = null; // Invalidar cache
+    this._alumnosCache = null; // Invalidar cache memoria
+    LSC.del('alumnos');        // Invalidar cache localStorage
   },
   async deleteAlumno(id) {
     await db.collection('alumnos').doc(id).delete();
@@ -3276,6 +3277,8 @@ const DB = {
     batch.delete(db.collection('alumnos').doc(oldId));
     batch.set(db.collection('alumnos').doc(newData.id), newData);
     await batch.commit();
+    this._alumnosCache = null;
+    LSC.del('alumnos');
   },
   // REGISTROS
   // Cache por clave: 'todos' | 'fecha:YYYY-MM-DD' | 'alumno:ID'
