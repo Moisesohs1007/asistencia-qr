@@ -1503,7 +1503,7 @@
 </nav>
 
 <!-- BOTTOM NAV MOBILE -->
-<div class="bottom-nav" id="bottom-nav">
+<div class="bottom-nav" id="bottom-nav" style="display:none;">
   <div class="bottom-nav-inner" id="bottom-nav-inner">
     <!-- Se genera dinámicamente según rol -->
   </div>
@@ -2959,6 +2959,8 @@ auth.onAuthStateChanged(async user => {
     const navEl = document.getElementById('nav-tabs');
     if(navEl) navEl.style.display = '';
     document.getElementById('app-main').style.display = '';
+    const bnav = document.getElementById('bottom-nav');
+    if(bnav) bnav.style.display = '';
     resetInactTimer(); // Iniciar contador de inactividad
     document.getElementById('user-name-display').textContent = nombre;
     document.getElementById('user-rol-badge').textContent = currentRol.toUpperCase();
@@ -3008,8 +3010,11 @@ auth.onAuthStateChanged(async user => {
     // Resetear pantalla de login completamente
     document.getElementById('login-screen').style.display = 'flex';
     document.getElementById('app-header').style.display = 'none';
-    document.getElementById('nav-tabs').style.display = 'none';
+    const navEl2 = document.getElementById('nav-tabs');
+    if(navEl2) navEl2.style.display = 'none';
     document.getElementById('app-main').style.display = 'none';
+    const bnav2 = document.getElementById('bottom-nav');
+    if(bnav2) bnav2.style.display = 'none';
     document.getElementById('login-loading').style.display = 'none';
     document.getElementById('login-error').style.display = 'none';
     document.getElementById('btn-login').disabled = false;
