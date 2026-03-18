@@ -963,7 +963,7 @@
   /* LOGIN */
   /* ── SPLASH SCREEN ── */
   #splash-screen {
-    position: fixed; inset: 0; z-index: 10000;
+    position: fixed; inset: 0; z-index: 10002;
     background: linear-gradient(145deg, #0a1628 0%, #0d1f3c 50%, #0a1628 100%);
     display: flex; flex-direction: column;
     align-items: center; justify-content: center;
@@ -1069,7 +1069,7 @@
   }
 
   #login-screen {
-    position: fixed; inset: 0; z-index: 9999;
+    position: fixed; inset: 0; z-index: 10001;
     background: var(--bg);
     display: flex; align-items: center; justify-content: center;
     padding: 20px;
@@ -1189,7 +1189,7 @@
     filter: drop-shadow(0 0 6px var(--accent));
   }
   @media(max-width:700px){
-    .bottom-nav { display: block; }
+    .bottom-nav:not([style*="display: none"]):not([style*="display:none"]) { display: block; }
     header nav.nav-tabs { display: none !important; }
     header {
       height: 52px;
