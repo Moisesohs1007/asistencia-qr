@@ -963,7 +963,7 @@
   /* LOGIN */
   /* ── SPLASH SCREEN ── */
   #splash-screen {
-    position: fixed; inset: 0; z-index: 10002;
+    position: fixed; inset: 0; z-index: 10004;
     background: linear-gradient(145deg, #0a1628 0%, #0d1f3c 50%, #0a1628 100%);
     display: flex; flex-direction: column;
     align-items: center; justify-content: center;
@@ -1069,10 +1069,12 @@
   }
 
   #login-screen {
-    position: fixed; inset: 0; z-index: 10001;
-    background: var(--bg);
+    position: fixed; inset: 0; z-index: 10003;
+    background: #0a0e1a;
     display: flex; align-items: center; justify-content: center;
     padding: 20px;
+    min-height: 100vh;
+    min-height: -webkit-fill-available;
   }
   #login-screen::before {
     content:'';
