@@ -421,12 +421,7 @@ function getConfigCache() {
 
 
 
-// Boton salir
-document.getElementById('btn-salir').addEventListener('click', function() {
-  if(!confirm('Cerrar sesion?')) return;
-  try { localStorage.removeItem('asmqr_apo_lastTab'); } catch(e) {}
-  auth.signOut().then(function() { window.location.href = 'index.html?splash=1'; });
-});
+// Boton salir — ahora está en el menú del avatar con onclick inline
 
 // Boton guardar nueva pass
 document.getElementById('btn-guardar-pass').addEventListener('click', guardarNuevaPass);
