@@ -2753,17 +2753,19 @@ let _apoderadoAlumno = null; // datos del alumno del apoderado
 // Cargar nombre/logo del colegio en login
 async function cargarInfoColegioLogin() {
   try {
-    const d = await getConfig();
+    // Directo a Firestore para garantizar el valor más reciente
+    const snap = await db.collection('config').doc('general').get();
+    const d = snap.exists ? snap.data() : {};
     const nombre = d.nombreColegio || d.nombre || '';
     if(nombre) {
       document.getElementById('login-titulo-colegio').textContent = nombre;
-      document.getElementById('login-sub-colegio').textContent = 'Sistema de Gestión Escolar';
+      invalidateConfig(); // limpiar caché para que el resto del sistema lo recargue
     }
     if(d.logo) {
       document.getElementById('login-img-colegio').src = d.logo;
       document.getElementById('login-logo-colegio').style.display = 'block';
     }
-  } catch(e) { /* sin conexión */ }
+  } catch(e) { /* sin conexión — campo queda vacío */ }
 }
 cargarInfoColegioLogin();
 
