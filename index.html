@@ -2903,6 +2903,14 @@ function doLogout() {
 
 // Escuchar cambios de sesión
 auth.onAuthStateChanged(async user => {
+  // DEBUG VISUAL — mostrar qué path toma Firebase
+  var dbg = document.createElement('div');
+  dbg.style.cssText = 'position:fixed;top:10px;left:10px;right:10px;background:#1e293b;color:#fff;padding:10px;border-radius:8px;font-size:12px;z-index:99999;border:2px solid #f59e0b;';
+  dbg.id = 'debug-auth';
+  dbg.textContent = 'Firebase: ' + (user ? 'USUARIO=' + user.email : 'SIN SESION');
+  document.body.appendChild(dbg);
+  setTimeout(function(){ var d=document.getElementById('debug-auth'); if(d) d.remove(); }, 8000);
+
   if(user) {
     // Detectar si es apoderado (email virtual) o personal
     if(user.email && user.email.includes('@apo.marello.pe')) {
