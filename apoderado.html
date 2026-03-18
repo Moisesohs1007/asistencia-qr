@@ -404,20 +404,19 @@ function continuarCargaApoderado(user, dni) {
     console.log('[APO] primerIngreso=', esPrimerIngreso + ' | existe=' + apoSnap.exists);
 
     if(esPrimerIngreso) {
+      // Mostrar app primero para que no quede pantalla negra
+      document.getElementById('apo-app').style.display = '';
       // Mostrar formulario completo de registro/cambio de contraseña
       var datosApo = apoData;
-      // Pre-llenar si ya hay datos
       document.getElementById('inp-apo-nombres').value   = datosApo.nombres   || alumno.apoderadoNombres   || '';
       document.getElementById('inp-apo-apellidos').value = datosApo.apellidos  || alumno.apoderadoApellidos || '';
       document.getElementById('inp-telefono').value      = datosApo.telefono   || alumno.telefono           || '';
       document.getElementById('inp-apo-correo').value    = datosApo.emailReal  || '';
-      // Mostrar/ocultar sección de datos según si ya los tiene
       var tieneDatos = datosApo.nombres && datosApo.apellidos && datosApo.telefono;
       document.getElementById('grupo-datos-apo').style.display = tieneDatos ? 'none' : 'block';
       document.getElementById('modal-pass-titulo').textContent   = tieneDatos ? 'Cambia tu contraseña' : 'Bienvenido';
       document.getElementById('modal-pass-subtitulo').textContent = tieneDatos ? 'Por seguridad crea una nueva contraseña' : 'Completa tus datos para activar tu cuenta';
       document.getElementById('modal-cambiar-pass').style.display = 'flex';
-      // Mostrar cancelar solo si es primer ingreso (puede posponer el cambio)
       document.getElementById('btn-cancelar-pass').style.display = tieneDatos ? 'none' : 'block';
     } else {
       var lastTab = null;
