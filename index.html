@@ -1071,7 +1071,7 @@
   #login-screen {
     position: fixed; inset: 0; z-index: 9999;
     background: var(--bg);
-    display: none; align-items: center; justify-content: center;
+    display: flex; align-items: center; justify-content: center;
     padding: 20px;
   }
   #login-screen::before {
@@ -2956,7 +2956,8 @@ auth.onAuthStateChanged(async user => {
     // Ocultar login, mostrar app
     document.getElementById('login-screen').style.display = 'none';
     document.getElementById('app-header').style.display = '';
-    document.getElementById('nav-tabs').style.display = '';
+    const navEl = document.getElementById('nav-tabs');
+    if(navEl) navEl.style.display = '';
     document.getElementById('app-main').style.display = '';
     resetInactTimer(); // Iniciar contador de inactividad
     document.getElementById('user-name-display').textContent = nombre;
