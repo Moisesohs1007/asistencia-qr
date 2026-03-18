@@ -1617,7 +1617,7 @@
       Configuración
       <svg class="drop-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
       <div class="nav-dropdown" id="drop-config">
-        <div class="nav-drop-item" onclick="event.stopPropagation();showSection('config');closeNavDrops()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/></svg>General</div>
+        <div class="nav-drop-item" onclick="event.stopPropagation();showSection('config');closeNavDrops();if(typeof onShowConfig==='function')onShowConfig();"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/></svg>General</div>
       </div>
     </button>
     <!-- Tabs ocultos para compatibilidad con aplicarPermisos -->
@@ -1967,6 +1967,21 @@
   <div class="section" id="sec-config">
     <div class="page-title">Configuración</div>
     <div class="page-sub">Ajustes generales del sistema escolar</div>
+
+    <!-- Imágenes del banner de login -->
+    <div class="card" style="margin-bottom:20px;padding:20px 24px;">
+      <div style="font-family:var(--font-display);font-size:1rem;font-weight:700;margin-bottom:4px;color:var(--accent);">🖼 Imágenes del Banner</div>
+      <div style="color:var(--muted);font-size:0.82rem;margin-bottom:16px;">Sube hasta 5 imágenes para el banner de la pantalla de login. Recomendado: 1200×700px.</div>
+      <div id="banner-imgs-grid" style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:14px;"></div>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <label style="cursor:pointer;">
+          <input type="file" id="banner-img-input" accept="image/*" multiple style="display:none;" onchange="cargarImagenesBanner(this)">
+          <span class="btn btn-ghost" style="font-size:0.82rem;">📁 Seleccionar imágenes</span>
+        </label>
+        <button class="btn btn-primary" onclick="guardarImagenesBanner()" style="font-size:0.82rem;">💾 Guardar imágenes</button>
+        <span id="banner-imgs-status" style="font-size:0.78rem;color:var(--muted);"></span>
+      </div>
+    </div>
 
     <!-- Info del colegio -->
     <div class="card" style="margin-bottom:20px;padding:20px 24px;">
@@ -3116,6 +3131,7 @@ auth.onAuthStateChanged(async user => {
 
     // Cargar datos y configuración
     await cargarPrivilegiosActuales();
+    cargarConfigBanner(); // cargar imágenes banner en segundo plano
     await inicializarFiltros();
     await actualizarTodosLosFiltros();
     updateStats();
@@ -7036,6 +7052,11 @@ async function onSearchAlumnos() {
   renderAlumnos();
 }
 
+// Cargar imágenes del banner al abrir configuración
+async function onShowConfig() {
+  await cargarConfigBanner();
+}
+
 async function inicializarFiltros() {
   await poblarFiltroNivel('fa-nivel', 'onNivelChangeAlumnos');
   await poblarFiltroGrado('fa-grado', null);
@@ -7137,6 +7158,126 @@ async function renderConfig() {
 
   // Secciones
   document.getElementById('cfg-secciones').value = (cfg.secciones||[]).join(', ');
+}
+
+// ── Imágenes del banner ──
+var _bannerImgs = []; // array de {url, nombre} max 5
+
+async function cargarConfigBanner() {
+  try {
+    const cfg = await getConfig();
+    _bannerImgs = cfg.bannerImagenes || [];
+    renderBannerImgsGrid();
+    // Aplicar al banner de login si hay imágenes
+    if(_bannerImgs.length > 0) aplicarImagenesBanner();
+  } catch(e) {}
+}
+
+function renderBannerImgsGrid() {
+  const grid = document.getElementById('banner-imgs-grid');
+  if(!grid) return;
+  const slots = 5;
+  let html = '';
+  for(let i = 0; i < slots; i++) {
+    const img = _bannerImgs[i];
+    html += `<div style="aspect-ratio:16/9;border-radius:8px;overflow:hidden;border:1px solid var(--border);position:relative;background:var(--surface2);display:flex;align-items:center;justify-content:center;">
+      ${img ? `<img src="${img}" style="width:100%;height:100%;object-fit:cover;">
+        <button onclick="eliminarBannerImg(${i})" style="position:absolute;top:4px;right:4px;background:rgba(0,0,0,0.6);border:none;border-radius:50%;width:20px;height:20px;color:#fff;font-size:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;">✕</button>`
+      : `<span style="font-size:1.5rem;opacity:0.3;">${i+1}</span>`}
+    </div>`;
+  }
+  grid.innerHTML = html;
+}
+
+function eliminarBannerImg(idx) {
+  _bannerImgs.splice(idx, 1);
+  renderBannerImgsGrid();
+  document.getElementById('banner-imgs-status').textContent = 'Sin guardar — presiona Guardar';
+}
+
+function cargarImagenesBanner(input) {
+  const files = Array.from(input.files).slice(0, 5 - _bannerImgs.length);
+  if(!files.length) return;
+  const status = document.getElementById('banner-imgs-status');
+  status.textContent = 'Procesando...';
+  let loaded = 0;
+  files.forEach(file => {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      // Redimensionar a max 1200px para no exceder límite Firestore
+      const img = new Image();
+      img.onload = function() {
+        const canvas = document.createElement('canvas');
+        const MAX = 1200;
+        let w = img.width, h = img.height;
+        if(w > MAX) { h = Math.round(h * MAX / w); w = MAX; }
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.75);
+        _bannerImgs.push(dataUrl);
+        if(_bannerImgs.length > 5) _bannerImgs = _bannerImgs.slice(0,5);
+        loaded++;
+        if(loaded === files.length) {
+          renderBannerImgsGrid();
+          status.textContent = loaded + ' imagen(es) lista(s) — presiona Guardar';
+        }
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+  input.value = '';
+}
+
+async function guardarImagenesBanner() {
+  const status = document.getElementById('banner-imgs-status');
+  status.textContent = 'Guardando...';
+  try {
+    await db.collection('config').doc('general').set(
+      { bannerImagenes: _bannerImgs },
+      { merge: true }
+    );
+    LSC.del('config'); // invalidar caché
+    _configCache = null;
+    aplicarImagenesBanner();
+    status.textContent = '✅ Guardado';
+    setTimeout(() => { status.textContent = ''; }, 3000);
+    toast('Imágenes del banner guardadas','success');
+  } catch(e) {
+    status.textContent = '❌ Error: ' + e.message;
+    toast('Error al guardar','error');
+  }
+}
+
+function aplicarImagenesBanner() {
+  if(!_bannerImgs.length) return;
+  // Mostrar solo los slides que tienen imagen, ocultar el resto
+  for(var i = 0; i < 4; i++) {
+    var slide = document.getElementById('bslide-' + i);
+    if(!slide) continue;
+    if(i < _bannerImgs.length) {
+      var imgDiv = slide.querySelector('.banner-img');
+      if(imgDiv) { imgDiv.style.backgroundImage = 'url(' + _bannerImgs[i] + ')'; imgDiv.style.backgroundSize = 'cover'; }
+      slide.style.display = '';
+    } else {
+      slide.style.display = 'none';
+    }
+  }
+  // Actualizar total de dots y slides activos
+  _bannerTotal = _bannerImgs.length;
+  // Actualizar dots
+  var dots = document.querySelectorAll('.b-dot');
+  dots.forEach(function(d, i) {
+    d.style.display = i < _bannerTotal ? '' : 'none';
+  });
+  // Resetear al primer slide
+  _bannerCurrent = 0;
+  var firstSlide = document.getElementById('bslide-0');
+  if(firstSlide) {
+    document.querySelectorAll('.banner-slide').forEach(function(s){ s.classList.remove('active'); });
+    firstSlide.classList.add('active');
+    dots[0] && dots[0].classList.add('active');
+  }
 }
 
 async function guardarInfoColegio() {
