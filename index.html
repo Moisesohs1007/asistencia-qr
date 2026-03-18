@@ -1085,26 +1085,78 @@
     background-size: 40px 40px;
     pointer-events:none;
   }
-  .login-box {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 20px;
-    padding: 36px 32px;
-    width: 100%; max-width: 380px;
-    position: relative; z-index: 1;
-    box-shadow: 0 24px 64px rgba(0,0,0,0.4);
+  /* ── NUEVO LOGIN ── */
+  .login-wrap {
+    display: flex;
+    width: 100%;
+    max-width: 900px;
+    min-height: 520px;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 24px 64px rgba(0,0,0,0.5);
   }
-  @media(max-width:480px) {
-    .login-box {
-      padding: 24px 18px;
-      border-radius: 14px;
-    }
-    #login-screen {
-      padding: 12px;
-      align-items: flex-start;
-      padding-top: 40px;
-    }
+  .login-left {
+    width: 340px;
+    flex-shrink: 0;
+    background: #0D1A3A;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 32px 28px;
   }
+  .login-right-banner {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+    background: #0a1020;
+    display: none;
+  }
+  @media(min-width:640px) {
+    .login-right-banner { display: block; }
+  }
+  .banner-slide {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    transition: opacity 0.8s ease;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-end;
+  }
+  .banner-slide.active { opacity: 1; }
+  .banner-img { position: absolute; inset: 0; background-size: cover; background-position: center; }
+  .banner-overlay { position: absolute; inset: 0; background: linear-gradient(to top,rgba(13,26,58,0.88) 0%,rgba(13,26,58,0.2) 60%,transparent 100%); }
+  .banner-text { position: relative; z-index: 1; padding: 24px; width: 100%; text-align: center; padding-bottom: 44px; }
+  .banner-dots { position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%); display: flex; gap: 6px; z-index: 2; }
+  .b-dot { width: 6px; height: 6px; border-radius: 50%; background: rgba(255,255,255,0.3); transition: all 0.3s; cursor: pointer; }
+  .b-dot.active { background: #C9A84C; width: 18px; border-radius: 3px; }
+  /* inputs del nuevo login */
+  .ln-input {
+    width: 100%;
+    padding: 9px 12px;
+    background: rgba(255,255,255,0.07);
+    border: 0.5px solid rgba(255,255,255,0.15);
+    border-radius: 8px;
+    color: #fff;
+    font-size: 0.85rem;
+    font-family: var(--font-body);
+    outline: none;
+    margin-bottom: 12px;
+  }
+  .ln-input::placeholder { color: rgba(255,255,255,0.25); }
+  .ln-input:focus { border-color: rgba(201,168,76,0.5); }
+  .ln-label { font-size: 0.72rem; color: #B0C4E8; margin-bottom: 4px; display: block; width: 100%; }
+  .ln-tab-row { display: flex; gap: 0; margin-bottom: 16px; background: rgba(255,255,255,0.06); border-radius: 8px; padding: 3px; width: 100%; }
+  .ln-tab { flex: 1; padding: 7px; border: none; background: transparent; color: rgba(255,255,255,0.5); font-size: 0.78rem; font-family: var(--font-body); cursor: pointer; border-radius: 6px; transition: all 0.15s; }
+  .ln-tab.active { background: #C9A84C; color: #0D1A3A; font-weight: 700; }
+  .ln-btn { width: 100%; padding: 10px; background: #C9A84C; color: #0D1A3A; border: none; border-radius: 8px; font-size: 0.88rem; font-weight: 700; cursor: pointer; letter-spacing: 0.5px; font-family: var(--font-body); }
+  .ln-btn:hover { background: #d4b55a; }
+  .ln-forgot { font-size: 0.7rem; color: rgba(255,255,255,0.3); text-align: center; margin-top: 8px; cursor: pointer; }
+  .ln-forgot:hover { color: #C9A84C; }
+  /* login-box ahora es login-wrap */
+  .login-box { display: none; }
   .login-logo {
     font-family: var(--font-display);
     font-size: 1.8rem; font-weight: 800;
@@ -1270,66 +1322,105 @@
 </div>
 
 <div id="login-screen">
-  <div class="login-box">
-    <!-- Logo colegio -->
-    <div id="login-logo-colegio" style="text-align:center;margin-bottom:8px;display:none;">
-      <img id="login-img-colegio" src="" style="height:52px;object-fit:contain;border-radius:8px;" onerror="this.style.display='none'">
-    </div>
-    <div class="login-logo" id="login-titulo-colegio">Asistencia<span>QR</span></div>
-    <div class="login-sub" id="login-sub-colegio">Sistema de Registro Escolar</div>
-
-    <!-- Tabs personal / apoderado -->
-    <div style="display:flex;gap:0;margin-bottom:22px;border-radius:12px;overflow:hidden;border:1px solid var(--border);">
-      <button id="tab-login-personal" onclick="switchLoginTab('personal')" style="flex:1;padding:10px 8px;border:none;cursor:pointer;font-size:0.82rem;font-weight:700;background:var(--accent);color:#fff;transition:all .2s;">
-        🏫 Personal
-      </button>
-      <button id="tab-login-apoderado" onclick="switchLoginTab('apoderado')" style="flex:1;padding:10px 8px;border:none;cursor:pointer;font-size:0.82rem;font-weight:700;background:var(--surface);color:var(--muted);transition:all .2s;">
-        👨‍👩‍👧 Apoderado
-      </button>
-    </div>
-
-    <div class="login-error" id="login-error"></div>
-
-
-    <!-- PANEL PERSONAL -->
-    <div id="panel-login-personal">
-      <div class="form-group" style="margin-bottom:14px;">
-        <label>Correo electrónico</label>
-        <input type="email" id="login-email" placeholder="usuario@colegio.com" onkeydown="if(event.key==='Enter' && window.doLogin) window.doLogin()">
+  <div class="login-wrap">
+    <!-- IZQUIERDA: formulario -->
+    <div class="login-left">
+      <!-- Logo -->
+      <div id="login-logo-colegio" style="text-align:center;margin-bottom:10px;display:none;">
+        <img id="login-img-colegio" src="" style="height:56px;object-fit:contain;border-radius:8px;" onerror="this.style.display='none'">
       </div>
-      <div class="form-group" style="margin-bottom:22px;">
-        <label>Contraseña</label>
-        <div style="position:relative;">
-          <input type="password" id="login-pass" placeholder="••••••••" onkeydown="if(event.key==='Enter' && window.doLogin) window.doLogin()" style="padding-right:44px;width:100%;">
-          <button type="button" onclick="if(window.togglePass) window.togglePass()" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--muted);font-size:1.1rem;padding:4px;" id="btn-toggle-pass">👁</button>
+      <div style="width:64px;height:64px;border-radius:50%;background:#C9A84C;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:#0D1A3A;margin-bottom:12px;flex-shrink:0;" id="login-logo-circle">SJM</div>
+      <div style="color:#fff;font-size:0.95rem;font-weight:500;text-align:center;line-height:1.3;margin-bottom:3px;" id="login-titulo-colegio">San José Marello</div>
+      <div style="color:#B0C4E8;font-size:0.68rem;text-align:center;margin-bottom:3px;" id="login-sub-colegio">Sistema de Gestión Escolar</div>
+      <div style="color:rgba(255,255,255,0.25);font-size:0.63rem;font-style:italic;text-align:center;margin-bottom:20px;">"Educando la mente y el corazón"</div>
+      <div style="width:36px;height:1px;background:rgba(201,168,76,0.4);margin-bottom:18px;"></div>
+
+      <!-- Tabs -->
+      <div class="ln-tab-row">
+        <button class="ln-tab active" id="tab-login-personal" onclick="switchLoginTab('personal')">🏫 Personal</button>
+        <button class="ln-tab" id="tab-login-apoderado" onclick="switchLoginTab('apoderado')">👨‍👩‍👧 Apoderado</button>
+      </div>
+
+      <div class="login-error" id="login-error" style="width:100%;margin-bottom:10px;"></div>
+
+      <!-- PANEL PERSONAL -->
+      <div id="panel-login-personal" style="width:100%;">
+        <label class="ln-label">Correo electrónico</label>
+        <input class="ln-input" type="email" id="login-email" placeholder="usuario@colegio.pe" onkeydown="if(event.key==='Enter' && window.doLogin) window.doLogin()">
+        <label class="ln-label">Contraseña</label>
+        <div style="position:relative;width:100%;margin-bottom:12px;">
+          <input class="ln-input" type="password" id="login-pass" placeholder="••••••••" onkeydown="if(event.key==='Enter' && window.doLogin) window.doLogin()" style="margin-bottom:0;padding-right:40px;width:100%;">
+          <button type="button" onclick="if(window.togglePass) window.togglePass()" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:rgba(255,255,255,0.4);font-size:1rem;padding:4px;" id="btn-toggle-pass">👁</button>
+        </div>
+        <button class="ln-btn" onclick="if(window.doLogin) window.doLogin()" id="btn-login">INGRESAR</button>
+      </div>
+
+      <!-- PANEL APODERADO -->
+      <div id="panel-login-apoderado" style="display:none;width:100%;">
+        <label class="ln-label">DNI del alumno</label>
+        <input class="ln-input" type="text" id="login-dni-apoderado" placeholder="Ej: 74512389" maxlength="8" inputmode="numeric" onkeydown="if(event.key==='Enter') window.doLoginApoderado && window.doLoginApoderado()">
+        <label class="ln-label">Contraseña</label>
+        <div style="position:relative;width:100%;margin-bottom:12px;">
+          <input class="ln-input" type="password" id="login-pass-apoderado" placeholder="Primera vez: tu DNI" onkeydown="if(event.key==='Enter') window.doLoginApoderado && window.doLoginApoderado()" style="margin-bottom:0;padding-right:40px;width:100%;">
+          <button type="button" onclick="togglePassApoderado()" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:rgba(255,255,255,0.4);font-size:1rem;padding:4px;">👁</button>
+        </div>
+        <button class="ln-btn" onclick="window.doLoginApoderado && window.doLoginApoderado()" id="btn-login-apoderado" style="background:#3b82f6;color:#fff;">INGRESAR</button>
+      </div>
+
+      <div id="login-loading" style="text-align:center;color:#B0C4E8;font-size:0.82rem;margin-top:10px;display:none;">⏳ Verificando...</div>
+      <div class="ln-forgot">¿Olvidó su contraseña?</div>
+    </div>
+
+    <!-- DERECHA: banner -->
+    <div class="login-right-banner" id="login-banner">
+      <div style="position:absolute;top:14px;right:14px;background:rgba(201,168,76,0.15);border:0.5px solid rgba(201,168,76,0.5);color:#C9A84C;font-size:0.68rem;padding:3px 10px;border-radius:12px;z-index:2;" id="banner-year-tag">Año Escolar 2026</div>
+
+      <div class="banner-slide active" id="bslide-0">
+        <div class="banner-img" style="background-color:#1a3a6a;background-image:repeating-linear-gradient(45deg,rgba(255,255,255,0.02) 0px,rgba(255,255,255,0.02) 1px,transparent 1px,transparent 60px);"></div>
+        <div class="banner-overlay"></div>
+        <div class="banner-text">
+          <div style="font-size:2.8rem;margin-bottom:8px;">🏫</div>
+          <div style="color:#fff;font-size:1.05rem;font-weight:500;margin-bottom:6px;text-shadow:0 2px 8px rgba(0,0,0,0.5);" id="banner-titulo-0">Bienvenido al Sistema Escolar</div>
+          <div style="color:rgba(255,255,255,0.65);font-size:0.75rem;text-shadow:0 1px 4px rgba(0,0,0,0.5);">Gestión integral de asistencia y comunicación</div>
         </div>
       </div>
-      <button class="btn btn-primary" onclick="if(window.doLogin) window.doLogin()" id="btn-login" style="width:100%;justify-content:center;padding:12px;">
-        Ingresar al sistema
-      </button>
-    </div>
 
-    <!-- PANEL APODERADO -->
-    <div id="panel-login-apoderado" style="display:none;">
-      <div class="form-group" style="margin-bottom:14px;">
-        <label>DNI del alumno</label>
-        <input type="text" id="login-dni-apoderado" placeholder="Ej: 74512389" maxlength="8" inputmode="numeric" onkeydown="if(event.key==='Enter') window.doLoginApoderado && window.doLoginApoderado()">
-      </div>
-      <div class="form-group" style="margin-bottom:22px;">
-        <label>Contraseña</label>
-        <div style="position:relative;">
-          <input type="password" id="login-pass-apoderado" placeholder="Primera vez: ingresa tu DNI" onkeydown="if(event.key==='Enter') window.doLoginApoderado && window.doLoginApoderado()" style="padding-right:44px;width:100%;">
-          <button type="button" onclick="togglePassApoderado()" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--muted);font-size:1.1rem;padding:4px;">👁</button>
+      <div class="banner-slide" id="bslide-1">
+        <div class="banner-img" style="background-color:#0d2a4a;background-image:repeating-linear-gradient(-45deg,rgba(201,168,76,0.04) 0px,rgba(201,168,76,0.04) 1px,transparent 1px,transparent 50px);"></div>
+        <div class="banner-overlay"></div>
+        <div class="banner-text">
+          <div style="font-size:2.8rem;margin-bottom:8px;">📷</div>
+          <div style="color:#fff;font-size:1.05rem;font-weight:500;margin-bottom:6px;text-shadow:0 2px 8px rgba(0,0,0,0.5);">Control de Asistencia QR</div>
+          <div style="color:rgba(255,255,255,0.65);font-size:0.75rem;text-shadow:0 1px 4px rgba(0,0,0,0.5);">Registro rápido y preciso en tiempo real</div>
         </div>
       </div>
-      <button class="btn btn-primary" onclick="window.doLoginApoderado && window.doLoginApoderado()" id="btn-login-apoderado" style="width:100%;justify-content:center;padding:13px;font-size:0.95rem;font-weight:700;background:linear-gradient(135deg,#1d4ed8,#3b82f6);border-color:#3b82f6;box-shadow:0 4px 16px rgba(59,130,246,0.4);letter-spacing:0.2px;">
-        👨‍👩‍👧 Ingresar como Apoderado
-      </button>
 
-    </div>
+      <div class="banner-slide" id="bslide-2">
+        <div class="banner-img" style="background-color:#162040;background-image:radial-gradient(circle at 30% 50%,rgba(201,168,76,0.08) 0%,transparent 60%);"></div>
+        <div class="banner-overlay"></div>
+        <div class="banner-text">
+          <div style="font-size:2.8rem;margin-bottom:8px;">👨‍👩‍👧</div>
+          <div style="color:#fff;font-size:1.05rem;font-weight:500;margin-bottom:6px;text-shadow:0 2px 8px rgba(0,0,0,0.5);">Portal del Apoderado</div>
+          <div style="color:rgba(255,255,255,0.65);font-size:0.75rem;text-shadow:0 1px 4px rgba(0,0,0,0.5);">Monitorea la asistencia de tu hijo en tiempo real</div>
+        </div>
+      </div>
 
-    <div id="login-loading" style="text-align:center;color:var(--muted);font-size:0.85rem;margin-top:12px;display:none;">
-      ⏳ Verificando...
+      <div class="banner-slide" id="bslide-3">
+        <div class="banner-img" style="background-color:#0f1e3a;background-image:repeating-linear-gradient(0deg,rgba(255,255,255,0.02) 0px,rgba(255,255,255,0.02) 1px,transparent 1px,transparent 40px);"></div>
+        <div class="banner-overlay"></div>
+        <div class="banner-text">
+          <div style="font-size:2.8rem;margin-bottom:8px;">📊</div>
+          <div style="color:#fff;font-size:1.05rem;font-weight:500;margin-bottom:6px;text-shadow:0 2px 8px rgba(0,0,0,0.5);">Reportes y Estadísticas</div>
+          <div style="color:rgba(255,255,255,0.65);font-size:0.75rem;text-shadow:0 1px 4px rgba(0,0,0,0.5);">Información detallada por aula, nivel y período</div>
+        </div>
+      </div>
+
+      <div class="banner-dots">
+        <div class="b-dot active" onclick="goBannerSlide(0)"></div>
+        <div class="b-dot" onclick="goBannerSlide(1)"></div>
+        <div class="b-dot" onclick="goBannerSlide(2)"></div>
+        <div class="b-dot" onclick="goBannerSlide(3)"></div>
+      </div>
     </div>
   </div>
 </div>
@@ -2645,15 +2736,37 @@ async function cargarInfoColegioLogin() {
 }
 cargarInfoColegioLogin();
 
+// ── Banner login ──
+var _bannerCurrent = 0;
+var _bannerTimer = null;
+var _bannerTotal = 4;
+
+function goBannerSlide(n) {
+  var slides = document.querySelectorAll('.banner-slide');
+  var dots = document.querySelectorAll('.b-dot');
+  if(slides[_bannerCurrent]) slides[_bannerCurrent].classList.remove('active');
+  if(dots[_bannerCurrent]) dots[_bannerCurrent].classList.remove('active');
+  _bannerCurrent = n;
+  if(slides[_bannerCurrent]) slides[_bannerCurrent].classList.add('active');
+  if(dots[_bannerCurrent]) dots[_bannerCurrent].classList.add('active');
+  clearInterval(_bannerTimer);
+  _bannerTimer = setInterval(function(){ goBannerSlide((_bannerCurrent + 1) % _bannerTotal); }, 4000);
+}
+
+function startBanner() {
+  if(_bannerTimer) clearInterval(_bannerTimer);
+  _bannerTimer = setInterval(function(){ goBannerSlide((_bannerCurrent + 1) % _bannerTotal); }, 4000);
+}
+
 function switchLoginTab(tab) {
   _loginTab = tab;
   const isPersonal = tab === 'personal';
   document.getElementById('panel-login-personal').style.display = isPersonal ? 'block' : 'none';
   document.getElementById('panel-login-apoderado').style.display = isPersonal ? 'none' : 'block';
-  document.getElementById('tab-login-personal').style.background = isPersonal ? 'var(--accent)' : 'var(--surface)';
-  document.getElementById('tab-login-personal').style.color = isPersonal ? '#fff' : 'var(--muted)';
-  document.getElementById('tab-login-apoderado').style.background = isPersonal ? 'var(--surface)' : 'var(--navy,#1a2b5e)';
-  document.getElementById('tab-login-apoderado').style.color = isPersonal ? 'var(--muted)' : '#fff';
+  var tP = document.getElementById('tab-login-personal');
+  var tA = document.getElementById('tab-login-apoderado');
+  if(tP) { tP.classList.toggle('active', isPersonal); tP.style.background=''; tP.style.color=''; }
+  if(tA) { tA.classList.toggle('active', !isPersonal); tA.style.background=''; tA.style.color=''; }
   document.getElementById('login-error').style.display = 'none';
 }
 
@@ -2991,13 +3104,12 @@ auth.onAuthStateChanged(async user => {
     var _ls = document.getElementById('login-screen');
     var _sp = document.getElementById('splash-screen');
     var splashActivo = _sp && _sp.style.display !== 'none';
-    if(_ls && !splashActivo) { _ls.style.display = 'flex'; _ls.style.zIndex = '10005'; }
+    if(_ls && !splashActivo) { _ls.style.display = 'flex'; _ls.style.zIndex = '10005'; startBanner(); }
     else if(_ls && splashActivo) {
-      // Esperar a que termine el splash
       setTimeout(function() {
         var sp2 = document.getElementById('splash-screen');
         if(sp2) sp2.style.display = 'none';
-        if(_ls) { _ls.style.display = 'flex'; _ls.style.zIndex = '10005'; }
+        if(_ls) { _ls.style.display = 'flex'; _ls.style.zIndex = '10005'; startBanner(); }
       }, 6500);
     }
     // Luego resetear el resto con protección de errores
