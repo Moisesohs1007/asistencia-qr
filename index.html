@@ -3143,13 +3143,13 @@ function iniciarSplash() {
     if(bar) bar.classList.add('go');
   }, 100);
 
-  // Ocultar splash después de 5 segundos
+  // Ocultar splash después de 1 segundo (modo diagnóstico)
   setTimeout(function() {
     splash.classList.add('ocultar');
     setTimeout(function() {
       splash.style.display = 'none';
-    }, 600);
-  }, 5000);
+    }, 300);
+  }, 1000);
 }
 
 // Iniciar splash solo una vez por sesión — no en cada recarga
