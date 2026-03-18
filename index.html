@@ -3423,7 +3423,7 @@ document.addEventListener('DOMContentLoaded', function() {
 // Reduce lecturas Firestore entre sesiones del mismo día
 // ============================================================
 const LSC = {
-  TTL_ALUMNOS:    60 * 60 * 1000,  // 1 hora
+  TTL_ALUMNOS:     5 * 60 * 1000,  // 5 minutos (fotos base64 llenan storage)
   TTL_CONFIG:     60 * 60 * 1000,  // 1 hora
   TTL_REGISTROS:  10 * 60 * 1000,  // 10 minutos
   TTL_INCIDENTES: 15 * 60 * 1000,  // 15 minutos
@@ -3434,7 +3434,22 @@ const LSC = {
       localStorage.setItem('asmqr_' + key, JSON.stringify({
         data, ts: Date.now(), ttl
       }));
-    } catch(e) { /* Storage lleno — ignorar */ }
+    } catch(e) {
+      // Storage lleno — limpiar entradas expiradas y reintentar
+      try {
+        Object.keys(localStorage)
+          .filter(k => k.startsWith('asmqr_'))
+          .forEach(k => {
+            try {
+              const obj = JSON.parse(localStorage.getItem(k));
+              if(obj && Date.now() - obj.ts > obj.ttl) localStorage.removeItem(k);
+            } catch(e2) { localStorage.removeItem(k); }
+          });
+        localStorage.setItem('asmqr_' + key, JSON.stringify({
+          data, ts: Date.now(), ttl
+        }));
+      } catch(e3) { /* Ignorar si sigue sin espacio */ }
+    }
   },
 
   get(key) {
@@ -4041,12 +4056,23 @@ async function processQR(rawId) {
   // Mostrar spinner mientras busca
   showOverlay('loading', '', '', 'Buscando alumno...', '');
   try {
-    const alumnos = await DB.getAlumnos();
-    const alumno = alumnos.find(a => a.id === id) ||
-                   alumnos.find(a => a.id.trim() === id) ||
-                   alumnos.find(a => a.id.toLowerCase() === id.toLowerCase());
+    // Buscar primero en caché
+    let alumnos = await DB.getAlumnos();
+    let alumno = alumnos.find(a => a.id === id) ||
+                 alumnos.find(a => a.id.trim() === id) ||
+                 alumnos.find(a => a.id.toLowerCase() === id.toLowerCase());
+
+    // Si no encontrado en caché, forzar recarga desde Firestore
     if(!alumno) {
-      showOverlay('noqr', '', '', 'QR no válido', `ID "${id}" no encontrado`);
+      DB.invalidarAlumnos();
+      alumnos = await DB.getAlumnos();
+      alumno = alumnos.find(a => a.id === id) ||
+               alumnos.find(a => a.id.trim() === id) ||
+               alumnos.find(a => a.id.toLowerCase() === id.toLowerCase());
+    }
+
+    if(!alumno) {
+      showOverlay('noqr', '', '', 'QR no válido', \`ID "\${id}" no encontrado\`);
       return;
     }
     // Registrar automáticamente
