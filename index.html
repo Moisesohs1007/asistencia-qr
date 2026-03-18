@@ -3137,10 +3137,11 @@ function iniciarSplash() {
     splash.classList.add('ocultar');
     setTimeout(function() {
       splash.style.display = 'none';
-      // Forzar login visible si no hay sesión
-      if(!firebase.auth().currentUser) {
-        var ls = document.getElementById('login-screen');
-        if(ls) { ls.style.display = 'flex'; ls.style.zIndex = '10005'; }
+      // Mostrar login con z-index alto cuando splash termina
+      var ls = document.getElementById('login-screen');
+      if(ls && !firebase.auth().currentUser) {
+        ls.style.display = 'flex';
+        ls.style.zIndex = '10005';
       }
     }, 600);
   }, 5000);
@@ -3148,7 +3149,7 @@ function iniciarSplash() {
 
 // Iniciar splash solo una vez por sesión — no en cada recarga
 document.addEventListener('DOMContentLoaded', function() {
-  // Siempre asegurar estado inicial correcto
+  // Ocultar app hasta que Firebase resuelva
   var header = document.getElementById('app-header');
   var main   = document.getElementById('app-main');
   var nav    = document.getElementById('nav-tabs');
@@ -3158,7 +3159,8 @@ document.addEventListener('DOMContentLoaded', function() {
   if(main)   main.style.display   = 'none';
   if(nav)    nav.style.display    = 'none';
   if(bnav)   bnav.style.display   = 'none';
-  if(login)  { login.style.display = 'flex'; login.style.zIndex = '10005'; }
+  // Ocultar login — el splash lo tapa primero, luego aparece el login
+  if(login)  login.style.display = 'none';
 
   var forzarSplash = new URLSearchParams(window.location.search).get('splash') === '1';
   if(forzarSplash) {
@@ -3167,10 +3169,16 @@ document.addEventListener('DOMContentLoaded', function() {
   }
   if(!sessionStorage.getItem('splashMostrado')) {
     sessionStorage.setItem('splashMostrado', '1');
+    // Mostrar splash encima de todo
+    var splash = document.getElementById('splash-screen');
+    if(splash) { splash.style.display = 'flex'; splash.style.zIndex = '10004'; }
+    if(login)  { login.style.display = 'flex'; login.style.zIndex = '9000'; }
     iniciarSplash();
   } else {
+    // Ya se mostró — ocultar splash y mostrar login
     var splash = document.getElementById('splash-screen');
     if(splash) splash.style.display = 'none';
+    if(login)  { login.style.display = 'flex'; login.style.zIndex = '10005'; }
   }
 });
 
