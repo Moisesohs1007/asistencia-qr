@@ -523,6 +523,9 @@ function continuarCargaApoderado(user, dni) {
 }
 
 function llenarDatos() {
+  // DEBUG — mostrar qué datos tiene alumno
+  console.log('[APO] llenarDatos alumno:', JSON.stringify(alumno));
+  console.log('[APO] llenarDatos apoData:', JSON.stringify(apoData));
   // Nombre del alumno — apellidos + nombres
   var nombre = ((alumno.apellidos||'') + ' ' + (alumno.nombres||'')).trim() || alumno.id;
   var grado  = (alumno.grado||'') + ' ' + (alumno.seccion||'') + (alumno.turno ? ' - ' + alumno.turno : '');
