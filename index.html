@@ -2973,9 +2973,19 @@ auth.onAuthStateChanged(async user => {
     initSessionControl();   // Iniciar control de sesión duplicada
     anunciarSesion();        // Avisar a otras pestañas
   } else {
-    // SIN SESION — siempre mostrar login primero
+    // SIN SESION — mostrar login solo si splash ya terminó
     var _ls = document.getElementById('login-screen');
-    if(_ls) { _ls.style.display = 'flex'; _ls.style.zIndex = '10005'; }
+    var _sp = document.getElementById('splash-screen');
+    var splashActivo = _sp && _sp.style.display !== 'none';
+    if(_ls && !splashActivo) { _ls.style.display = 'flex'; _ls.style.zIndex = '10005'; }
+    else if(_ls && splashActivo) {
+      // Esperar a que termine el splash
+      setTimeout(function() {
+        var sp2 = document.getElementById('splash-screen');
+        if(sp2) sp2.style.display = 'none';
+        if(_ls) { _ls.style.display = 'flex'; _ls.style.zIndex = '10005'; }
+      }, 6500);
+    }
     // Luego resetear el resto con protección de errores
     try {
       currentUser = null;
@@ -3132,19 +3142,19 @@ function iniciarSplash() {
     if(bar) bar.classList.add('go');
   }, 100);
 
-  // Ocultar splash después de 5 segundos
+  // Ocultar splash después de 6 segundos
   setTimeout(function() {
     splash.classList.add('ocultar');
     setTimeout(function() {
       splash.style.display = 'none';
-      // Mostrar login con z-index alto cuando splash termina
+      // Mostrar login cuando splash termina
       var ls = document.getElementById('login-screen');
       if(ls && !firebase.auth().currentUser) {
         ls.style.display = 'flex';
         ls.style.zIndex = '10005';
       }
     }, 600);
-  }, 5000);
+  }, 6000);
 }
 
 // Iniciar splash solo una vez por sesión — no en cada recarga
@@ -3169,10 +3179,10 @@ document.addEventListener('DOMContentLoaded', function() {
   }
   if(!sessionStorage.getItem('splashMostrado')) {
     sessionStorage.setItem('splashMostrado', '1');
-    // Mostrar splash encima de todo
+    // Splash visible, login oculto hasta que splash termine
     var splash = document.getElementById('splash-screen');
-    if(splash) { splash.style.display = 'flex'; splash.style.zIndex = '10004'; }
-    if(login)  { login.style.display = 'flex'; login.style.zIndex = '9000'; }
+    if(splash) { splash.style.display = 'flex'; splash.style.zIndex = '10006'; }
+    if(login)  login.style.display = 'none';
     iniciarSplash();
   } else {
     // Ya se mostró — ocultar splash y mostrar login
