@@ -479,11 +479,23 @@ function continuarCargaApoderado(user, dni) {
     if(!snap.exists) { auth.signOut(); window.location.href = 'index.html'; return; }
     alumno = Object.assign({ id: dni }, snap.data());
     console.log('[APO] Alumno OK — cargando apoderado...');
+    llenarDatos();
     return db.collection('apoderados').doc(dni).get();
   }).then(function(apoSnap) {
     if(!apoSnap) return;
     apoData = apoSnap.exists ? apoSnap.data() : {};
-    llenarDatos();
+    // Actualizar iniciales con datos del apoderado si están disponibles
+    if(apoData.nombres || apoData.apellidos) {
+      var n = ((apoData.apellidos||'') + ' ' + (apoData.nombres||'')).trim();
+      var p = n.split(' ').filter(function(x){ return x.length > 0; });
+      var ini = p.length >= 2 ? (p[0][0]+p[p.length-1][0]).toUpperCase() : n.substring(0,2).toUpperCase();
+      var el1 = document.getElementById('apo-avatar-initials');
+      var el2 = document.getElementById('apo-avatar-initials-menu');
+      var el3 = document.getElementById('apo-menu-nombre');
+      if(el1) el1.textContent = ini;
+      if(el2) el2.textContent = ini;
+      if(el3) el3.textContent = n || 'Apoderado';
+    }
     var esPrimerIngreso = !apoSnap.exists || apoData.primerIngreso !== false;
     console.log('[APO] primerIngreso=', esPrimerIngreso + ' | existe=' + apoSnap.exists);
 
@@ -523,12 +535,8 @@ function continuarCargaApoderado(user, dni) {
 }
 
 function llenarDatos() {
-  // DEBUG — mostrar qué datos tiene alumno
-  console.log('[APO] llenarDatos alumno:', JSON.stringify(alumno));
-  console.log('[APO] llenarDatos apoData:', JSON.stringify(apoData));
-  // Nombre del alumno — apellidos + nombres
-  var nombre = ((alumno.apellidos||'') + ' ' + (alumno.nombres||'')).trim() || alumno.id;
-  var grado  = (alumno.grado||'') + ' ' + (alumno.seccion||'') + (alumno.turno ? ' - ' + alumno.turno : '');
+  var nombre = alumno.nombres + ' ' + alumno.apellidos;
+  var grado  = alumno.grado + ' ' + alumno.seccion + ' - ' + alumno.turno;
   document.getElementById('apo-nombre-header').textContent = nombre;
   document.getElementById('apo-grado-header').textContent  = grado;
   document.getElementById('apo-nombre-card').textContent   = nombre;
@@ -539,22 +547,14 @@ function llenarDatos() {
     document.getElementById('apo-foto-card').src   = alumno.foto;
   }
   poblarMeses();
-  // Inicializar avatar con iniciales del apoderado
-  // Prioridad: apoData.nombres/apellidos > alumno.apoderadoNombres/Apellidos > alumno.apellidos > DNI
-  var apoNombres    = (apoData && apoData.nombres)    ? apoData.nombres    : (alumno.apoderadoNombres   || '');
-  var apoApellidos  = (apoData && apoData.apellidos)  ? apoData.apellidos  : (alumno.apoderadoApellidos || '');
-  var nombreCompleto = (apoApellidos + ' ' + apoNombres).trim();
-  // Si no hay nombre del apoderado, usar nombre del alumno como placeholder
-  if(!nombreCompleto) nombreCompleto = ((alumno.apellidos||'') + ' ' + (alumno.nombres||'')).trim();
+  // Iniciales del apoderado
+  var apoNombres   = (apoData && apoData.nombres)   ? apoData.nombres   : '';
+  var apoApellidos = (apoData && apoData.apellidos) ? apoData.apellidos : '';
+  var nombreCompleto = (apoApellidos + ' ' + apoNombres).trim() || alumno.apoderadoNombres || '';
   var partes = nombreCompleto.split(' ').filter(function(p){ return p.length > 0; });
-  var iniciales;
-  if(partes.length >= 2) {
-    iniciales = (partes[0][0] + partes[partes.length-1][0]).toUpperCase();
-  } else if(partes.length === 1) {
-    iniciales = partes[0].substring(0,2).toUpperCase();
-  } else {
-    iniciales = (alumno.id || 'AP').substring(0,2).toUpperCase();
-  }
+  var iniciales = partes.length >= 2
+    ? (partes[0][0] + partes[partes.length-1][0]).toUpperCase()
+    : nombreCompleto.substring(0,2).toUpperCase() || 'AP';
   var avatarEl     = document.getElementById('apo-avatar-initials');
   var avatarMenuEl = document.getElementById('apo-avatar-initials-menu');
   var menuNombreEl = document.getElementById('apo-menu-nombre');
@@ -562,7 +562,6 @@ function llenarDatos() {
   if(avatarMenuEl) avatarMenuEl.textContent = iniciales;
   if(menuNombreEl) menuNombreEl.textContent = nombreCompleto || 'Apoderado';
 }
-
 function poblarMeses() {
   // Solo mostrar mes actual y hasta 2 meses anteriores,
   // pero nunca antes de marzo (inicio del año lectivo).
