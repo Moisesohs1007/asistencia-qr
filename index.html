@@ -3019,7 +3019,8 @@ auth.onAuthStateChanged(async user => {
     const tbody = document.querySelector('#tabla-alumnos tbody');
     if(tbody) tbody.innerHTML = '';
     // Resetear pantalla de login completamente
-    document.getElementById('login-screen').style.display = 'flex';
+    var _ls = document.getElementById('login-screen');
+    if(_ls) { _ls.style.display = 'flex'; _ls.style.zIndex = '10005'; }
     document.getElementById('app-header').style.display = 'none';
     const navEl2 = document.getElementById('nav-tabs');
     if(navEl2) navEl2.style.display = 'none';
@@ -3159,11 +3160,10 @@ function iniciarSplash() {
     splash.classList.add('ocultar');
     setTimeout(function() {
       splash.style.display = 'none';
-      splash.style.pointerEvents = 'none';
-      // Forzar login visible
-      var ls = document.getElementById('login-screen');
-      if(ls) {
-        ls.style.cssText = 'display:flex !important; position:fixed; inset:0; z-index:10005; background:#0a0e1a; align-items:center; justify-content:center; padding:20px;';
+      // Forzar login visible si no hay sesión
+      if(!firebase.auth().currentUser) {
+        var ls = document.getElementById('login-screen');
+        if(ls) { ls.style.display = 'flex'; ls.style.zIndex = '10005'; }
       }
     }, 600);
   }, 5000);
