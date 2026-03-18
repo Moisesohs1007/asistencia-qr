@@ -358,10 +358,25 @@ function getConfigCache() {
 
 
 // Boton salir
-
+document.getElementById('btn-salir').addEventListener('click', function() {
+  if(!confirm('Cerrar sesion?')) return;
+  try { localStorage.removeItem('asmqr_apo_lastTab'); } catch(e) {}
+  auth.signOut().then(function() { window.location.href = 'index.html?splash=1'; });
+});
 
 // Boton guardar nueva pass
 document.getElementById('btn-guardar-pass').addEventListener('click', guardarNuevaPass);
+
+// Fallback: si después de 6s apo-app sigue oculto, mostrarlo
+setTimeout(function() {
+  var app = document.getElementById('apo-app');
+  if(app && app.style.display === 'none' || app && !app.style.display) {
+    // Solo mostrar si hay usuario logueado
+    if(firebase.auth().currentUser) {
+      app.style.display = '';
+    }
+  }
+}, 6000);
 
 // Verificar sesion
 auth.onAuthStateChanged(function(user) {
