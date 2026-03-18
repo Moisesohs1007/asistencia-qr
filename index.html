@@ -1121,19 +1121,22 @@
     .login-wrap {
       flex-direction: column;
       min-height: 100vh;
+      overflow-y: auto;
     }
     .login-left {
       width: 100%;
       min-height: auto;
-      padding: 24px 20px 28px;
+      padding: 20px 20px 32px;
       justify-content: center;
       order: 2;
+      flex-shrink: 0;
     }
     .login-right-banner {
       display: block;
       width: 100%;
-      height: 42vh;
-      min-height: 200px;
+      height: 35vh;
+      min-height: 160px;
+      max-height: 220px;
       flex-shrink: 0;
       order: 1;
     }
@@ -1150,7 +1153,7 @@
   }
   .banner-slide.active { opacity: 1; }
   .banner-img { position: absolute; inset: 0; background-size: cover; background-position: center; }
-  .banner-overlay { position: absolute; inset: 0; background: linear-gradient(to top,rgba(13,26,58,0.88) 0%,rgba(13,26,58,0.2) 60%,transparent 100%); }
+  .banner-overlay { position: absolute; inset: 0; background: linear-gradient(to top,rgba(13,26,58,0.3) 0%,transparent 50%); }
   .banner-text { position: relative; z-index: 1; padding: 24px; width: 100%; text-align: center; padding-bottom: 44px; }
   .banner-dots { position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%); display: flex; gap: 6px; z-index: 2; }
   .b-dot { width: 6px; height: 6px; border-radius: 50%; background: rgba(255,255,255,0.3); transition: all 0.3s; cursor: pointer; }
@@ -1401,48 +1404,32 @@
       <div class="banner-slide active" id="bslide-0">
         <div class="banner-img" style="background-color:#1a3a6a;background-image:repeating-linear-gradient(45deg,rgba(255,255,255,0.02) 0px,rgba(255,255,255,0.02) 1px,transparent 1px,transparent 60px);"></div>
         <div class="banner-overlay"></div>
-        <div class="banner-text">
-          <div style="font-size:2.8rem;margin-bottom:8px;">🏫</div>
-          <div style="color:#fff;font-size:1.05rem;font-weight:500;margin-bottom:6px;text-shadow:0 2px 8px rgba(0,0,0,0.5);" id="banner-titulo-0">Bienvenido al Sistema Escolar</div>
-          <div style="color:rgba(255,255,255,0.65);font-size:0.75rem;text-shadow:0 1px 4px rgba(0,0,0,0.5);">Gestión integral de asistencia y comunicación</div>
-        </div>
+
       </div>
 
       <div class="banner-slide" id="bslide-1">
         <div class="banner-img" style="background-color:#0d2a4a;background-image:repeating-linear-gradient(-45deg,rgba(201,168,76,0.04) 0px,rgba(201,168,76,0.04) 1px,transparent 1px,transparent 50px);"></div>
         <div class="banner-overlay"></div>
-        <div class="banner-text">
-          <div style="font-size:2.8rem;margin-bottom:8px;">📷</div>
-          <div style="color:#fff;font-size:1.05rem;font-weight:500;margin-bottom:6px;text-shadow:0 2px 8px rgba(0,0,0,0.5);">Control de Asistencia QR</div>
-          <div style="color:rgba(255,255,255,0.65);font-size:0.75rem;text-shadow:0 1px 4px rgba(0,0,0,0.5);">Registro rápido y preciso en tiempo real</div>
-        </div>
+
       </div>
 
       <div class="banner-slide" id="bslide-2">
         <div class="banner-img" style="background-color:#162040;background-image:radial-gradient(circle at 30% 50%,rgba(201,168,76,0.08) 0%,transparent 60%);"></div>
         <div class="banner-overlay"></div>
-        <div class="banner-text">
-          <div style="font-size:2.8rem;margin-bottom:8px;">👨‍👩‍👧</div>
-          <div style="color:#fff;font-size:1.05rem;font-weight:500;margin-bottom:6px;text-shadow:0 2px 8px rgba(0,0,0,0.5);">Portal del Apoderado</div>
-          <div style="color:rgba(255,255,255,0.65);font-size:0.75rem;text-shadow:0 1px 4px rgba(0,0,0,0.5);">Monitorea la asistencia de tu hijo en tiempo real</div>
-        </div>
+
       </div>
 
       <div class="banner-slide" id="bslide-3">
         <div class="banner-img" style="background-color:#0f1e3a;background-image:repeating-linear-gradient(0deg,rgba(255,255,255,0.02) 0px,rgba(255,255,255,0.02) 1px,transparent 1px,transparent 40px);"></div>
         <div class="banner-overlay"></div>
-        <div class="banner-text">
-          <div style="font-size:2.8rem;margin-bottom:8px;">📊</div>
-          <div style="color:#fff;font-size:1.05rem;font-weight:500;margin-bottom:6px;text-shadow:0 2px 8px rgba(0,0,0,0.5);">Reportes y Estadísticas</div>
-          <div style="color:rgba(255,255,255,0.65);font-size:0.75rem;text-shadow:0 1px 4px rgba(0,0,0,0.5);">Información detallada por aula, nivel y período</div>
-        </div>
+
       </div>
 
       <!-- Slide 5 -->
       <div class="banner-slide" id="bslide-4">
         <div class="banner-img"></div>
         <div class="banner-overlay"></div>
-        <div class="banner-text"></div>
+  
       </div>
 
       <div class="banner-dots">
