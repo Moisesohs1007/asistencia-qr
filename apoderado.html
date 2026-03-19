@@ -412,17 +412,19 @@ var _incidentesCache = null; // incidentes del alumno cacheados
 
 // Cargar config una sola vez
 function getConfigCache() {
-  if(_configCache) return Promise.resolve(_configCache);
-  return db.collection('config').doc('general').get().then(function(snap) {
-    _configCache = snap.exists ? snap.data() : {};
-    return _configCache;
-  }).catch(function() {
-    _configCache = {};
-    return _configCache;
-  });
-}
+  try {
+    if(_configCache) return Promise.resolve(_configCache);
+    return db.collection('config').doc('general').get().then(function(snap) {
+      _configCache = snap.exists ? snap.data() : {};
+      return _configCache;
+    }).catch(function() {
+      _configCache = {};
+      return _configCache;
+    });
+  }
 
-document.addEventListener('DOMContentLoaded', function() {
+
+
   // Boton salir — ahora está en el menú del avatar con onclick inline
 
   // Boton guardar nueva pass
@@ -431,7 +433,7 @@ document.addEventListener('DOMContentLoaded', function() {
   // Fallback: si después de 6s apo-app sigue oculto, mostrarlo
   setTimeout(function() {
     var app = document.getElementById('apo-app');
-    if(app && (app.style.display === 'none' || !app.style.display)) {
+    if(app && app.style.display === 'none' || app && !app.style.display) {
       // Solo mostrar si hay usuario logueado
       if(firebase.auth().currentUser) {
         app.style.display = '';
@@ -442,11 +444,11 @@ document.addEventListener('DOMContentLoaded', function() {
   // Verificar sesion
   auth.onAuthStateChanged(function(user) {
     console.log('[APO] auth state:', user ? user.email : 'NO SESSION');
-    if(!user) {
+    if(!user) { 
       // Sin sesión — mostrar loading antes de redirigir
       document.getElementById('apo-app').style.display = 'none';
-      window.location.href = 'index.html';
-      return;
+      window.location.href = 'index.html'; 
+      return; 
     }
     var dni = null;
     if(user.email.indexOf('@apo.marello.pe') !== -1) {
@@ -467,7 +469,12 @@ document.addEventListener('DOMContentLoaded', function() {
       return;
     }
     continuarCargaApoderado(user, dni);
-  });
+  } catch(e) {
+    console.error('getConfigCache:', e);
+    var errEl = document.getElementById('err-apo-datos') || document.getElementById('err-apo-pass') || document.getElementById('err-cambiar-pass');
+    if(errEl) { errEl.textContent = 'Error: ' + e.message; errEl.style.display = 'block'; }
+    else console.error('getConfigCache error:', e.message);
+  }
 });
 
 function continuarCargaApoderado(user, dni) {
