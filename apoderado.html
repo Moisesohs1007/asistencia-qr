@@ -88,7 +88,7 @@
     width: 52px;
     background: #0D1A3A;
     z-index: 700;
-    display: none;
+    display: flex;
     flex-direction: column;
     overflow: hidden;
     transition: width 0.3s cubic-bezier(0.4,0,0.2,1);
@@ -1001,6 +1001,11 @@ function setApoTabActive(tabId, subId) {
 document.addEventListener('DOMContentLoaded', function() {
   var nav = document.getElementById('apo-nav-tabs');
   if(nav) nav.addEventListener('mouseleave', function(){ setTimeout(closeApoDropdowns, 80); });
+  // Mostrar sidebar en móvil desde el inicio (colapsado en 52px)
+  if(window.innerWidth <= 700) {
+    var sb = document.getElementById('apo-mobile-sidebar');
+    if(sb) sb.style.display = 'flex';
+  }
 });
 
 // Cerrar al click fuera
