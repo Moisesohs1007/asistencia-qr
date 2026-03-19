@@ -707,29 +707,27 @@ setTimeout(function() {
 }, 6000);
 
 // Verificar sesion
-// _apoAuthResuelto: evita redirigir en el primer disparo de onAuthStateChanged
-// cuando Firebase aún no terminó de leer la sesión de localStorage
-var _apoAuthResuelto = false;
+// IMPORTANTE: el primer disparo de onAuthStateChanged puede llegar con user=null
+// mientras Firebase aun esta leyendo la sesion guardada. Esperamos antes de redirigir.
+var _apoPrimerDisparo = true;
 auth.onAuthStateChanged(function(user) {
   console.log('[APO] auth state:', user ? user.email : 'NO SESSION');
   if(!user) {
-    if (!_apoAuthResuelto) {
-      // Primera llamada sin usuario: puede ser que Firebase aún no leyó localStorage.
-      // Esperamos 1.5s y si sigue sin usuario, ahí sí redirigimos.
+    if(_apoPrimerDisparo) {
+      _apoPrimerDisparo = false;
       setTimeout(function() {
-        if (!firebase.auth().currentUser) {
+        if(!firebase.auth().currentUser) {
           document.getElementById('apo-app').style.display = 'none';
           window.location.href = 'index.html';
         }
-      }, 1500);
+      }, 2000);
       return;
     }
-    // Ya se resolvió antes y ahora no hay usuario → redirigir
     document.getElementById('apo-app').style.display = 'none';
     window.location.href = 'index.html';
     return;
   }
-  _apoAuthResuelto = true;
+  _apoPrimerDisparo = false;
   var dni = null;
   if(user.email.indexOf('@apo.marello.pe') !== -1) {
     dni = user.email.replace('@apo.marello.pe', '');
@@ -1674,27 +1672,25 @@ function initApoSidebar() {
 }
 
 // ── CERRAR SESIÓN AL CERRAR PESTAÑA / VENTANA ──────────────────────────────
-// beforeunload se dispara en TODO (cierre, recarga, navegación a otra página).
-// pagehide también. No podemos distinguir cierre real de navegación con ellos solos.
-// Estrategia: beforeunload pone una bandera en sessionStorage ("estoy navegando").
-// Si la pestaña se cierra de verdad, sessionStorage desaparece y la bandera no existe.
-// Si es recarga/navegación, sessionStorage persiste y pagehide ve la bandera → no cierra.
-
+// beforeunload se dispara en TODO: cierre, recarga, navegacion.
+// Lo usamos solo para poner una bandera en sessionStorage.
+// Si la ventana se cierra de verdad, sessionStorage desaparece con ella
+// y pagehide no encontrara la bandera -> cerrara sesion.
+// Si es recarga/navegacion, sessionStorage persiste -> pagehide ve la bandera -> no cierra.
 window.addEventListener('beforeunload', function() {
   try { sessionStorage.setItem('asmqr_apo_navegando', '1'); } catch(ex) {}
 });
 
 window.addEventListener('pagehide', function(e) {
-  if (e.persisted) return; // bfcache → no cerrar
+  if (e.persisted) return;
   if (!firebase.auth().currentUser) return;
   var navegando = false;
   try { navegando = !!sessionStorage.getItem('asmqr_apo_navegando'); } catch(ex) {}
   if (navegando) {
-    // Es recarga o navegación → limpiar bandera y NO cerrar sesión
     try { sessionStorage.removeItem('asmqr_apo_navegando'); } catch(ex) {}
-    return;
+    return; // recarga o navegacion interna -> no cerrar sesion
   }
-  // La bandera no existe → sessionStorage fue borrado → cierre real de ventana
+  // sessionStorage no tenia la bandera -> ventana cerrada de verdad
   auth.signOut();
   try { sessionStorage.removeItem('asmqr_apo_lastTab'); } catch(ex) {}
   try { sessionStorage.removeItem('asmqr_haySession'); } catch(ex) {}
