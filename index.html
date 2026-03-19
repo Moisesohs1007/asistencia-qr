@@ -2487,7 +2487,7 @@
 
     <!-- ── DATOS DEL APODERADO ── -->
     <fieldset style="border:1px solid var(--border);border-radius:10px;padding:14px 16px 10px;margin-bottom:4px;">
-      <legend style="font-size:0.78rem;font-weight:700;color:var(--accent);padding:0 8px;letter-spacing:0.04em;">DATOS DEL APODERADO</legend>
+      <legend style="font-size:0.78rem;font-weight:700;color:var(--accent);padding:0 8px;letter-spacing:0.04em;">APODERADO 1</legend>
       <div class="form-grid" style="margin:0;">
         <div class="form-group form-full">
           <label>Nombres</label>
@@ -2498,8 +2498,27 @@
           <input type="text" id="f-apoderado-apellidos" placeholder="Ej: García López">
         </div>
         <div class="form-group form-full">
-          <label>Celular</label>
+          <label>Celular / WhatsApp</label>
           <input type="text" id="f-telefono" placeholder="+51 999 000 000">
+        </div>
+      </div>
+    </fieldset>
+
+    <!-- ── DATOS DEL SEGUNDO APODERADO ── -->
+    <fieldset style="border:1px solid var(--border);border-radius:10px;padding:14px 16px 10px;margin-bottom:4px;">
+      <legend style="font-size:0.78rem;font-weight:700;color:#f59e0b;padding:0 8px;letter-spacing:0.04em;">APODERADO 2 <span style="font-weight:400;font-size:0.72rem;opacity:0.7;">(opcional)</span></legend>
+      <div class="form-grid" style="margin:0;">
+        <div class="form-group form-full">
+          <label>Nombres</label>
+          <input type="text" id="f-apoderado2-nombres" placeholder="Ej: Juan Carlos">
+        </div>
+        <div class="form-group form-full">
+          <label>Apellidos</label>
+          <input type="text" id="f-apoderado2-apellidos" placeholder="Ej: Pérez Díaz">
+        </div>
+        <div class="form-group form-full">
+          <label>Celular / WhatsApp</label>
+          <input type="text" id="f-telefono2" placeholder="+51 999 000 000">
         </div>
       </div>
     </fieldset>
@@ -4086,17 +4105,20 @@ async function autoRegistrar(alumno) {
 
     // Enviar WhatsApp al apoderado
     if(alumno.telefono) {
-      const cfg2 = await getConfig();
-      const nomColegio = cfg2?.nombreColegio || 'I.E.P "SANTO DOMINGO DE GUZMAN"';
+      const nomColegio = COLEGIO_NOMBRE;
+      const encabezado = `🏫 *${nomColegio}*\n${COLEGIO_ESLOGAN}`;
       let msg = '';
       if(tipo === 'INGRESO' && estado === 'A tiempo') {
-        msg = `✅ *INGRESO REGISTRADO*\n${nomColegio}\n\n👤 *Alumno:* ${nombre}\n🏫 *Grado:* ${alumno.grado} ${alumno.seccion} — ${alumno.turno}\n🕐 *Hora:* ${reg.hora}\n📅 *Fecha:* ${reg.fecha}\n\n✔️ Su hijo/a ingresó *puntualmente* al colegio.`;
+        msg = `✅ *INGRESO REGISTRADO*\n${encabezado}\n\n👤 *Alumno:* ${nombre}\n🏫 *Grado:* ${alumno.grado} ${alumno.seccion} — ${alumno.turno}\n🕐 *Hora:* ${reg.hora}\n📅 *Fecha:* ${reg.fecha}\n\n✔️ Su hijo/a ingresó *puntualmente* al colegio.`;
       } else if(tipo === 'INGRESO' && estado === 'Tardanza') {
-        msg = `⚠️ *TARDANZA REGISTRADA*\n${nomColegio}\n\n👤 *Alumno:* ${nombre}\n🏫 *Grado:* ${alumno.grado} ${alumno.seccion} — ${alumno.turno}\n🕐 *Hora:* ${reg.hora}\n📅 *Fecha:* ${reg.fecha}\n\n⏰ Su hijo/a ingresó *con tardanza* al colegio.`;
+        msg = `⚠️ *TARDANZA REGISTRADA*\n${encabezado}\n\n👤 *Alumno:* ${nombre}\n🏫 *Grado:* ${alumno.grado} ${alumno.seccion} — ${alumno.turno}\n🕐 *Hora:* ${reg.hora}\n📅 *Fecha:* ${reg.fecha}\n\n⏰ Su hijo/a ingresó *con tardanza* al colegio.`;
       } else if(tipo === 'SALIDA') {
-        msg = `🚪 *SALIDA REGISTRADA*\n${nomColegio}\n\n👤 *Alumno:* ${nombre}\n🏫 *Grado:* ${alumno.grado} ${alumno.seccion} — ${alumno.turno}\n🕐 *Hora:* ${reg.hora}\n📅 *Fecha:* ${reg.fecha}\n\n🏠 Su hijo/a ha salido del colegio.`;
+        msg = `🚪 *SALIDA REGISTRADA*\n${encabezado}\n\n👤 *Alumno:* ${nombre}\n🏫 *Grado:* ${alumno.grado} ${alumno.seccion} — ${alumno.turno}\n🕐 *Hora:* ${reg.hora}\n📅 *Fecha:* ${reg.fecha}\n\n🏠 Su hijo/a ha salido del colegio.`;
       }
-      if(msg) sendWhatsApp(alumno.telefono, msg);
+      if(msg) {
+        sendWhatsApp(alumno.telefono, msg);
+        if(alumno.telefono2) sendWhatsApp(alumno.telefono2, msg);
+      }
     }
 
   } catch(e) {
@@ -4145,6 +4167,9 @@ async function openModalAlumno(id) {
     document.getElementById('f-telefono').value = a.telefono||'';
     document.getElementById('f-apoderado-nombres').value = a.apoderadoNombres||'';
     document.getElementById('f-apoderado-apellidos').value = a.apoderadoApellidos||'';
+    document.getElementById('f-telefono2').value = a.telefono2||'';
+    document.getElementById('f-apoderado2-nombres').value = a.apoderado2Nombres||'';
+    document.getElementById('f-apoderado2-apellidos').value = a.apoderado2Apellidos||'';
     const fotoData = a.foto||'';
     document.getElementById('f-foto-data').value = fotoData;
     document.getElementById('f-foto-url').value = fotoData.startsWith('http') ? fotoData : '';
@@ -4156,7 +4181,7 @@ async function openModalAlumno(id) {
     document.getElementById('f-id').readOnly = false;
     document.getElementById('f-id').style.opacity = '1';
     document.getElementById('f-id').title = '';
-    ['f-id','f-nombres','f-apellidos','f-telefono','f-apoderado-nombres','f-apoderado-apellidos','f-foto-url','f-foto-data'].forEach(x => document.getElementById(x).value='');
+    ['f-id','f-nombres','f-apellidos','f-telefono','f-apoderado-nombres','f-apoderado-apellidos','f-telefono2','f-apoderado2-nombres','f-apoderado2-apellidos','f-foto-url','f-foto-data'].forEach(x => document.getElementById(x).value='');
     document.getElementById('foto-preview-img').style.display='none';
     document.getElementById('foto-preview-placeholder').style.display='block';
     document.getElementById('f-grado').value = '';
@@ -4188,6 +4213,9 @@ async function saveAlumno() {
       telefono: document.getElementById('f-telefono').value.trim(),
       apoderadoNombres: document.getElementById('f-apoderado-nombres').value.trim(),
       apoderadoApellidos: document.getElementById('f-apoderado-apellidos').value.trim(),
+      telefono2: document.getElementById('f-telefono2').value.trim(),
+      apoderado2Nombres: document.getElementById('f-apoderado2-nombres').value.trim(),
+      apoderado2Apellidos: document.getElementById('f-apoderado2-apellidos').value.trim(),
       foto: document.getElementById('f-foto-data').value.trim(),
     };
 
@@ -7681,15 +7709,16 @@ async function guardarIncidente() {
     // PDF y WhatsApp corren en segundo plano sin bloquear la UI
     const pdfLink = await generarPDFIncidente({ ...incidente, fotoData });
     if(alumnoData?.telefono) {
-      const cfg2 = await getConfig();
-      const nomColegio = cfg2?.nombreColegio || 'I.E.P "SANTO DOMINGO DE GUZMAN"';
+      const nomColegio = COLEGIO_NOMBRE;
+      const encabezado = `🏫 *${nomColegio}*\n${COLEGIO_ESLOGAN}`;
       const sevEmoji = incidente.severidad === 'Grave' ? '🔴' : incidente.severidad === 'Moderado' ? '🟡' : '🟢';
       const linkText = pdfLink
         ? `\n\n📎 *Reporte PDF:* ${pdfLink}\n_(disponible por 7 días)_`
         : '';
-      const msg = `🚨 *REPORTE DE INCIDENCIA*\n${nomColegio}\n\n👤 *Alumno:* ${incidente.alumnoNombre}\n🏫 *Grado:* ${incidente.grado} ${incidente.seccion} — ${incidente.turno}\n📋 *Tipo:* ${incidente.tipo}\n${sevEmoji} *Severidad:* ${incidente.severidad}\n📅 *Fecha:* ${incidente.fecha} ${incidente.hora}\n\n📝 El colegio ha registrado un incidente con su hijo/a. Por favor comuníquese con la institución a la brevedad.${linkText}\n\n📞 Para más información contacte a la dirección del colegio.`;
+      const msg = `🚨 *REPORTE DE INCIDENCIA*\n${encabezado}\n\n👤 *Alumno:* ${incidente.alumnoNombre}\n🏫 *Grado:* ${incidente.grado} ${incidente.seccion} — ${incidente.turno}\n📋 *Tipo:* ${incidente.tipo}\n${sevEmoji} *Severidad:* ${incidente.severidad}\n📅 *Fecha:* ${incidente.fecha} ${incidente.hora}\n\n📝 El colegio ha registrado un incidente con su hijo/a. Por favor comuníquese con la institución a la brevedad.${linkText}\n\n📞 Para más información contacte a la dirección del colegio.`;
       const enviado = await sendWhatsApp(alumnoData.telefono, msg);
-      if(enviado) toast('✅ WhatsApp enviado al apoderado' + (pdfLink ? ' con link PDF ✅' : ''),'success');
+      if(alumnoData.telefono2) sendWhatsApp(alumnoData.telefono2, msg);
+      if(enviado) toast('✅ WhatsApp enviado al apoderado' + (alumnoData.telefono2 ? 's' : '') + (pdfLink ? ' con link PDF ✅' : ''),'success');
       else {
         // Mostrar detalle útil según la causa
         if(!alumnoData.telefono) toast('⚠️ El apoderado no tiene número registrado','warning');
