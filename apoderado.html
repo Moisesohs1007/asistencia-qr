@@ -667,7 +667,7 @@ firebase.initializeApp({
 });
 var auth = firebase.auth();
 var db   = firebase.firestore();
-auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
+auth.setPersistence(firebase.auth.Auth.Persistence.SESSION);
 
 var alumno    = null;
 var apoData   = {};
@@ -1657,6 +1657,29 @@ function initApoSidebar() {
   var lt='resumen';try{lt=sessionStorage.getItem('asmqr_apo_lastTab')||'resumen';}catch(e){}
   setApoSbActive(lt);
 }
+
+// ── CERRAR SESIÓN AL CERRAR PESTAÑA / VENTANA ──────────────────────────────
+// pagehide cubre móviles (iOS/Android) y PC al cerrar pestaña o navegar fuera
+window.addEventListener('pagehide', function(e) {
+  // e.persisted = true cuando la página va al bfcache (back/forward), no cerramos
+  if (!e.persisted && firebase.auth().currentUser) {
+    // Usamos sendBeacon para que la petición sobreviva al cierre
+    var token = firebase.auth().currentUser.getIdToken
+      ? null : null; // solo necesitamos signOut local
+    auth.signOut();
+    try { sessionStorage.removeItem('asmqr_apo_lastTab'); } catch(ex) {}
+    try { sessionStorage.removeItem('asmqr_haySession'); } catch(ex) {}
+  }
+});
+
+// beforeunload como respaldo en PC (Chrome, Edge, Firefox)
+window.addEventListener('beforeunload', function() {
+  if (firebase.auth().currentUser) {
+    auth.signOut();
+    try { sessionStorage.removeItem('asmqr_apo_lastTab'); } catch(ex) {}
+    try { sessionStorage.removeItem('asmqr_haySession'); } catch(ex) {}
+  }
+});
 
 </script>
 </body>

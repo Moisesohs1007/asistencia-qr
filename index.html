@@ -1902,7 +1902,7 @@
     </div>
   </div>
   <!-- DERECHA: año + iniciales -->
-  <div style="display:flex;align-items:center;gap:10px;position:relative;flex-shrink:0;">
+  <div style="display:flex;align-items:center;gap:10px;position:static;flex-shrink:0;">
     <span style="color:#C9A84C;font-size:11px;font-weight:500;border:0.5px solid rgba(201,168,76,0.4);padding:2px 8px;border-radius:4px;" id="year-badge">2026</span>
     <span id="user-name-display" style="display:none;"></span>
     <span id="user-rol-badge" style="display:none;"></span>
@@ -1966,9 +1966,9 @@
       Comunicación
       <svg class="drop-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
       <div class="nav-dropdown" id="drop-comunicacion">
-        <div class="nav-drop-item" style="opacity:0.45;cursor:not-allowed;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Mensajería <span style="font-size:9px;color:#C9A84C;margin-left:4px;">Próx.</span></div>
-        <div class="nav-drop-item" style="opacity:0.45;cursor:not-allowed;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Agenda <span style="font-size:9px;color:#C9A84C;margin-left:4px;">Próx.</span></div>
-        <div class="nav-drop-item" style="opacity:0.45;cursor:not-allowed;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/></svg>Comunicados <span style="font-size:9px;color:#C9A84C;margin-left:4px;">Próx.</span></div>
+        <div class="nav-drop-item" onclick="event.stopPropagation();showSection('comunicacion-mensajeria');closeNavDrops()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Mensajería a Apoderados</div>
+        <div class="nav-drop-item" onclick="event.stopPropagation();showSection('comunicacion-agenda');closeNavDrops()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Agenda Escolar</div>
+        <div class="nav-drop-item" onclick="event.stopPropagation();showSection('comunicacion-comunicados');closeNavDrops()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/></svg>Comunicados</div>
       </div>
     </button>
     <!-- Configuración -->
@@ -2786,6 +2786,56 @@
     </div>
   </div>
 
+
+  <!-- ===== COMUNICACIÓN: MENSAJERÍA ===== -->
+  <div class="section" id="sec-comunicacion-mensajeria">
+    <div class="page-title">✉️ Mensajería a Apoderados</div>
+    <div class="page-sub">Envía mensajes y notificaciones directamente a los apoderados vía WhatsApp</div>
+    <div class="card" style="text-align:center;padding:48px 24px;">
+      <div style="font-size:3rem;margin-bottom:16px;">✉️</div>
+      <div style="font-family:var(--font-display);font-size:1.2rem;font-weight:700;margin-bottom:8px;color:var(--text);">Mensajería a Apoderados</div>
+      <div style="color:var(--muted);font-size:0.9rem;max-width:400px;margin:0 auto 20px;">
+        Envía mensajes masivos o individuales a los apoderados sobre asistencia, comunicados y eventos del colegio.
+      </div>
+      <div style="display:inline-flex;align-items:center;gap:8px;background:rgba(56,189,248,0.1);border:1px solid rgba(56,189,248,0.3);border-radius:10px;padding:8px 16px;color:var(--accent);font-size:0.85rem;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        Configura tu API de WhatsApp en <strong style="margin-left:4px;">Configuración → WhatsApp</strong>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== COMUNICACIÓN: AGENDA ===== -->
+  <div class="section" id="sec-comunicacion-agenda">
+    <div class="page-title">📅 Agenda Escolar</div>
+    <div class="page-sub">Gestiona eventos, reuniones y actividades del calendario escolar</div>
+    <div class="card" style="text-align:center;padding:48px 24px;">
+      <div style="font-size:3rem;margin-bottom:16px;">📅</div>
+      <div style="font-family:var(--font-display);font-size:1.2rem;font-weight:700;margin-bottom:8px;color:var(--text);">Agenda Escolar</div>
+      <div style="color:var(--muted);font-size:0.9rem;max-width:400px;margin:0 auto;">
+        Organiza y comparte el calendario de actividades, reuniones de padres, días festivos y eventos del colegio.
+      </div>
+      <div style="margin-top:20px;display:inline-flex;align-items:center;gap:8px;background:rgba(251,191,36,0.1);border:1px solid rgba(251,191,36,0.3);border-radius:10px;padding:8px 16px;color:var(--warning);font-size:0.85rem;">
+        <span>🚀</span> Próximamente disponible
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== COMUNICACIÓN: COMUNICADOS ===== -->
+  <div class="section" id="sec-comunicacion-comunicados">
+    <div class="page-title">📢 Comunicados</div>
+    <div class="page-sub">Redacta y envía comunicados oficiales a toda la comunidad educativa</div>
+    <div class="card" style="text-align:center;padding:48px 24px;">
+      <div style="font-size:3rem;margin-bottom:16px;">📢</div>
+      <div style="font-family:var(--font-display);font-size:1.2rem;font-weight:700;margin-bottom:8px;color:var(--text);">Comunicados Oficiales</div>
+      <div style="color:var(--muted);font-size:0.9rem;max-width:400px;margin:0 auto;">
+        Crea y distribuye comunicados oficiales a padres de familia, docentes y personal administrativo.
+      </div>
+      <div style="margin-top:20px;display:inline-flex;align-items:center;gap:8px;background:rgba(251,191,36,0.1);border:1px solid rgba(251,191,36,0.3);border-radius:10px;padding:8px 16px;color:var(--warning);font-size:0.85rem;">
+        <span>🚀</span> Próximamente disponible
+      </div>
+    </div>
+  </div>
+
 </main>
 
 <!-- MODAL ALUMNO -->
@@ -3584,9 +3634,9 @@ function aplicarPermisos(rol) {
   setTimeout(renderBottomNav, 100);
   // Pestañas visibles según rol
   const permisos = {
-    admin:    ['inicio','scan','alumnos','registro','reportes','incidentes','usuarios','config'],
-    director: ['inicio','registro','reportes','incidentes'],
-    profesor: ['inicio','alumnos','registro','incidentes'],
+    admin:    ['inicio','scan','alumnos','registro','reportes','incidentes','usuarios','config','comunicacion-mensajeria','comunicacion-agenda','comunicacion-comunicados'],
+    director: ['inicio','registro','reportes','incidentes','comunicacion-mensajeria','comunicacion-agenda','comunicacion-comunicados'],
+    profesor: ['inicio','alumnos','registro','incidentes','comunicacion-mensajeria'],
     portero:  ['inicio','scan'],
   };
   const tabs = permisos[rol] || ['scan'];
@@ -3656,6 +3706,7 @@ function showSectionDirect(id) {
     poblarSelectorMesInc();
     renderIncidentes();
   }
+  // Comunicacion subsections - no necesitan init especial
 }
 
 // ============================================================
@@ -8455,15 +8506,20 @@ function renderBottomNav() {
       { id: 'usuarios',   icon: '👤', label: 'Usuarios' },
       { id: 'incidentes', icon: '🚨', label: 'Incidentes' },
     ]},
+    { id: 'comunicacion', icon: '💬', label: 'Comunic.', sub: [
+      { id: 'comunicacion-mensajeria',   icon: '✉️', label: 'Mensajería' },
+      { id: 'comunicacion-agenda',       icon: '📅', label: 'Agenda' },
+      { id: 'comunicacion-comunicados',  icon: '📢', label: 'Comunicados' },
+    ]},
     { id: 'mas', icon: '⋯', label: 'Más', sub: [
       { id: 'config', icon: '⚙', label: 'Configuración' },
     ]},
   ];
 
   const permisos = {
-    admin:    ['inicio','asistencia','aula','mas'],
-    director: ['inicio','asistencia','mas'],
-    profesor: ['inicio','aula'],
+    admin:    ['inicio','asistencia','aula','comunicacion','mas'],
+    director: ['inicio','asistencia','comunicacion','mas'],
+    profesor: ['inicio','aula','comunicacion'],
     portero:  ['inicio','asistencia'],
   };
   const allowed = permisos[currentRol] || ['inicio','asistencia'];
@@ -8509,6 +8565,11 @@ function openMobileMenu(menuId) {
       { id: 'alumnos',    icon: '👥', label: 'Alumnos' },
       { id: 'usuarios',   icon: '👤', label: 'Usuarios' },
       { id: 'incidentes', icon: '🚨', label: 'Incidentes' },
+    ],
+    comunicacion: [
+      { id: 'comunicacion-mensajeria',   icon: '✉️', label: 'Mensajería a Apoderados' },
+      { id: 'comunicacion-agenda',       icon: '📅', label: 'Agenda Escolar' },
+      { id: 'comunicacion-comunicados',  icon: '📢', label: 'Comunicados' },
     ],
     mas: [
       { id: 'config', icon: '⚙', label: 'Configuración' },
@@ -8983,6 +9044,21 @@ async function resetearTodoElSistema() {
     toast('Error: ' + e.message, 'error');
   }
 }
+
+// ── CERRAR SESIÓN AL CERRAR PESTAÑA / VENTANA ──────────────────────────────
+window.addEventListener('pagehide', function(e) {
+  if (!e.persisted && firebase.auth().currentUser) {
+    auth.signOut();
+    try { sessionStorage.removeItem('asmqr_haySession'); } catch(ex) {}
+  }
+});
+
+window.addEventListener('beforeunload', function() {
+  if (firebase.auth().currentUser) {
+    auth.signOut();
+    try { sessionStorage.removeItem('asmqr_haySession'); } catch(ex) {}
+  }
+});
 
 </script>
 
