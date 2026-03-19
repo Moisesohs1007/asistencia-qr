@@ -412,61 +412,69 @@ var _incidentesCache = null; // incidentes del alumno cacheados
 
 // Cargar config una sola vez
 function getConfigCache() {
-  if(_configCache) return Promise.resolve(_configCache);
-  return db.collection('config').doc('general').get().then(function(snap) {
-    _configCache = snap.exists ? snap.data() : {};
-    return _configCache;
-  }).catch(function() {
-    _configCache = {};
-    return _configCache;
-  });
-}
-
-
-
-// Boton salir — ahora está en el menú del avatar con onclick inline
-
-// Boton guardar nueva pass
-document.getElementById('btn-guardar-pass').addEventListener('click', guardarNuevaPass);
-
-// Fallback: si después de 6s apo-app sigue oculto, mostrarlo
-setTimeout(function() {
-  var app = document.getElementById('apo-app');
-  // Fallback: si sigue oculto, mostrarlo siempre (cubre onAuthStateChanged lento o fallo silencioso)
-  if(app && (app.style.display === 'none' || app.style.display === '')) {
-    console.warn('[APO] Fallback timeout: forzando visibilidad de apo-app');
-    app.style.display = 'block';
-  }
-}, 8000);
-
-// Verificar sesion
-auth.onAuthStateChanged(function(user) {
-  console.log('[APO] auth state:', user ? user.email : 'NO SESSION');
-  if(!user) { 
-    // Sin sesión — mostrar loading antes de redirigir
-    document.getElementById('apo-app').style.display = 'none';
-    window.location.href = 'index.html'; 
-    return; 
-  }
-  var dni = null;
-  if(user.email.indexOf('@apo.marello.pe') !== -1) {
-    dni = user.email.replace('@apo.marello.pe', '');
-    console.log('[APO] email virtual, dni:', dni);
-  } else {
-    console.log('[APO] correo real, buscando emailReal:', user.email);
-    db.collection('apoderados').where('emailReal', '==', user.email).limit(1).get().then(function(snap) {
-      console.log('[APO] emailReal snap.empty:', snap.empty, 'docs:', snap.docs.length);
-      if(snap.empty) { auth.signOut(); window.location.href = 'index.html'; return; }
-      var dniReal = snap.docs[0].id;
-      console.log('[APO] dniReal:', dniReal);
-      continuarCargaApoderado(user, dniReal);
-    }).catch(function(e) {
-      console.error('[APO] ERROR emailReal query:', e.message);
-      auth.signOut(); window.location.href = 'index.html';
+  try {
+    if(_configCache) return Promise.resolve(_configCache);
+    return db.collection('config').doc('general').get().then(function(snap) {
+      _configCache = snap.exists ? snap.data() : {};
+      return _configCache;
+    }).catch(function() {
+      _configCache = {};
+      return _configCache;
     });
-    return;
   }
-  continuarCargaApoderado(user, dni);
+
+
+
+  // Boton salir — ahora está en el menú del avatar con onclick inline
+
+  // Boton guardar nueva pass
+  document.getElementById('btn-guardar-pass').addEventListener('click', guardarNuevaPass);
+
+  // Fallback: si después de 6s apo-app sigue oculto, mostrarlo
+  setTimeout(function() {
+    var app = document.getElementById('apo-app');
+    if(app && app.style.display === 'none' || app && !app.style.display) {
+      // Solo mostrar si hay usuario logueado
+      if(firebase.auth().currentUser) {
+        app.style.display = '';
+      }
+    }
+  }, 6000);
+
+  // Verificar sesion
+  auth.onAuthStateChanged(function(user) {
+    console.log('[APO] auth state:', user ? user.email : 'NO SESSION');
+    if(!user) { 
+      // Sin sesión — mostrar loading antes de redirigir
+      document.getElementById('apo-app').style.display = 'none';
+      window.location.href = 'index.html'; 
+      return; 
+    }
+    var dni = null;
+    if(user.email.indexOf('@apo.marello.pe') !== -1) {
+      dni = user.email.replace('@apo.marello.pe', '');
+      console.log('[APO] email virtual, dni:', dni);
+    } else {
+      console.log('[APO] correo real, buscando emailReal:', user.email);
+      db.collection('apoderados').where('emailReal', '==', user.email).limit(1).get().then(function(snap) {
+        console.log('[APO] emailReal snap.empty:', snap.empty, 'docs:', snap.docs.length);
+        if(snap.empty) { auth.signOut(); window.location.href = 'index.html'; return; }
+        var dniReal = snap.docs[0].id;
+        console.log('[APO] dniReal:', dniReal);
+        continuarCargaApoderado(user, dniReal);
+      }).catch(function(e) {
+        console.error('[APO] ERROR emailReal query:', e.message);
+        auth.signOut(); window.location.href = 'index.html';
+      });
+      return;
+    }
+    continuarCargaApoderado(user, dni);
+  } catch(e) {
+    console.error('getConfigCache:', e);
+    var errEl = document.getElementById('err-apo-datos') || document.getElementById('err-apo-pass') || document.getElementById('err-cambiar-pass');
+    if(errEl) { errEl.textContent = 'Error: ' + e.message; errEl.style.display = 'block'; }
+    else console.error('getConfigCache error:', e.message);
+  }
 });
 
 function continuarCargaApoderado(user, dni) {
@@ -515,23 +523,19 @@ function continuarCargaApoderado(user, dni) {
       try { lastTab = sessionStorage.getItem('asmqr_apo_lastTab'); } catch(e) {}
       var tabInicial = lastTab || 'resumen';
       cargarRegistros().then(function() {
-        try { showTab(tabInicial); } catch(tabErr) { console.error('showTab error:', tabErr); }
-        document.getElementById('apo-app').style.display = 'block';
+        showTab(tabInicial);
+        // Mostrar app DESPUÉS de posicionar la pestaña correcta — sin flash
+        document.getElementById('apo-app').style.display = '';
       }).catch(function(e) {
-        console.error('[APO] cargarRegistros falló:', e);
-        document.getElementById('apo-app').style.display = 'block';
-        var listaEl = document.getElementById('lista-ultimos');
-        if(listaEl) listaEl.innerHTML =
-          '<div style="padding:16px;text-align:center;color:#f87171;font-size:0.83rem;">❌ Error al cargar registros: ' + e.message + '</div>';
-        try { showTab(tabInicial); } catch(tabErr) {}
+        document.getElementById('apo-app').style.display = '';
+        document.getElementById('lista-ultimos').innerHTML =
+          '<div style="padding:16px;text-align:center;color:#f87171;font-size:0.83rem;">Error al cargar registros: ' + e.message + '</div>';
       });
     }
   }).catch(function(e) {
-    console.error('[APO] ERROR general:', e);
-    // Siempre mostrar la app aunque haya error — nunca dejar pantalla en blanco
-    document.getElementById('apo-app').style.display = 'block';
-    var listaEl = document.getElementById('lista-ultimos');
-    if(listaEl) listaEl.innerHTML = '<div style="padding:16px;text-align:center;color:#f87171;font-size:0.83rem;">❌ Error al cargar datos: ' + e.message + '</div>';
+    console.error(e);
+    console.log('[APO] ERROR general: ', e.message);
+    document.getElementById('lista-ultimos').innerHTML = '<div style="padding:16px;text-align:center;color:#f87171;font-size:0.83rem;">❌ Error: ' + e.message + '</div>';
   });
 }
 
@@ -618,94 +622,101 @@ function onMesChange(origen) {
 // Las pestañas usan los datos ya cargados sin volver a Firestore.
 
 function cargarRegistros(mes) {
-  // mes = '03' formato. Por defecto mes actual
-  _registrosCargados = false;
-  var mesNum = mes || String(new Date().getMonth()+1).padStart(2,'0');
-  var anio   = new Date().getFullYear();
-  var desde  = anio + '-' + mesNum + '-01';
-  var ultimo = new Date(anio, parseInt(mesNum), 0).getDate();
-  var hasta  = anio + '-' + mesNum + '-' + String(ultimo).padStart(2,'0');
-  console.log('[APO] Cargando registros de:', alumno.id, 'mes:', mesNum);
-  // Solo filtrar por alumnoId — evita índice compuesto en Firestore.
-  // Filtro de mes se aplica en cliente.
-  return db.collection('registros')
-    .where('alumnoId','==',alumno.id)
-    .get().then(function(snap) {
-      console.log('[APO] Registros recibidos total:', snap.docs.length);
-      var docsDelMes = snap.docs.filter(function(d) {
-        var f = (d.data().fecha || '');
-        return f >= desde && f <= hasta;
-      });
-      console.log('[APO] Registros del mes:', docsDelMes.length);
-      var grupos = {};
-      docsDelMes.forEach(function(d) {
-        var r = d.data();
-        if(!r.fecha) return;
-        var key = r.alumnoId + '_' + r.fecha;
-        if(!grupos[key]) grupos[key] = { fecha: r.fecha, estado: '', horaIngreso: null, horaSalida: null };
-        var esIngreso = !r.tipo || r.tipo.toLowerCase() === 'ingreso';
-        if(esIngreso) {
-          if(!grupos[key].horaIngreso) grupos[key].horaIngreso = r.hora;
-        } else {
-          grupos[key].horaSalida = r.hora;
-        }
-        // Normalizar: 'A tiempo' → 'Puntual' (index.html guarda 'A tiempo')
-        var est = (r.estado || '').trim();
-        if(est === 'A tiempo') est = 'Puntual';
-        // Prioridad: Tardanza > Puntual > otros
-        if(est === 'Tardanza') {
-          grupos[key].estado = 'Tardanza';
-        } else if(est === 'Puntual' && grupos[key].estado !== 'Tardanza') {
-          grupos[key].estado = 'Puntual';
-        } else if(est && !grupos[key].estado) {
-          grupos[key].estado = est;
-        }
-      });
-      // Determinar estado final por día (para grupos que SI tienen documento)
-      Object.values(grupos).forEach(function(g) {
-        if(g.estado === 'Tardanza') return;
-        if(g.horaIngreso) {
-          if(!g.estado || g.estado === '') g.estado = 'Puntual';
-        } else {
-          g.estado = 'Ausente';
-        }
-      });
-
-      // Inyectar dias habiles sin registro como Ausente
-      // Genera lunes-viernes del mes hasta hoy — cero lecturas Firestore extra.
-      var hoyStr = (function() {
-        var d = new Date();
-        return d.getFullYear() + '-'
-          + String(d.getMonth()+1).padStart(2,'0') + '-'
-          + String(d.getDate()).padStart(2,'0');
-      })();
-      var cursor = new Date(desde + 'T12:00:00');
-      var finMes = new Date(hasta + 'T12:00:00');
-      var tope   = finMes < new Date(hoyStr + 'T12:00:00') ? finMes : new Date(hoyStr + 'T12:00:00');
-      while(cursor <= tope) {
-        var dow = cursor.getDay();
-        if(dow !== 0 && dow !== 6) {
-          var fechaStr = cursor.getFullYear() + '-'
-            + String(cursor.getMonth()+1).padStart(2,'0') + '-'
-            + String(cursor.getDate()).padStart(2,'0');
-          var key2 = alumno.id + '_' + fechaStr;
-          if(!grupos[key2]) {
-            grupos[key2] = { fecha: fechaStr, estado: 'Ausente', horaIngreso: null, horaSalida: null };
+  try {
+    // mes = '03' formato. Por defecto mes actual
+    _registrosCargados = false;
+    var mesNum = mes || String(new Date().getMonth()+1).padStart(2,'0');
+    var anio   = new Date().getFullYear();
+    var desde  = anio + '-' + mesNum + '-01';
+    var ultimo = new Date(anio, parseInt(mesNum), 0).getDate();
+    var hasta  = anio + '-' + mesNum + '-' + String(ultimo).padStart(2,'0');
+    console.log('[APO] Cargando registros de:', alumno.id, 'mes:', mesNum);
+    // Solo filtrar por alumnoId — evita índice compuesto en Firestore.
+    // Filtro de mes se aplica en cliente.
+    return db.collection('registros')
+      .where('alumnoId','==',alumno.id)
+      .get().then(function(snap) {
+        console.log('[APO] Registros recibidos total:', snap.docs.length);
+        var docsDelMes = snap.docs.filter(function(d) {
+          var f = (d.data().fecha || '');
+          return f >= desde && f <= hasta;
+        });
+        console.log('[APO] Registros del mes:', docsDelMes.length);
+        var grupos = {};
+        docsDelMes.forEach(function(d) {
+          var r = d.data();
+          if(!r.fecha) return;
+          var key = r.alumnoId + '_' + r.fecha;
+          if(!grupos[key]) grupos[key] = { fecha: r.fecha, estado: '', horaIngreso: null, horaSalida: null };
+          var esIngreso = !r.tipo || r.tipo.toLowerCase() === 'ingreso';
+          if(esIngreso) {
+            if(!grupos[key].horaIngreso) grupos[key].horaIngreso = r.hora;
+          } else {
+            grupos[key].horaSalida = r.hora;
           }
-        }
-        cursor.setDate(cursor.getDate() + 1);
-      }
+          // Normalizar: 'A tiempo' → 'Puntual' (index.html guarda 'A tiempo')
+          var est = (r.estado || '').trim();
+          if(est === 'A tiempo') est = 'Puntual';
+          // Prioridad: Tardanza > Puntual > otros
+          if(est === 'Tardanza') {
+            grupos[key].estado = 'Tardanza';
+          } else if(est === 'Puntual' && grupos[key].estado !== 'Tardanza') {
+            grupos[key].estado = 'Puntual';
+          } else if(est && !grupos[key].estado) {
+            grupos[key].estado = est;
+          }
+        });
+        // Determinar estado final por día (para grupos que SI tienen documento)
+        Object.values(grupos).forEach(function(g) {
+          if(g.estado === 'Tardanza') return;
+          if(g.horaIngreso) {
+            if(!g.estado || g.estado === '') g.estado = 'Puntual';
+          } else {
+            g.estado = 'Ausente';
+          }
+        });
 
-      registros = Object.values(grupos).sort(function(a,b){
-        return b.fecha.localeCompare(a.fecha);
+        // Inyectar dias habiles sin registro como Ausente
+        // Genera lunes-viernes del mes hasta hoy — cero lecturas Firestore extra.
+        var hoyStr = (function() {
+          var d = new Date();
+          return d.getFullYear() + '-'
+            + String(d.getMonth()+1).padStart(2,'0') + '-'
+            + String(d.getDate()).padStart(2,'0');
+        })();
+        var cursor = new Date(desde + 'T12:00:00');
+        var finMes = new Date(hasta + 'T12:00:00');
+        var tope   = finMes < new Date(hoyStr + 'T12:00:00') ? finMes : new Date(hoyStr + 'T12:00:00');
+        while(cursor <= tope) {
+          var dow = cursor.getDay();
+          if(dow !== 0 && dow !== 6) {
+            var fechaStr = cursor.getFullYear() + '-'
+              + String(cursor.getMonth()+1).padStart(2,'0') + '-'
+              + String(cursor.getDate()).padStart(2,'0');
+            var key2 = alumno.id + '_' + fechaStr;
+            if(!grupos[key2]) {
+              grupos[key2] = { fecha: fechaStr, estado: 'Ausente', horaIngreso: null, horaSalida: null };
+            }
+          }
+          cursor.setDate(cursor.getDate() + 1);
+        }
+
+        registros = Object.values(grupos).sort(function(a,b){
+          return b.fecha.localeCompare(a.fecha);
+        });
+        _registrosCargados = true;
+        console.log('[APO] Procesados:', registros.length, 'dias (incl. ausentes habiles)');
+      }).catch(function(e) {
+        console.error('cargarRegistros error:', e);
+        console.log('[APO] ERROR cargarRegistros: ', e.message);
+        registros = registros || [];
       });
-      _registrosCargados = true;
-      console.log('[APO] Procesados:', registros.length, 'dias (incl. ausentes habiles)');
-    }).catch(function(e) {
-      console.error('cargarRegistros error:', e);
-      console.log('[APO] ERROR cargarRegistros: ', e.message);
-      registros = registros || [];
-    });
+  } catch(e) {
+    console.error('cargarRegistros:', e);
+    var errEl = document.getElementById('err-apo-datos') || document.getElementById('err-apo-pass') || document.getElementById('err-cambiar-pass');
+    if(errEl) { errEl.textContent = 'Error: ' + e.message; errEl.style.display = 'block'; }
+    else console.error('cargarRegistros error:', e.message);
+  }
 }
 
 // ── Menú apoderado — igual lógica que index.html ──
@@ -753,31 +764,22 @@ function showTab(tab) {
   });
   // Resaltar menú activo
   var _map = {resumen:'inicio',historial:'asistencia',incidentes:'academico',comunicados:'comunicacion',carnet:'cuenta',contacto:'cuenta'};
-  try { setApoTabActive(_map[tab]||'inicio', tab); } catch(e) { console.error('setApoTabActive:', e); }
+  setApoTabActive(_map[tab]||'inicio', tab);
   try { sessionStorage.setItem('asmqr_apo_lastTab', tab); } catch(e) {}
-  // Si registros aún no cargaron, esperar antes de renderizar
+  // Si registros aun no cargaron, esperar antes de renderizar
   if((tab === 'resumen' || tab === 'historial') && !_registrosCargados) {
-    var mesActualStr = String(new Date().getMonth()+1).padStart(2,'0');
-    cargarRegistros(mesActualStr).then(function() {
-      if(tab === 'resumen')   try { renderResumen(); } catch(e) { console.error('renderResumen:', e); }
-      if(tab === 'historial') try { renderHistorial(); } catch(e) { console.error('renderHistorial:', e); }
-    }).catch(function(e) {
-      console.error('[APO] showTab cargarRegistros falló:', e);
-      // Forzar render aunque haya error — mostrará "Sin registros"
-      if(tab === 'resumen')   try { renderResumen(); } catch(e2) {}
-      if(tab === 'historial') try { renderHistorial(); } catch(e2) {}
+    var mesActual = String(new Date().getMonth()+1).padStart(2,'0');
+    cargarRegistros(mesActual).then(function() {
+      if(tab === 'resumen')   renderResumen();
+      if(tab === 'historial') renderHistorial();
     });
     return;
   }
-  try {
-    if(tab === 'resumen')    renderResumen();
-    if(tab === 'historial')  renderHistorial();
-    if(tab === 'incidentes') renderIncidentes();
-    if(tab === 'carnet')     renderCarnet();
-    if(tab === 'contacto')   renderContacto();
-  } catch(e) {
-    console.error('[APO] showTab render error:', e);
-  }
+  if(tab === 'resumen')    renderResumen();
+  if(tab === 'historial')  renderHistorial();
+  if(tab === 'incidentes') renderIncidentes();
+  if(tab === 'carnet')     renderCarnet();
+  if(tab === 'contacto')   renderContacto();
 }
 
 function filtrarMes(lista, mes) {
@@ -857,30 +859,37 @@ function renderHistorial() {
 }
 
 function renderIncidentes() {
-  // Filtrar solo mes actual
-  var hoy = new Date();
-  var mesActual = hoy.getFullYear() + '-' + String(hoy.getMonth()+1).padStart(2,'0');
+  try {
+    // Filtrar solo mes actual
+    var hoy = new Date();
+    var mesActual = hoy.getFullYear() + '-' + String(hoy.getMonth()+1).padStart(2,'0');
 
-  // Usar cache si ya está cargado — filtrar por mes en memoria
-  if(_incidentesCache !== null) {
-    var filtrados = _incidentesCache.filter(function(i){ return (i.fecha||'').startsWith(mesActual); });
-    _renderIncidentesLista(filtrados);
-    return;
+    // Usar cache si ya está cargado — filtrar por mes en memoria
+    if(_incidentesCache !== null) {
+      var filtrados = _incidentesCache.filter(function(i){ return (i.fecha||'').startsWith(mesActual); });
+      _renderIncidentesLista(filtrados);
+      return;
+    }
+    var cont = document.getElementById('lista-incidentes');
+    cont.innerHTML = '<div style="padding:16px;text-align:center;color:var(--muted);font-size:0.83rem;">Cargando...</div>';
+    // Solo filtrar por alumnoId — evita índice compuesto en Firestore.
+    // El filtro de mes se aplica en cliente (pocos incidentes por alumno).
+    db.collection('incidentes')
+      .where('alumnoId','==',alumno.id)
+      .get().then(function(snap) {
+      _incidentesCache = snap.docs.map(function(d){ return Object.assign({_id: d.id}, d.data()); })
+        .sort(function(a,b){ return (b.fecha||'').localeCompare(a.fecha||''); });
+      var filtrados = _incidentesCache.filter(function(i){ return (i.fecha||'').startsWith(mesActual); });
+      _renderIncidentesLista(filtrados);
+    }).catch(function(e){
+      cont.innerHTML='<div style="padding:16px;text-align:center;color:#f87171;font-size:0.83rem;">Error: '+e.message+'</div>';
+    });
+  } catch(e) {
+    console.error('renderIncidentes:', e);
+    var errEl = document.getElementById('err-apo-datos') || document.getElementById('err-apo-pass') || document.getElementById('err-cambiar-pass');
+    if(errEl) { errEl.textContent = 'Error: ' + e.message; errEl.style.display = 'block'; }
+    else console.error('renderIncidentes error:', e.message);
   }
-  var cont = document.getElementById('lista-incidentes');
-  cont.innerHTML = '<div style="padding:16px;text-align:center;color:var(--muted);font-size:0.83rem;">Cargando...</div>';
-  // Solo filtrar por alumnoId — evita índice compuesto en Firestore.
-  // El filtro de mes se aplica en cliente (pocos incidentes por alumno).
-  db.collection('incidentes')
-    .where('alumnoId','==',alumno.id)
-    .get().then(function(snap) {
-    _incidentesCache = snap.docs.map(function(d){ return Object.assign({_id: d.id}, d.data()); })
-      .sort(function(a,b){ return (b.fecha||'').localeCompare(a.fecha||''); });
-    var filtrados = _incidentesCache.filter(function(i){ return (i.fecha||'').startsWith(mesActual); });
-    _renderIncidentesLista(filtrados);
-  }).catch(function(e){
-    cont.innerHTML='<div style="padding:16px;text-align:center;color:#f87171;font-size:0.83rem;">Error: '+e.message+'</div>';
-  });
 }
 
 function _renderIncidentesLista(lista) {
@@ -1161,91 +1170,98 @@ async function sendWhatsAppApo(telefono, mensaje) {
 }
 
 function guardarNuevaPass() {
-  var pass1    = document.getElementById('inp-pass1').value;
-  var pass2    = document.getElementById('inp-pass2').value;
-  var telefono = document.getElementById('inp-telefono').value.trim();
-  var errEl    = document.getElementById('err-cambiar-pass');
-  var hayGrupoDatos = document.getElementById('grupo-datos-apo').style.display !== 'none';
-  errEl.style.display = 'none';
+  try {
+    var pass1    = document.getElementById('inp-pass1').value;
+    var pass2    = document.getElementById('inp-pass2').value;
+    var telefono = document.getElementById('inp-telefono').value.trim();
+    var errEl    = document.getElementById('err-cambiar-pass');
+    var hayGrupoDatos = document.getElementById('grupo-datos-apo').style.display !== 'none';
+    errEl.style.display = 'none';
 
-  // Validaciones
-  if(pass1.length < 6) { errEl.textContent='La contraseña debe tener al menos 6 caracteres'; errEl.style.display='block'; return; }
-  if(pass1 !== pass2)  { errEl.textContent='Las contraseñas no coinciden'; errEl.style.display='block'; return; }
-  if(!telefono || !/^\d{9}$/.test(telefono)) { errEl.textContent='Ingresa un celular de 9 dígitos'; errEl.style.display='block'; return; }
+    // Validaciones
+    if(pass1.length < 6) { errEl.textContent='La contraseña debe tener al menos 6 caracteres'; errEl.style.display='block'; return; }
+    if(pass1 !== pass2)  { errEl.textContent='Las contraseñas no coinciden'; errEl.style.display='block'; return; }
+    if(!telefono || !/^\d{9}$/.test(telefono)) { errEl.textContent='Ingresa un celular de 9 dígitos'; errEl.style.display='block'; return; }
 
-  var nombres   = '';
-  var apellidos = '';
-  var correo    = '';
-  if(hayGrupoDatos) {
-    nombres   = document.getElementById('inp-apo-nombres').value.trim();
-    apellidos = document.getElementById('inp-apo-apellidos').value.trim();
-    correo    = document.getElementById('inp-apo-correo').value.trim();
-    if(!nombres)   { errEl.textContent='Ingresa tus nombres'; errEl.style.display='block'; return; }
-    if(!apellidos) { errEl.textContent='Ingresa tus apellidos'; errEl.style.display='block'; return; }
-    if(correo && !/^[^@]+@[^@]+\.[^@]+$/.test(correo)) { errEl.textContent='El correo no es válido'; errEl.style.display='block'; return; }
-  }
-
-  var btn = document.getElementById('btn-guardar-pass');
-  btn.disabled = true;
-  btn.textContent = 'Guardando...';
-
-  auth.currentUser.updatePassword(pass1).then(function() {
-    // Actualizar datos del alumno con teléfono
-    var updateAlumno = {
-      telefono:           telefono,
-      apoderadoNombres:   nombres   || alumno.apoderadoNombres   || '',
-      apoderadoApellidos: apellidos || alumno.apoderadoApellidos || ''
-    };
-    if(correo) updateAlumno.correoApoderado = correo;
-    return db.collection('alumnos').doc(alumno.id).update(updateAlumno);
-  }).then(function() {
-    // Guardar documento apoderado completo
-    var dataApo = {
-      alumnoId:     alumno.id,
-      telefono:     telefono,
-      primerIngreso: false,
-      passBackup:   pass1,  // Respaldo para recuperación
-      passReseteada: false,
-      actualizadoEn: firebase.firestore.FieldValue.serverTimestamp()
-    };
-    if(nombres)   dataApo.nombres   = nombres;
-    if(apellidos) dataApo.apellidos = apellidos;
-    if(correo)    dataApo.emailReal = correo;
-    return db.collection('apoderados').doc(alumno.id).set(dataApo, { merge: true });
-  }).then(function() {
-    // Si tiene correo real, actualizar también en Firebase Auth (display name)
-    var user = auth.currentUser;
-    var promises = [];
-    if(nombres || apellidos) {
-      promises.push(user.updateProfile({ displayName: (nombres + ' ' + apellidos).trim() }));
+    var nombres   = '';
+    var apellidos = '';
+    var correo    = '';
+    if(hayGrupoDatos) {
+      nombres   = document.getElementById('inp-apo-nombres').value.trim();
+      apellidos = document.getElementById('inp-apo-apellidos').value.trim();
+      correo    = document.getElementById('inp-apo-correo').value.trim();
+      if(!nombres)   { errEl.textContent='Ingresa tus nombres'; errEl.style.display='block'; return; }
+      if(!apellidos) { errEl.textContent='Ingresa tus apellidos'; errEl.style.display='block'; return; }
+      if(correo && !/^[^@]+@[^@]+\.[^@]+$/.test(correo)) { errEl.textContent='El correo no es válido'; errEl.style.display='block'; return; }
     }
-    return Promise.all(promises);
-  }).then(function() {
-    document.getElementById('modal-cambiar-pass').style.display = 'none';
-    alumno.telefono           = telefono;
-    alumno.apoderadoNombres   = nombres   || alumno.apoderadoNombres;
-    alumno.apoderadoApellidos = apellidos || alumno.apoderadoApellidos;
-    btn.disabled = false;
-    btn.textContent = 'Guardar y continuar';
-    // Enviar nueva contraseña por WhatsApp
-    var nombreApo = (nombres || alumno.apoderadoNombres || 'Apoderado').split(' ')[0];
-    var msgPass = '🔐 *Contraseña registrada — Portal Apoderado*\n\n'
-      + 'Hola *' + nombreApo + '*,\n\n'
-      + 'Tu contraseña ha sido guardada exitosamente.\n\n'
-      + '📱 *Usuario:* ' + alumno.id + ' (DNI del alumno)\n'
-      + '🔑 *Contraseña:* ' + pass1 + '\n\n'
-      + '⚠️ Guarda este mensaje, lo necesitarás para ingresar al portal.\n\n'
-      + '🌐 Acceso: ' + window.location.href.replace('apoderado.html','') + 'apoderado.html';
-    sendWhatsAppApo(telefono, msgPass);
-    return cargarRegistros();
-  }).then(function() {
-    renderResumen();
-  }).catch(function(e) {
-    btn.disabled = false;
-    btn.textContent = 'Guardar y continuar';
-    errEl.textContent = 'Error: ' + e.message;
-    errEl.style.display = 'block';
-  });
+
+    var btn = document.getElementById('btn-guardar-pass');
+    btn.disabled = true;
+    btn.textContent = 'Guardando...';
+
+    auth.currentUser.updatePassword(pass1).then(function() {
+      // Actualizar datos del alumno con teléfono
+      var updateAlumno = {
+        telefono:           telefono,
+        apoderadoNombres:   nombres   || alumno.apoderadoNombres   || '',
+        apoderadoApellidos: apellidos || alumno.apoderadoApellidos || ''
+      };
+      if(correo) updateAlumno.correoApoderado = correo;
+      return db.collection('alumnos').doc(alumno.id).update(updateAlumno);
+    }).then(function() {
+      // Guardar documento apoderado completo
+      var dataApo = {
+        alumnoId:     alumno.id,
+        telefono:     telefono,
+        primerIngreso: false,
+        passBackup:   pass1,  // Respaldo para recuperación
+        passReseteada: false,
+        actualizadoEn: firebase.firestore.FieldValue.serverTimestamp()
+      };
+      if(nombres)   dataApo.nombres   = nombres;
+      if(apellidos) dataApo.apellidos = apellidos;
+      if(correo)    dataApo.emailReal = correo;
+      return db.collection('apoderados').doc(alumno.id).set(dataApo, { merge: true });
+    }).then(function() {
+      // Si tiene correo real, actualizar también en Firebase Auth (display name)
+      var user = auth.currentUser;
+      var promises = [];
+      if(nombres || apellidos) {
+        promises.push(user.updateProfile({ displayName: (nombres + ' ' + apellidos).trim() }));
+      }
+      return Promise.all(promises);
+    }).then(function() {
+      document.getElementById('modal-cambiar-pass').style.display = 'none';
+      alumno.telefono           = telefono;
+      alumno.apoderadoNombres   = nombres   || alumno.apoderadoNombres;
+      alumno.apoderadoApellidos = apellidos || alumno.apoderadoApellidos;
+      btn.disabled = false;
+      btn.textContent = 'Guardar y continuar';
+      // Enviar nueva contraseña por WhatsApp
+      var nombreApo = (nombres || alumno.apoderadoNombres || 'Apoderado').split(' ')[0];
+      var msgPass = '🔐 *Contraseña registrada — Portal Apoderado*\n\n'
+        + 'Hola *' + nombreApo + '*,\n\n'
+        + 'Tu contraseña ha sido guardada exitosamente.\n\n'
+        + '📱 *Usuario:* ' + alumno.id + ' (DNI del alumno)\n'
+        + '🔑 *Contraseña:* ' + pass1 + '\n\n'
+        + '⚠️ Guarda este mensaje, lo necesitarás para ingresar al portal.\n\n'
+        + '🌐 Acceso: ' + window.location.href.replace('apoderado.html','') + 'apoderado.html';
+      sendWhatsAppApo(telefono, msgPass);
+      return cargarRegistros();
+    }).then(function() {
+      renderResumen();
+    }).catch(function(e) {
+      btn.disabled = false;
+      btn.textContent = 'Guardar y continuar';
+      errEl.textContent = 'Error: ' + e.message;
+      errEl.style.display = 'block';
+    });
+  } catch(e) {
+    console.error('guardarNuevaPass:', e);
+    var errEl = document.getElementById('err-apo-datos') || document.getElementById('err-apo-pass') || document.getElementById('err-cambiar-pass');
+    if(errEl) { errEl.textContent = 'Error: ' + e.message; errEl.style.display = 'block'; }
+    else console.error('guardarNuevaPass error:', e.message);
+  }
 }
 // ── AVATAR APODERADO ──
 function toggleApoMenu() {
@@ -1262,81 +1278,98 @@ function closeApoMenu() {
 
 
 function abrirApoMisDatos() {
-  db.collection('apoderados').doc(alumno.id).get().then(function(snap) {
-    var d = snap.exists ? snap.data() : {};
-    document.getElementById('apo-datos-nombres').value    = d.nombres   || alumno.apoderadoNombres   || '';
-    document.getElementById('apo-datos-apellidos').value  = d.apellidos  || alumno.apoderadoApellidos || '';
-    document.getElementById('apo-datos-telefono').value   = d.telefono   || alumno.telefono           || '';
-    document.getElementById('apo-datos-email').value      = d.emailReal  || '';
-    document.getElementById('err-apo-datos').style.display = 'none';
-    document.getElementById('ok-apo-datos').style.display  = 'none';
-    document.getElementById('modal-apo-datos').style.display = 'flex';
-  }).catch(function(e) {
+  try {
+    db.collection('apoderados').doc(alumno.id).get().then(function(snap) {
+      var d = snap.exists ? snap.data() : {};
+      document.getElementById('apo-datos-nombres').value    = d.nombres   || alumno.apoderadoNombres   || '';
+      document.getElementById('apo-datos-apellidos').value  = d.apellidos  || alumno.apoderadoApellidos || '';
+      document.getElementById('apo-datos-telefono').value   = d.telefono   || alumno.telefono           || '';
+      document.getElementById('apo-datos-email').value      = d.emailReal  || '';
+      document.getElementById('err-apo-datos').style.display = 'none';
+      document.getElementById('ok-apo-datos').style.display  = 'none';
+      document.getElementById('modal-apo-datos').style.display = 'flex';
+    });
+  } catch(e) {
     console.error('abrirApoMisDatos:', e);
-    var errEl = document.getElementById('err-apo-datos');
-    if(errEl) { errEl.textContent = 'Error al cargar datos: ' + e.message; errEl.style.display = 'block'; }
-  });
+    var errEl = document.getElementById('err-apo-datos') || document.getElementById('err-apo-pass') || document.getElementById('err-cambiar-pass');
+    if(errEl) { errEl.textContent = 'Error: ' + e.message; errEl.style.display = 'block'; }
+    else console.error('abrirApoMisDatos error:', e.message);
+  }
 }
 
 function guardarApoMisDatos() {
-  var nombres   = document.getElementById('apo-datos-nombres').value.trim();
-  var apellidos = document.getElementById('apo-datos-apellidos').value.trim();
-  var telefono  = document.getElementById('apo-datos-telefono').value.trim();
-  var emailReal = document.getElementById('apo-datos-email').value.trim();
-  var errEl = document.getElementById('err-apo-datos');
-  var okEl  = document.getElementById('ok-apo-datos');
-  errEl.style.display = 'none'; okEl.style.display = 'none';
+  try {
+    var nombres   = document.getElementById('apo-datos-nombres').value.trim();
+    var apellidos = document.getElementById('apo-datos-apellidos').value.trim();
+    var telefono  = document.getElementById('apo-datos-telefono').value.trim();
+    var emailReal = document.getElementById('apo-datos-email').value.trim();
+    var errEl = document.getElementById('err-apo-datos');
+    var okEl  = document.getElementById('ok-apo-datos');
+    errEl.style.display = 'none'; okEl.style.display = 'none';
 
-  if(!nombres || !apellidos) { errEl.textContent = 'Nombres y apellidos son requeridos'; errEl.style.display = 'block'; return; }
+    if(!nombres || !apellidos) { errEl.textContent = 'Nombres y apellidos son requeridos'; errEl.style.display = 'block'; return; }
 
-  var update = { nombres, apellidos, telefono };
-  if(emailReal) update.emailReal = emailReal;
+    var update = { nombres, apellidos, telefono };
+    if(emailReal) update.emailReal = emailReal;
 
-  db.collection('apoderados').doc(alumno.id).set(update, { merge: true }).then(function() {
-    // Actualizar avatar
-    var nombreCompleto = (apellidos + ' ' + nombres).trim();
-    var partes = nombreCompleto.split(' ').filter(function(p){ return p.length > 0; });
-    var iniciales = partes.length >= 2
-      ? (partes[0][0] + partes[partes.length-1][0]).toUpperCase()
-      : nombreCompleto.substring(0,2).toUpperCase();
-    document.getElementById('apo-avatar-initials').textContent = iniciales;
-    document.getElementById('apo-avatar-initials-menu').textContent = iniciales;
-    document.getElementById('apo-menu-nombre').textContent = nombreCompleto;
-    okEl.textContent = 'Datos actualizados correctamente';
-    okEl.style.display = 'block';
-    setTimeout(function() { document.getElementById('modal-apo-datos').style.display = 'none'; }, 1500);
-  }).catch(function(e) {
-    errEl.textContent = 'Error al guardar: ' + e.message; errEl.style.display = 'block';
-  });
+    db.collection('apoderados').doc(alumno.id).set(update, { merge: true }).then(function() {
+      // Actualizar avatar
+      var nombreCompleto = (apellidos + ' ' + nombres).trim();
+      var partes = nombreCompleto.split(' ').filter(function(p){ return p.length > 0; });
+      var iniciales = partes.length >= 2
+        ? (partes[0][0] + partes[partes.length-1][0]).toUpperCase()
+        : nombreCompleto.substring(0,2).toUpperCase();
+      document.getElementById('apo-avatar-initials').textContent = iniciales;
+      document.getElementById('apo-avatar-initials-menu').textContent = iniciales;
+      document.getElementById('apo-menu-nombre').textContent = nombreCompleto;
+      okEl.textContent = 'Datos actualizados correctamente';
+      okEl.style.display = 'block';
+      setTimeout(function() { document.getElementById('modal-apo-datos').style.display = 'none'; }, 1500);
+    }).catch(function(e) {
+      errEl.textContent = 'Error al guardar: ' + e.message; errEl.style.display = 'block';
+    });
+  } catch(e) {
+    console.error('guardarApoMisDatos:', e);
+    var errEl = document.getElementById('err-apo-datos') || document.getElementById('err-apo-pass') || document.getElementById('err-cambiar-pass');
+    if(errEl) { errEl.textContent = 'Error: ' + e.message; errEl.style.display = 'block'; }
+    else console.error('guardarApoMisDatos error:', e.message);
+  }
 }
 
 function cambiarApoPass() {
-  var actual = document.getElementById('apo-pass-actual').value;
-  var nueva1 = document.getElementById('apo-pass-nueva-1').value;
-  var nueva2 = document.getElementById('apo-pass-nueva-2').value;
-  var errEl  = document.getElementById('err-apo-pass');
-  errEl.style.display = 'none';
+  try {
+    var actual = document.getElementById('apo-pass-actual').value;
+    var nueva1 = document.getElementById('apo-pass-nueva-1').value;
+    var nueva2 = document.getElementById('apo-pass-nueva-2').value;
+    var errEl  = document.getElementById('err-apo-pass');
+    errEl.style.display = 'none';
 
-  if(!actual)       { errEl.textContent = 'Ingresa tu contraseña actual'; errEl.style.display = 'block'; return; }
-  if(nueva1.length < 6) { errEl.textContent = 'La nueva contraseña debe tener al menos 6 caracteres'; errEl.style.display = 'block'; return; }
-  if(nueva1 !== nueva2) { errEl.textContent = 'Las contraseñas no coinciden'; errEl.style.display = 'block'; return; }
+    if(!actual)       { errEl.textContent = 'Ingresa tu contraseña actual'; errEl.style.display = 'block'; return; }
+    if(nueva1.length < 6) { errEl.textContent = 'La nueva contraseña debe tener al menos 6 caracteres'; errEl.style.display = 'block'; return; }
+    if(nueva1 !== nueva2) { errEl.textContent = 'Las contraseñas no coinciden'; errEl.style.display = 'block'; return; }
 
-  var user = auth.currentUser;
-  var cred = firebase.auth.EmailAuthProvider.credential(user.email, actual);
-  user.reauthenticateWithCredential(cred).then(function() {
-    return user.updatePassword(nueva1);
-  }).then(function() {
-    document.getElementById('modal-apo-pass').style.display = 'none';
-    document.getElementById('apo-pass-actual').value  = '';
-    document.getElementById('apo-pass-nueva-1').value = '';
-    document.getElementById('apo-pass-nueva-2').value = '';
-    alert('Contraseña actualizada correctamente');
-  }).catch(function(e) {
-    errEl.textContent = e.code === 'auth/wrong-password'
-      ? 'La contraseña actual es incorrecta'
-      : 'Error: ' + e.message;
-    errEl.style.display = 'block';
-  });
+    var user = auth.currentUser;
+    var cred = firebase.auth.EmailAuthProvider.credential(user.email, actual);
+    user.reauthenticateWithCredential(cred).then(function() {
+      return user.updatePassword(nueva1);
+    }).then(function() {
+      document.getElementById('modal-apo-pass').style.display = 'none';
+      document.getElementById('apo-pass-actual').value  = '';
+      document.getElementById('apo-pass-nueva-1').value = '';
+      document.getElementById('apo-pass-nueva-2').value = '';
+      alert('Contraseña actualizada correctamente');
+    }).catch(function(e) {
+      errEl.textContent = e.code === 'auth/wrong-password'
+        ? 'La contraseña actual es incorrecta'
+        : 'Error: ' + e.message;
+      errEl.style.display = 'block';
+    });
+  } catch(e) {
+    console.error('cambiarApoPass:', e);
+    var errEl = document.getElementById('err-apo-datos') || document.getElementById('err-apo-pass') || document.getElementById('err-cambiar-pass');
+    if(errEl) { errEl.textContent = 'Error: ' + e.message; errEl.style.display = 'block'; }
+    else console.error('cambiarApoPass error:', e.message);
+  }
 }
 
 </script>
