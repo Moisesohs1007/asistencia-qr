@@ -3029,8 +3029,8 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 const auth = firebase.auth();
 
-// Persistencia LOCAL: la sesión persiste entre páginas y recargas
-auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(e => console.warn('setPersistence:', e));
+// Persistencia SESSION: la sesión se borra al cerrar el navegador/pestaña
+auth.setPersistence(firebase.auth.Auth.Persistence.SESSION).catch(e => console.warn('setPersistence:', e));
 
 // Usuario actual
 let currentUser = null;
@@ -3490,7 +3490,12 @@ auth.onAuthStateChanged(async user => {
   if(user) {
     // Detectar si es apoderado (email virtual) o personal
     if(user.email && user.email.includes('@apo.marello.pe')) {
-      // ── ES APODERADO — redirigir a apoderado.html ──
+      // ── ES APODERADO — guardar token y redirigir a apoderado.html ──
+      try {
+        const token = await user.getIdToken();
+        localStorage.setItem('asmqr_apo_token', token);
+        localStorage.setItem('asmqr_apo_email', user.email);
+      } catch(e) { console.warn('token error', e); }
       window.location.href = 'apoderado.html';
       return;
     }
