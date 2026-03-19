@@ -667,7 +667,6 @@ firebase.initializeApp({
 });
 var auth = firebase.auth();
 var db   = firebase.firestore();
-auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
 
 var alumno    = null;
 var apoData   = {};
@@ -706,23 +705,17 @@ setTimeout(function() {
   }
 }, 6000);
 
-// Verificar sesion
-var _apoYaVerificado = false;
-auth.onAuthStateChanged(function(user) {
-  console.log('[APO] auth state:', user ? user.email : 'NO SESSION');
-  if(!user) {
-    if(!_apoYaVerificado) {
-      // Primer disparo: Firebase puede aun estar cargando la sesion — esperar
-      _apoYaVerificado = true;
+// Verificar sesion — registrar listener DESPUÉS de que setPersistence resuelva
+// para garantizar que Firebase ya sabe dónde leer la sesión (localStorage)
+auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).then(function() {
+  auth.onAuthStateChanged(function(user) {
+    console.log('[APO] auth state:', user ? user.email : 'NO SESSION');
+    if(!user) {
+      document.getElementById('apo-app').style.display = 'none';
+      window.location.href = 'index.html';
       return;
     }
-    // Segundo disparo sin usuario: sesion realmente inexistente
-    document.getElementById('apo-app').style.display = 'none';
-    window.location.href = 'index.html';
-    return;
-  }
-  _apoYaVerificado = true;
-  var dni = null;
+    var dni = null;
   if(user.email.indexOf('@apo.marello.pe') !== -1) {
     dni = user.email.replace('@apo.marello.pe', '');
     console.log('[APO] email virtual, dni:', dni);
@@ -741,7 +734,8 @@ auth.onAuthStateChanged(function(user) {
     return;
   }
   continuarCargaApoderado(user, dni);
-});
+  }); // fin onAuthStateChanged
+}); // fin setPersistence.then()
 
 function continuarCargaApoderado(user, dni) {
   console.log('[APO] continuarCarga dni:', dni);
@@ -1666,18 +1660,10 @@ function initApoSidebar() {
 }
 
 // ── CERRAR SESIÓN AL CERRAR PESTAÑA / VENTANA ──────────────────────────────
-// Usamos sessionStorage como señal: beforeunload SIEMPRE se dispara (cierre, recarga,
-// navegacion). Si sessionStorage desaparece entre beforeunload y la proxima carga,
-// significa que la pestaña fue cerrada de verdad.
-// La logica de cierre real se maneja al CARGAR la pagina (ver arriba),
-// no al salir — porque signOut en beforeunload/pagehide tambien se dispara
-// al navegar entre paginas y destruye la sesion activa.
-//
-// Para el cierre de ventana usamos Firebase onDisconnect / o simplemente
-// dejamos que LOCAL persistence maneje la sesion. El usuario puede
-// cerrar sesion manualmente con el boton de salir.
+// NOTA: No hacemos signOut en beforeunload/pagehide porque esos eventos
+// también se disparan al navegar entre páginas (index→apoderado), lo que
+// destruiría la sesión activa. El usuario cierra sesión con el botón manual.
 window.addEventListener('pagehide', function(e) {
-  // Solo limpiar sessionStorage de navegacion, nunca hacer signOut aqui
   if (!e.persisted) {
     try { sessionStorage.removeItem('asmqr_apo_lastTab'); } catch(ex) {}
   }
