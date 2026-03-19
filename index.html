@@ -3030,7 +3030,7 @@ const db = firebase.firestore();
 const auth = firebase.auth();
 
 // Persistencia SESSION: la sesión se borra al cerrar el navegador/pestaña
-auth.setPersistence(firebase.auth.Auth.Persistence.SESSION).catch(e => console.warn('setPersistence:', e));
+auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(e => console.warn('setPersistence:', e));
 
 // Usuario actual
 let currentUser = null;

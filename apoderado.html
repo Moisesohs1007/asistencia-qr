@@ -667,7 +667,7 @@ firebase.initializeApp({
 });
 var auth = firebase.auth();
 var db   = firebase.firestore();
-auth.setPersistence(firebase.auth.Auth.Persistence.SESSION);
+auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
 
 var alumno    = null;
 var apoData   = {};
@@ -1659,41 +1659,36 @@ function initApoSidebar() {
 }
 
 // ── CERRAR SESIÓN AL CERRAR PESTAÑA / VENTANA ──────────────────────────────
-// Usamos una bandera en sessionStorage para distinguir cierre real vs recarga/navegación.
-// sessionStorage sobrevive recargas pero NO sobrevive al cierre de pestaña/ventana.
+// Con LOCAL persistence la sesión sobrevive entre páginas (usa localStorage).
+// Para detectar cierre REAL vs recarga/navegación usamos sessionStorage como bandera:
+//   - sessionStorage SE BORRA al cerrar la pestaña/ventana
+//   - sessionStorage SOBREVIVE recargas y navegaciones dentro de la misma pestaña
 
-// Al cargar la página, marcamos que estamos "dentro" de la app
-try { sessionStorage.setItem('asmqr_app_activa', '1'); } catch(ex) {}
+// Al cargar marcamos que la pestaña está activa
+try { sessionStorage.setItem('asmqr_apo_tab_activa', '1'); } catch(ex) {}
 
-// pagehide cubre móviles (iOS/Android) y PC al cerrar pestaña o navegar fuera
 window.addEventListener('pagehide', function(e) {
-  // e.persisted = true → página va al bfcache (back/forward), no cerramos
-  // Si sessionStorage sigue teniendo la bandera, es una recarga o navegación interna → NO cerrar
-  // Si la pestaña/ventana se cierra, sessionStorage se borra y la bandera desaparece,
-  // pero pagehide con persisted=false es suficiente señal en móviles.
-  // En PC dependemos de beforeunload con la bandera de recarga.
-  if (!e.persisted && firebase.auth().currentUser) {
-    // Verificamos si es una recarga: si es recarga, beforeunload ya habrá puesto la bandera
-    var esRecarga = false;
-    try { esRecarga = !!sessionStorage.getItem('asmqr_es_recarga'); } catch(ex) {}
-    if (!esRecarga) {
-      auth.signOut();
-      try { sessionStorage.removeItem('asmqr_apo_lastTab'); } catch(ex) {}
-      try { sessionStorage.removeItem('asmqr_haySession'); } catch(ex) {}
-    }
-    // Limpiamos la bandera de recarga para el próximo ciclo
-    try { sessionStorage.removeItem('asmqr_es_recarga'); } catch(ex) {}
+  if (e.persisted) return; // bfcache → no cerrar sesión
+  if (!firebase.auth().currentUser) return;
+
+  // Si beforeunload puso la bandera "navegando" → es recarga/nav interna → no cerrar
+  var navegando = false;
+  try { navegando = !!sessionStorage.getItem('asmqr_apo_navegando'); } catch(ex) {}
+  if (navegando) {
+    try { sessionStorage.removeItem('asmqr_apo_navegando'); } catch(ex) {}
+    return;
   }
+  // Cierre real de ventana/pestaña → cerrar sesión
+  auth.signOut();
+  try { sessionStorage.removeItem('asmqr_apo_lastTab'); } catch(ex) {}
+  try { sessionStorage.removeItem('asmqr_haySession'); } catch(ex) {}
+  try { sessionStorage.removeItem('asmqr_apo_tab_activa'); } catch(ex) {}
 });
 
-// beforeunload: se dispara en TODA navegación (recarga, cierre, cambio de URL)
-// Lo usamos para detectar si es recarga (performance.navigation) o cierre real.
+// beforeunload se dispara SIEMPRE (cierre, recarga, navegación)
+// Lo usamos solo para marcar que fue una navegación interna
 window.addEventListener('beforeunload', function() {
-  // Marcamos que se está haciendo una recarga/navegación interna
-  // para que pagehide no cierre la sesión
-  try { sessionStorage.setItem('asmqr_es_recarga', '1'); } catch(ex) {}
-  // Programamos la limpieza de esa bandera: si la página vuelve a cargar,
-  // el nuevo onload la limpiará. Si la ventana se cerró, no importa.
+  try { sessionStorage.setItem('asmqr_apo_navegando', '1'); } catch(ex) {}
 });
 
 </script>
