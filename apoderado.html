@@ -73,7 +73,7 @@
 
   /* Empujar contenido */
   body > div:not(#apo-mobile-sidebar):not(#apo-sb-overlay):not(#apo-header):not(#apo-nav-tabs) {
-    padding-top: 48px !important;
+    padding-top: 56px !important;
     margin-left: 52px !important;
     transition: margin-left 0.3s ease;
   }
@@ -88,7 +88,7 @@
     width: 52px;
     background: #0D1A3A;
     z-index: 700;
-    display: flex;
+    display: none;
     flex-direction: column;
     overflow: hidden;
     transition: width 0.3s cubic-bezier(0.4,0,0.2,1);
@@ -220,7 +220,7 @@
 
   /* Contenedor principal */
   div[style*="max-width:680px"] {
-    padding-top: 8px !important;
+    padding-top: 56px !important;
     margin-left: 52px !important;
     transition: margin-left 0.3s ease;
   }
@@ -667,7 +667,7 @@ firebase.initializeApp({
 });
 var auth = firebase.auth();
 var db   = firebase.firestore();
-auth.setPersistence(firebase.auth.Auth.Persistence.SESSION);
+auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
 
 var alumno    = null;
 var apoData   = {};
@@ -1001,11 +1001,6 @@ function setApoTabActive(tabId, subId) {
 document.addEventListener('DOMContentLoaded', function() {
   var nav = document.getElementById('apo-nav-tabs');
   if(nav) nav.addEventListener('mouseleave', function(){ setTimeout(closeApoDropdowns, 80); });
-  // Mostrar sidebar en móvil desde el inicio (colapsado en 52px)
-  if(window.innerWidth <= 700) {
-    var sb = document.getElementById('apo-mobile-sidebar');
-    if(sb) sb.style.display = 'flex';
-  }
 });
 
 // Cerrar al click fuera
@@ -1017,8 +1012,8 @@ document.addEventListener('click', function(e) {
 });
 
 function showTab(tab) {
-  if(window.innerWidth<=700&&typeof setApoSbActive==='function')setApoSbActive(tab);
-  try{sessionStorage.setItem('asmqr_apo_lastTab',tab);}catch(e){}
+  if(window.innerWidth<=700&&typeof setApoSbActive==='function')setApoSbActive(id);
+  try{sessionStorage.setItem('asmqr_apo_lastTab',id);}catch(e){}
 
   ['resumen','historial','incidentes','carnet','comunicados','contacto'].forEach(function(t) {
     var panel = document.getElementById('panel-'+t);
@@ -1657,17 +1652,6 @@ function initApoSidebar() {
   var lt='resumen';try{lt=sessionStorage.getItem('asmqr_apo_lastTab')||'resumen';}catch(e){}
   setApoSbActive(lt);
 }
-
-// ── CERRAR SESIÓN AL CERRAR PESTAÑA / VENTANA ──────────────────────────────
-// NOTA: Se eliminó el signOut de beforeunload/pagehide porque esos eventos
-// se disparan también al navegar entre páginas (index→apoderado), destruyendo
-// la sesión activa. El usuario cierra sesión con el botón manual.
-window.addEventListener('pagehide', function(e) {
-  if (!e.persisted) {
-    try { sessionStorage.removeItem('asmqr_apo_lastTab'); } catch(ex) {}
-    try { sessionStorage.removeItem('asmqr_haySession'); } catch(ex) {}
-  }
-});
 
 </script>
 </body>
