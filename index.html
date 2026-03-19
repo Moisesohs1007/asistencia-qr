@@ -3490,12 +3490,7 @@ auth.onAuthStateChanged(async user => {
   if(user) {
     // Detectar si es apoderado (email virtual) o personal
     if(user.email && user.email.includes('@apo.marello.pe')) {
-      // ── ES APODERADO — guardar token y redirigir a apoderado.html ──
-      try {
-        const token = await user.getIdToken();
-        localStorage.setItem('asmqr_apo_token', token);
-        localStorage.setItem('asmqr_apo_email', user.email);
-      } catch(e) { console.warn('token error', e); }
+      // ── ES APODERADO — redirigir a apoderado.html ──
       window.location.href = 'apoderado.html';
       return;
     }

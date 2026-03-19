@@ -667,7 +667,7 @@ firebase.initializeApp({
 });
 var auth = firebase.auth();
 var db   = firebase.firestore();
-auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
+auth.setPersistence(firebase.auth.Auth.Persistence.SESSION);
 
 var alumno    = null;
 var apoData   = {};
@@ -707,73 +707,40 @@ setTimeout(function() {
 }, 6000);
 
 // Verificar sesion
-// Estrategia: index.html guarda el idToken en localStorage antes de redirigir.
-// apoderado.html lo lee y re-autentica con signInWithCustomToken si onAuthStateChanged
-// no trae sesión (problema de authDomain en GitHub Pages).
-function _apoIniciarConUser(user) {
-  console.log('[APO] auth state:', user.email);
+// Firebase puede tardar en resolver la sesión al cargar la página.
+// Esperamos hasta 5s antes de redirigir si no hay usuario.
+var _apoRedirigido = false;
+var _apoTimer = setTimeout(function() {
+  if(!firebase.auth().currentUser && !_apoRedirigido) {
+    _apoRedirigido = true;
+    document.getElementById('apo-app').style.display = 'none';
+    window.location.href = 'index.html';
+  }
+}, 5000);
+
+auth.onAuthStateChanged(function(user) {
+  console.log('[APO] auth state:', user ? user.email : 'NO SESSION');
+  if(!user) return; // esperar al timer si no hay usuario aún
+  clearTimeout(_apoTimer); // hay usuario — cancelar el timer
   var dni = null;
   if(user.email.indexOf('@apo.marello.pe') !== -1) {
     dni = user.email.replace('@apo.marello.pe', '');
     console.log('[APO] email virtual, dni:', dni);
-    continuarCargaApoderado(user, dni);
   } else {
     console.log('[APO] correo real, buscando emailReal:', user.email);
     db.collection('apoderados').where('emailReal', '==', user.email).limit(1).get().then(function(snap) {
+      console.log('[APO] emailReal snap.empty:', snap.empty, 'docs:', snap.docs.length);
       if(snap.empty) { auth.signOut(); window.location.href = 'index.html'; return; }
-      continuarCargaApoderado(user, snap.docs[0].id);
+      var dniReal = snap.docs[0].id;
+      console.log('[APO] dniReal:', dniReal);
+      continuarCargaApoderado(user, dniReal);
     }).catch(function(e) {
       console.error('[APO] ERROR emailReal query:', e.message);
       auth.signOut(); window.location.href = 'index.html';
     });
-  }
-}
-
-auth.onAuthStateChanged(function(user) {
-  console.log('[APO] auth state:', user ? user.email : 'NO SESSION');
-  if(user) {
-    try { localStorage.removeItem('asmqr_apo_token'); localStorage.removeItem('asmqr_apo_email'); } catch(e){}
-    _apoIniciarConUser(user);
     return;
   }
-  // Sin sesión — intentar re-autenticar con el token guardado por index.html
-  var token = null;
-  try { token = localStorage.getItem('asmqr_apo_token'); } catch(e){}
-  if(token) {
-    console.log('[APO] sin sesión, intentando re-auth con token guardado...');
-    auth.signInWithCustomToken(token).then(function(cred) {
-      console.log('[APO] re-auth OK:', cred.user.email);
-      try { localStorage.removeItem('asmqr_apo_token'); localStorage.removeItem('asmqr_apo_email'); } catch(e){}
-      _apoIniciarConUser(cred.user);
-    }).catch(function(e) {
-      console.warn('[APO] signInWithCustomToken falló:', e.message, '— probando signInWithEmailAndPassword');
-      // El idToken no sirve para signInWithCustomToken, pero podemos usar el email guardado
-      // para saber que había sesión y esperar un segundo más
-      var emailGuardado = null;
-      try { emailGuardado = localStorage.getItem('asmqr_apo_email'); } catch(ex){}
-      if(emailGuardado) {
-        // Hay email guardado — dar más tiempo a Firebase para resolver la sesión
-        setTimeout(function() {
-          var u = firebase.auth().currentUser;
-          if(u) {
-            try { localStorage.removeItem('asmqr_apo_token'); localStorage.removeItem('asmqr_apo_email'); } catch(ex){}
-            _apoIniciarConUser(u);
-          } else {
-            try { localStorage.removeItem('asmqr_apo_token'); localStorage.removeItem('asmqr_apo_email'); } catch(ex){}
-            document.getElementById('apo-app').style.display = 'none';
-            window.location.href = 'index.html';
-          }
-        }, 3000);
-      } else {
-        document.getElementById('apo-app').style.display = 'none';
-        window.location.href = 'index.html';
-      }
-    });
-    return;
-  }
-  // No hay token guardado — sin sesión real
-  document.getElementById('apo-app').style.display = 'none';
-  window.location.href = 'index.html';
+  continuarCargaApoderado(user, dni);
 });
 
 function continuarCargaApoderado(user, dni) {
@@ -1699,12 +1666,11 @@ function initApoSidebar() {
 }
 
 // ── CERRAR SESIÓN AL CERRAR PESTAÑA / VENTANA ──────────────────────────────
-// No hacemos signOut en beforeunload/pagehide — esos eventos se disparan
+// No hacemos signOut en beforeunload/pagehide: esos eventos se disparan
 // también al navegar entre páginas y destruirían la sesión activa.
+// El usuario cierra sesión solo con el botón manual.
 window.addEventListener('pagehide', function(e) {
   if (!e.persisted) {
-    try { localStorage.removeItem('asmqr_apo_token'); } catch(ex) {}
-    try { localStorage.removeItem('asmqr_apo_email'); } catch(ex) {}
     try { sessionStorage.removeItem('asmqr_apo_lastTab'); } catch(ex) {}
   }
 });
