@@ -707,27 +707,21 @@ setTimeout(function() {
 }, 6000);
 
 // Verificar sesion
-// IMPORTANTE: el primer disparo de onAuthStateChanged puede llegar con user=null
-// mientras Firebase aun esta leyendo la sesion guardada. Esperamos antes de redirigir.
-var _apoPrimerDisparo = true;
+var _apoYaVerificado = false;
 auth.onAuthStateChanged(function(user) {
   console.log('[APO] auth state:', user ? user.email : 'NO SESSION');
   if(!user) {
-    if(_apoPrimerDisparo) {
-      _apoPrimerDisparo = false;
-      setTimeout(function() {
-        if(!firebase.auth().currentUser) {
-          document.getElementById('apo-app').style.display = 'none';
-          window.location.href = 'index.html';
-        }
-      }, 2000);
+    if(!_apoYaVerificado) {
+      // Primer disparo: Firebase puede aun estar cargando la sesion — esperar
+      _apoYaVerificado = true;
       return;
     }
+    // Segundo disparo sin usuario: sesion realmente inexistente
     document.getElementById('apo-app').style.display = 'none';
     window.location.href = 'index.html';
     return;
   }
-  _apoPrimerDisparo = false;
+  _apoYaVerificado = true;
   var dni = null;
   if(user.email.indexOf('@apo.marello.pe') !== -1) {
     dni = user.email.replace('@apo.marello.pe', '');
@@ -1672,28 +1666,21 @@ function initApoSidebar() {
 }
 
 // ── CERRAR SESIÓN AL CERRAR PESTAÑA / VENTANA ──────────────────────────────
-// beforeunload se dispara en TODO: cierre, recarga, navegacion.
-// Lo usamos solo para poner una bandera en sessionStorage.
-// Si la ventana se cierra de verdad, sessionStorage desaparece con ella
-// y pagehide no encontrara la bandera -> cerrara sesion.
-// Si es recarga/navegacion, sessionStorage persiste -> pagehide ve la bandera -> no cierra.
-window.addEventListener('beforeunload', function() {
-  try { sessionStorage.setItem('asmqr_apo_navegando', '1'); } catch(ex) {}
-});
-
+// Usamos sessionStorage como señal: beforeunload SIEMPRE se dispara (cierre, recarga,
+// navegacion). Si sessionStorage desaparece entre beforeunload y la proxima carga,
+// significa que la pestaña fue cerrada de verdad.
+// La logica de cierre real se maneja al CARGAR la pagina (ver arriba),
+// no al salir — porque signOut en beforeunload/pagehide tambien se dispara
+// al navegar entre paginas y destruye la sesion activa.
+//
+// Para el cierre de ventana usamos Firebase onDisconnect / o simplemente
+// dejamos que LOCAL persistence maneje la sesion. El usuario puede
+// cerrar sesion manualmente con el boton de salir.
 window.addEventListener('pagehide', function(e) {
-  if (e.persisted) return;
-  if (!firebase.auth().currentUser) return;
-  var navegando = false;
-  try { navegando = !!sessionStorage.getItem('asmqr_apo_navegando'); } catch(ex) {}
-  if (navegando) {
-    try { sessionStorage.removeItem('asmqr_apo_navegando'); } catch(ex) {}
-    return; // recarga o navegacion interna -> no cerrar sesion
+  // Solo limpiar sessionStorage de navegacion, nunca hacer signOut aqui
+  if (!e.persisted) {
+    try { sessionStorage.removeItem('asmqr_apo_lastTab'); } catch(ex) {}
   }
-  // sessionStorage no tenia la bandera -> ventana cerrada de verdad
-  auth.signOut();
-  try { sessionStorage.removeItem('asmqr_apo_lastTab'); } catch(ex) {}
-  try { sessionStorage.removeItem('asmqr_haySession'); } catch(ex) {}
 });
 
 </script>
