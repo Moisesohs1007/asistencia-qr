@@ -3374,15 +3374,19 @@ async function confirmarCambioPass() {
 async function abrirMisDatos() {
   const user = auth.currentUser;
   if(!user) return;
-  // Pre-llenar con datos actuales
-  const doc = await db.collection('usuarios').doc(user.uid).get();
-  const data = doc.exists ? doc.data() : {};
-  document.getElementById('datos-nombre').value    = data.nombre    || '';
-  document.getElementById('datos-telefono').value  = data.telefono  || '';
-  document.getElementById('datos-email').value     = user.email     || '';
-  document.getElementById('err-mis-datos').style.display = 'none';
-  document.getElementById('ok-mis-datos').style.display  = 'none';
-  document.getElementById('modal-mis-datos').style.display = 'flex';
+  try {
+    const doc = await db.collection('usuarios').doc(user.uid).get();
+    const data = doc.exists ? doc.data() : {};
+    document.getElementById('datos-nombre').value    = data.nombre    || '';
+    document.getElementById('datos-telefono').value  = data.telefono  || '';
+    document.getElementById('datos-email').value     = user.email     || '';
+    document.getElementById('err-mis-datos').style.display = 'none';
+    document.getElementById('ok-mis-datos').style.display  = 'none';
+    document.getElementById('modal-mis-datos').style.display = 'flex';
+  } catch(e) {
+    console.error('abrirMisDatos:', e);
+    toast('Error al cargar datos de usuario', 'error');
+  }
 }
 
 async function guardarMisDatos() {
@@ -4269,48 +4273,62 @@ async function escanearFotoQR(input) {
   const file = input.files[0];
   if(!file) return;
 
-  const img = new Image();
-  const url = URL.createObjectURL(file);
-  img.onload = async () => {
-    const canvas = document.createElement('canvas');
-    canvas.width = img.naturalWidth;
-    canvas.height = img.naturalHeight;
-    const ctx = canvas.getContext('2d', { willReadFrequently: true });
-    ctx.drawImage(img, 0, 0);
-    URL.revokeObjectURL(url);
-
-    let detected = false;
-
-    // Intentar con BarcodeDetector nativo primero
-    if('BarcodeDetector' in window) {
+  try {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      toast('No se pudo cargar la imagen.', 'error');
+    };
+    img.onload = async () => {
       try {
-        const detector = new BarcodeDetector({ formats: ['qr_code'] });
-        const barcodes = await detector.detect(img);
-        if(barcodes.length > 0) {
-          detected = true;
-          toast('QR detectado ✅', 'success');
-          onQRSuccess(barcodes[0].rawValue);
+        const canvas = document.createElement('canvas');
+        canvas.width = img.naturalWidth;
+        canvas.height = img.naturalHeight;
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+        ctx.drawImage(img, 0, 0);
+        URL.revokeObjectURL(url);
+
+        let detected = false;
+
+        // Intentar con BarcodeDetector nativo primero
+        if('BarcodeDetector' in window) {
+          try {
+            const detector = new BarcodeDetector({ formats: ['qr_code'] });
+            const barcodes = await detector.detect(img);
+            if(barcodes.length > 0) {
+              detected = true;
+              toast('QR detectado ✅', 'success');
+              onQRSuccess(barcodes[0].rawValue);
+            }
+          } catch(e) {}
         }
-      } catch(e) {}
-    }
 
-    // Fallback jsQR
-    if(!detected) {
-      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      const code = jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: 'attemptBoth' });
-      if(code && code.data) {
-        detected = true;
-        toast('QR detectado ✅', 'success');
-        onQRSuccess(code.data);
+        // Fallback jsQR
+        if(!detected) {
+          const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          const code = jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: 'attemptBoth' });
+          if(code && code.data) {
+            detected = true;
+            toast('QR detectado ✅', 'success');
+            onQRSuccess(code.data);
+          }
+        }
+
+        if(!detected) {
+          toast('No se detectó QR. Intenta con mejor luz y enfoque.', 'error');
+        }
+      } catch(e) {
+        console.error('escanearFotoQR (onload):', e);
+        toast('Error al procesar la imagen QR.', 'error');
       }
-    }
-
-    if(!detected) {
-      toast('No se detectó QR. Intenta con mejor luz y enfoque.', 'error');
-    }
-  };
-  img.src = url;
-  input.value = '';
+    };
+    img.src = url;
+    input.value = '';
+  } catch(e) {
+    console.error('escanearFotoQR:', e);
+    toast('Error al leer el archivo de imagen.', 'error');
+  }
 }
 
 function startScanLoop() {
@@ -4478,7 +4496,7 @@ function manualRegister() {
   document.getElementById('manual-id').value = '';
 }
 
-async function autoRegistrar(alumno) {
+async function autoRegistrar(alumno, tipoForzado) {
   const now   = new Date();
   const today = hoy();
   const nombre = (alumno.apellidos + ' ' + alumno.nombres).trim();
@@ -4504,13 +4522,35 @@ async function autoRegistrar(alumno) {
       return;
     }
 
-    // ── Ya registró INGRESO — NO registrar salida automáticamente ──
-    if(tieneIngreso && !tieneSalida) {
-      showOverlay('yaing', nombre, grado, 'Ya registró su ingreso hoy', '');
-      return;
+    // ── Determinar tipo: si viene forzado (desde botón manual) usarlo,
+    //    si no, detectar automáticamente por QR ──
+    let tipo;
+    if(tipoForzado === 'SALIDA') {
+      // Forzar salida (botón manual)
+      if(!tieneIngreso) {
+        showOverlay('noqr', nombre, grado, 'No puede registrar salida', 'Aún no tiene ingreso registrado hoy');
+        return;
+      }
+      if(tieneSalida) {
+        showOverlay('yasal', nombre, grado, 'Ya registró su salida hoy', '');
+        return;
+      }
+      tipo = 'SALIDA';
+    } else if(tipoForzado === 'INGRESO') {
+      // Forzar ingreso (botón manual)
+      if(tieneIngreso) {
+        showOverlay('yaing', nombre, grado, 'Ya registró su ingreso hoy', '');
+        return;
+      }
+      tipo = 'INGRESO';
+    } else {
+      // Flujo automático por QR: primero INGRESO, luego SALIDA
+      if(tieneIngreso && !tieneSalida) {
+        showOverlay('yaing', nombre, grado, 'Ya registró su ingreso hoy', '');
+        return;
+      }
+      tipo = 'INGRESO';
     }
-
-    const tipo = 'INGRESO';
 
     // ── Verificar tardanza usando config ya cacheada ──
     const limiteStr = await getLimiteByNivel(alumno.turno);
@@ -4564,11 +4604,11 @@ async function autoRegistrar(alumno) {
   }
 }
 
-// Mantener confirmRegister por compatibilidad (ya no se usa en flujo normal)
+// confirmRegister: pasa el tipo forzado a autoRegistrar
 async function confirmRegister(tipo) {
   if(!pendingStudent){ return; }
   const alumno = pendingStudent;
-  await autoRegistrar(alumno);
+  await autoRegistrar(alumno, tipo);
 }
 
 // ============================================================
@@ -4579,52 +4619,58 @@ let editingId = null;
 async function openModalAlumno(id) {
   editingId = id || null;
   document.getElementById('modal-title-text').textContent = id ? 'Editar Alumno' : 'Nuevo Alumno';
-  if(id) {
-    const alumnos = await DB.getAlumnos();
-    const a = alumnos.find(x => x.id === id);
-    document.getElementById('f-id').value = a.id;
-    document.getElementById('f-id').readOnly = false;
-    document.getElementById('f-id').style.opacity = '1';
-    document.getElementById('f-id').title = '';
-    document.getElementById('f-nombres').value = a.nombres;
-    document.getElementById('f-apellidos').value = a.apellidos;
-    // Primero poblar el select de nivel con opciones de config
-    const cfgTemp = await getConfig();
-    const fTurno = document.getElementById('f-turno');
-    fTurno.innerHTML = '<option value="">Seleccionar</option>';
-    (cfgTemp.niveles||[]).forEach(n => {
-      fTurno.innerHTML += `<option value="${n.nombre}">${n.nombre}</option>`;
-    });
-    fTurno.value = a.turno;
-    // Luego cargar grados y secciones
-    await cargarGradosPorNivel(a.turno);
-    document.getElementById('f-grado').value = a.grado;
-    await cargarSeccionesPorGrado();
-    document.getElementById('f-seccion').value = a.seccion;
-    document.getElementById('f-telefono').value = a.telefono||'';
-    document.getElementById('f-apoderado-nombres').value = a.apoderadoNombres||'';
-    document.getElementById('f-apoderado-apellidos').value = a.apoderadoApellidos||'';
-    const fotoData = a.foto||'';
-    document.getElementById('f-foto-data').value = fotoData;
-    document.getElementById('f-foto-url').value = fotoData.startsWith('http') ? fotoData : '';
-    const fotoImg = document.getElementById('foto-preview-img');
-    const fotoPh  = document.getElementById('foto-preview-placeholder');
-    if(fotoData){ fotoImg.src=fotoData; fotoImg.style.display='block'; fotoPh.style.display='none'; }
-    else        { fotoImg.style.display='none'; fotoPh.style.display='block'; }
-  } else {
-    document.getElementById('f-id').readOnly = false;
-    document.getElementById('f-id').style.opacity = '1';
-    document.getElementById('f-id').title = '';
-    ['f-id','f-nombres','f-apellidos','f-telefono','f-apoderado-nombres','f-apoderado-apellidos','f-foto-url','f-foto-data'].forEach(x => document.getElementById(x).value='');
-    document.getElementById('foto-preview-img').style.display='none';
-    document.getElementById('foto-preview-placeholder').style.display='block';
-    document.getElementById('f-grado').value = '';
-    document.getElementById('f-seccion').value = 'A';
-    document.getElementById('f-turno').value = '';
+  try {
+    if(id) {
+      const alumnos = await DB.getAlumnos();
+      const a = alumnos.find(x => x.id === id);
+      if(!a) { toast('Alumno no encontrado', 'error'); return; }
+      document.getElementById('f-id').value = a.id;
+      document.getElementById('f-id').readOnly = false;
+      document.getElementById('f-id').style.opacity = '1';
+      document.getElementById('f-id').title = '';
+      document.getElementById('f-nombres').value = a.nombres;
+      document.getElementById('f-apellidos').value = a.apellidos;
+      // Primero poblar el select de nivel con opciones de config
+      const cfgTemp = await getConfig();
+      const fTurno = document.getElementById('f-turno');
+      fTurno.innerHTML = '<option value="">Seleccionar</option>';
+      (cfgTemp.niveles||[]).forEach(n => {
+        fTurno.innerHTML += `<option value="${n.nombre}">${n.nombre}</option>`;
+      });
+      fTurno.value = a.turno;
+      // Luego cargar grados y secciones
+      await cargarGradosPorNivel(a.turno);
+      document.getElementById('f-grado').value = a.grado;
+      await cargarSeccionesPorGrado();
+      document.getElementById('f-seccion').value = a.seccion;
+      document.getElementById('f-telefono').value = a.telefono||'';
+      document.getElementById('f-apoderado-nombres').value = a.apoderadoNombres||'';
+      document.getElementById('f-apoderado-apellidos').value = a.apoderadoApellidos||'';
+      const fotoData = a.foto||'';
+      document.getElementById('f-foto-data').value = fotoData;
+      document.getElementById('f-foto-url').value = fotoData.startsWith('http') ? fotoData : '';
+      const fotoImg = document.getElementById('foto-preview-img');
+      const fotoPh  = document.getElementById('foto-preview-placeholder');
+      if(fotoData){ fotoImg.src=fotoData; fotoImg.style.display='block'; fotoPh.style.display='none'; }
+      else        { fotoImg.style.display='none'; fotoPh.style.display='block'; }
+    } else {
+      document.getElementById('f-id').readOnly = false;
+      document.getElementById('f-id').style.opacity = '1';
+      document.getElementById('f-id').title = '';
+      ['f-id','f-nombres','f-apellidos','f-telefono','f-apoderado-nombres','f-apoderado-apellidos','f-foto-url','f-foto-data'].forEach(x => document.getElementById(x).value='');
+      document.getElementById('foto-preview-img').style.display='none';
+      document.getElementById('foto-preview-placeholder').style.display='block';
+      document.getElementById('f-grado').value = '';
+      document.getElementById('f-seccion').value = 'A';
+      document.getElementById('f-turno').value = '';
+    }
+    const mAlumno = document.getElementById('modal-alumno');
+    mAlumno.style.display = ''; // reset por si closeModal dejó display:none
+    mAlumno.classList.add('open');
+  } catch(e) {
+    console.error('openModalAlumno:', e);
+    toast('Error al abrir formulario de alumno', 'error');
   }
-  const mAlumno = document.getElementById('modal-alumno');
-  mAlumno.style.display = ''; // reset por si closeModal dejó display:none
-  mAlumno.classList.add('open');
 }
 
 async function saveAlumno() {
@@ -4758,15 +4804,20 @@ async function deleteAlumno(id) {
 
 
 async function limpiarFiltrosAlumnos() {
-  document.getElementById('fa-nivel').value   = '';
-  document.getElementById('fa-grado').value   = '';
-  document.getElementById('fa-seccion').value = '';
-  document.getElementById('search-alumnos').value = '';
-  await poblarFiltroGrado('fa-grado', null);
-  await poblarFiltroSeccion('fa-seccion', null);
-  _disableSelect('fa-grado');
-  _disableSelect('fa-seccion');
-  mostrarEstadoInicial();
+  try {
+    document.getElementById('fa-nivel').value   = '';
+    document.getElementById('fa-grado').value   = '';
+    document.getElementById('fa-seccion').value = '';
+    document.getElementById('search-alumnos').value = '';
+    await poblarFiltroGrado('fa-grado', null);
+    await poblarFiltroSeccion('fa-seccion', null);
+    _disableSelect('fa-grado');
+    _disableSelect('fa-seccion');
+    mostrarEstadoInicial();
+  } catch(e) {
+    console.error('limpiarFiltrosAlumnos:', e);
+    toast('Error al ejecutar limpiarFiltrosAlumnos', 'error');
+  }
 }
 
 async function mostrarEstadoInicial() {
@@ -4893,9 +4944,10 @@ function _renderAlumnosPagina() {
 // QR GENERATION (via API)
 // ============================================================
 async function showQR(id) {
+  try {
   const alumnos = await DB.getAlumnos();
   const a = alumnos.find(x => x.id === id);
-  if(!a) return;
+  if(!a) { toast('Alumno no encontrado', 'error'); return; }
 
   const cfg = await getConfig();
   const nombreColegio = cfg?.nombreColegio || 'I.E.P "SANTO DOMINGO DE GUZMAN"';
@@ -4913,8 +4965,7 @@ async function showQR(id) {
   if(body) body.style.setProperty('--wm', `url('${getLogo()}')`);
   // Aplicar via style directo al div con position absolute
   const wmDiv = document.querySelector('#carnet-print [style*="--wm"]');
-  if(wmDiv) wmDiv.style.backgroundImage = `url('${getLogo()}');
-`
+  if(wmDiv) wmDiv.style.backgroundImage = `url('${getLogo()}')`;
   // Foto o iniciales
   const fotoEl = document.getElementById('carnet-foto');
   const initEl = document.getElementById('carnet-initials');
@@ -4949,6 +5000,10 @@ async function showQR(id) {
   const mQr = document.getElementById('modal-qr');
   mQr.style.display = '';
   mQr.classList.add('open');
+  } catch(e) {
+    console.error('showQR:', e);
+    toast('Error al generar carnet QR', 'error');
+  }
 }
 
 function printCarnet() {
@@ -4975,7 +5030,14 @@ function printCarnet() {
       </div>
       <div id="u-niveles-checks" style="max-height:60vh;overflow-y:auto;"></div>
       <div style="display:flex;gap:10px;margin-top:20px;">
-        <button class="btn btn-primary" onclick="savePrivilegios()" style="flex:1;justify-content:center;">💾 Guardar privilegios</button>
+        <button class="btn btn-primary" onclick="savePrivilegios()" style="flex:1;justify-content:center;">💾 Guardar</button>
+        <button class="btn btn-ghost" onclick="closeModal('modal-privilegios')" style="flex:1;justify-content:center;">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>enter;">💾 Guardar privilegios</button>
         <button class="btn btn-ghost" onclick="closeModal('modal-privilegios')" style="flex:1;justify-content:center;">Cancelar</button>
       </div>
     </div>
@@ -5032,22 +5094,27 @@ function setTodayFilter() {
 }
 
 async function limpiarFiltrosRegistro() {
-  document.getElementById('filter-desde').value   = '';
-  document.getElementById('filter-hasta').value   = '';
-  document.getElementById('filter-nivel').value   = '';
-  document.getElementById('filter-grado').value   = '';
-  document.getElementById('filter-seccion').value = '';
-  document.getElementById('filter-tipo').value    = '';
-  document.getElementById('filter-search').value  = '';
-  // Repoblar y deshabilitar grado y sección (requieren nivel primero)
-  await poblarFiltroGrado('filter-grado', null);
-  await poblarFiltroSeccion('filter-seccion', null);
-  _disableSelect('filter-grado');
-  _disableSelect('filter-seccion');
-  document.getElementById('registro-tbody').innerHTML = '';
-  document.getElementById('registro-empty').style.display = 'block';
-  document.getElementById('registro-empty').querySelector('p').textContent = 'Selecciona una fecha u otro filtro para ver los registros';
-  document.getElementById('registro-count').textContent = '';
+  try {
+    document.getElementById('filter-desde').value   = '';
+    document.getElementById('filter-hasta').value   = '';
+    document.getElementById('filter-nivel').value   = '';
+    document.getElementById('filter-grado').value   = '';
+    document.getElementById('filter-seccion').value = '';
+    document.getElementById('filter-tipo').value    = '';
+    document.getElementById('filter-search').value  = '';
+    // Repoblar y deshabilitar grado y sección (requieren nivel primero)
+    await poblarFiltroGrado('filter-grado', null);
+    await poblarFiltroSeccion('filter-seccion', null);
+    _disableSelect('filter-grado');
+    _disableSelect('filter-seccion');
+    document.getElementById('registro-tbody').innerHTML = '';
+    document.getElementById('registro-empty').style.display = 'block';
+    document.getElementById('registro-empty').querySelector('p').textContent = 'Selecciona una fecha u otro filtro para ver los registros';
+    document.getElementById('registro-count').textContent = '';
+  } catch(e) {
+    console.error('limpiarFiltrosRegistro:', e);
+    toast('Error al ejecutar limpiarFiltrosRegistro', 'error');
+  }
 }
 
 function validarRangoFecha() {
@@ -5095,71 +5162,81 @@ function _disableSelect(id) {
 
 // Al cambiar NIVEL → repoblar grado, deshabilitar sección, limpiar buscador
 async function onNivelChangeRegistro() {
-  document.getElementById('filter-search').value  = '';
-  document.getElementById('filter-grado').value   = '';
-  document.getElementById('filter-seccion').value = '';
-  _disableSelect('filter-seccion');
-  const nivel = document.getElementById('filter-nivel').value;
-  if(nivel && nivel !== 'TODOS') {
-    await poblarFiltroGrado('filter-grado', nivel);
-    _enableSelect('filter-grado');
-  } else if(nivel === 'TODOS') {
-    await poblarFiltroGrado('filter-grado', null);
-    _enableSelect('filter-grado');
-  } else {
-    // Sin nivel → deshabilitar grado también
-    _disableSelect('filter-grado');
+  try {
+    document.getElementById('filter-search').value  = '';
+    document.getElementById('filter-grado').value   = '';
+    document.getElementById('filter-seccion').value = '';
+    _disableSelect('filter-seccion');
+    const nivel = document.getElementById('filter-nivel').value;
+    if(nivel && nivel !== 'TODOS') {
+      await poblarFiltroGrado('filter-grado', nivel);
+      _enableSelect('filter-grado');
+    } else if(nivel === 'TODOS') {
+      await poblarFiltroGrado('filter-grado', null);
+      _enableSelect('filter-grado');
+    } else {
+      // Sin nivel → deshabilitar grado también
+      _disableSelect('filter-grado');
+    }
+    await poblarFiltroSeccion('filter-seccion', null);
+    renderRegistro();
+  } catch(e) {
+    console.error('onNivelChangeRegistro:', e);
+    toast('Error al ejecutar onNivelChangeRegistro', 'error');
   }
-  await poblarFiltroSeccion('filter-seccion', null);
-  renderRegistro();
 }
 
 // Al cambiar GRADO → auto-detectar nivel, repoblar sección, limpiar buscador
 async function onGradoChangeRegistro() {
-  document.getElementById('filter-search').value = '';
-  const grado = document.getElementById('filter-grado').value;
-  // Guardar sección previa para restaurarla si sigue siendo válida
-  const seccionPrevia = document.getElementById('filter-seccion').value;
+  try {
+    document.getElementById('filter-search').value = '';
+    const grado = document.getElementById('filter-grado').value;
+    // Guardar sección previa para restaurarla si sigue siendo válida
+    const seccionPrevia = document.getElementById('filter-seccion').value;
 
-  if(grado && grado !== 'TODOS') {
-    // Auto-detectar nivel del grado
-    const cfg = await getConfig();
-    for(const [niv, lista] of Object.entries(cfg.grados || {})) {
-      if(lista.includes(grado)) {
-        document.getElementById('filter-nivel').value = niv;
-        break;
+    if(grado && grado !== 'TODOS') {
+      // Auto-detectar nivel del grado
+      const cfg = await getConfig();
+      for(const [niv, lista] of Object.entries(cfg.grados || {})) {
+        if(lista.includes(grado)) {
+          document.getElementById('filter-nivel').value = niv;
+          break;
+        }
       }
+      await poblarFiltroSeccion('filter-seccion', grado);
+    } else {
+      // Grado vacío o TODOS → repoblar sección sin filtro de grado
+      const nivel = document.getElementById('filter-nivel').value;
+      const alumnos = await DB.getAlumnos();
+      const secs = [...new Set(alumnos
+        .filter(a => !nivel || nivel === 'TODOS' || a.turno === nivel)
+        .map(a => a.seccion)
+      )].sort();
+      const el = document.getElementById('filter-seccion');
+      el.innerHTML = '<option value="" disabled selected>-- Sección --</option><option value="TODOS">Todas</option>';
+      secs.forEach(s => { el.innerHTML += `<option value="${s}">${s}</option>`; });
     }
-    await poblarFiltroSeccion('filter-seccion', grado);
-  } else {
-    // Grado vacío o TODOS → repoblar sección sin filtro de grado
-    const nivel = document.getElementById('filter-nivel').value;
-    const alumnos = await DB.getAlumnos();
-    const secs = [...new Set(alumnos
-      .filter(a => !nivel || nivel === 'TODOS' || a.turno === nivel)
-      .map(a => a.seccion)
-    )].sort();
-    const el = document.getElementById('filter-seccion');
-    el.innerHTML = '<option value="" disabled selected>-- Sección --</option><option value="TODOS">Todas</option>';
-    secs.forEach(s => { el.innerHTML += `<option value="${s}">${s}</option>`; });
-  }
 
-  // Restaurar sección previa si sigue siendo una opción válida
-  if(seccionPrevia) {
-    const elSec = document.getElementById('filter-seccion');
-    const opcionExiste = [...elSec.options].some(o => o.value === seccionPrevia);
-    elSec.value = opcionExiste ? seccionPrevia : '';
-  }
+    // Restaurar sección previa si sigue siendo una opción válida
+    if(seccionPrevia) {
+      const elSec = document.getElementById('filter-seccion');
+      const opcionExiste = [...elSec.options].some(o => o.value === seccionPrevia);
+      elSec.value = opcionExiste ? seccionPrevia : '';
+    }
 
-  // Habilitar/deshabilitar sección según si hay grado
-  if(grado && grado !== 'TODOS') {
-    _enableSelect('filter-seccion');
-  } else {
-    document.getElementById('filter-seccion').value = '';
-    _disableSelect('filter-seccion');
-  }
+    // Habilitar/deshabilitar sección según si hay grado
+    if(grado && grado !== 'TODOS') {
+      _enableSelect('filter-seccion');
+    } else {
+      document.getElementById('filter-seccion').value = '';
+      _disableSelect('filter-seccion');
+    }
 
-  renderRegistro();
+    renderRegistro();
+  } catch(e) {
+    console.error('onGradoChangeRegistro:', e);
+    toast('Error al ejecutar onGradoChangeRegistro', 'error');
+  }
 }
 
 // Al cambiar SECCIÓN → limpiar buscador, respetar grado activo
@@ -5170,20 +5247,25 @@ function onSeccionChangeRegistro() {
 
 // Al escribir en BUSCADOR → limpiar nivel/grado/sección y repoblar a estado inicial
 async function onSearchRegistro() {
-  const q = document.getElementById('filter-search').value;
-  if(q.trim()) {
-    document.getElementById('filter-nivel').value   = '';
-    document.getElementById('filter-grado').value   = '';
-    document.getElementById('filter-seccion').value = '';
-    await poblarFiltroGrado('filter-grado', null);
-    await poblarFiltroSeccion('filter-seccion', null);
-    _disableSelect('filter-grado');
-    _disableSelect('filter-seccion');
-  } else {
-    // Campo vacío → rehabilitar grado
-    _enableSelect('filter-grado');
+  try {
+    const q = document.getElementById('filter-search').value;
+    if(q.trim()) {
+      document.getElementById('filter-nivel').value   = '';
+      document.getElementById('filter-grado').value   = '';
+      document.getElementById('filter-seccion').value = '';
+      await poblarFiltroGrado('filter-grado', null);
+      await poblarFiltroSeccion('filter-seccion', null);
+      _disableSelect('filter-grado');
+      _disableSelect('filter-seccion');
+    } else {
+      // Campo vacío → rehabilitar grado
+      _enableSelect('filter-grado');
+    }
+    renderRegistro();
+  } catch(e) {
+    console.error('onSearchRegistro:', e);
+    toast('Error al ejecutar onSearchRegistro', 'error');
   }
-  renderRegistro();
 }
 
 async function renderRegistro() {
@@ -5503,221 +5585,231 @@ async function getRegistrosFiltrados() {
 }
 
 async function exportCSV() {
-  const regs = await getRegistrosFiltrados();
-  if(!regs.length){ toast('No hay registros','warning'); return; }
-  const header = 'Fecha,DNI,Nombre,Nivel,Grado,Seccion,Hora Ingreso,Hora Salida,Estado';
-  const rows = regs.map(r =>
-    `${r.fecha},${r.dni},"${r.nombre}",${r.nivel},${r.grado},${r.seccion},${r.ingreso||'-'},${r.salida||'-'},${r.estado}`
-  );
-  const csv = [header, ...rows].join('\n');
-  const a = document.createElement('a');
-  a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
-  a.download = `asistencia_${hoy()}.csv`;
-  a.click();
-  toast('CSV exportado','success');
+  try {
+    const regs = await getRegistrosFiltrados();
+    if(!regs.length){ toast('No hay registros','warning'); return; }
+    const header = 'Fecha,DNI,Nombre,Nivel,Grado,Seccion,Hora Ingreso,Hora Salida,Estado';
+    const rows = regs.map(r =>
+      `${r.fecha},${r.dni},"${r.nombre}",${r.nivel},${r.grado},${r.seccion},${r.ingreso||'-'},${r.salida||'-'},${r.estado}`
+    );
+    const csv = [header, ...rows].join('\n');
+    const a = document.createElement('a');
+    a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+    a.download = `asistencia_${hoy()}.csv`;
+    a.click();
+    toast('CSV exportado','success');
+  } catch(e) {
+    console.error('exportCSV:', e);
+    toast('Error en exportCSV', 'error');
+  }
 }
 
 // ============================================================
 // EXPORT XLSX
 // ============================================================
 async function exportXLSX() {
-  const grado   = document.getElementById('filter-grado').value;
-  const seccion = document.getElementById('filter-seccion').value;
-  const q       = (document.getElementById('filter-search').value||'').trim();
-  const mesSel  = document.getElementById('reg-mes-select')?.value || mesActual();
-  const desde   = document.getElementById('filter-desde').value || mesSel+'-01';
-  const hasta   = document.getElementById('filter-hasta').value || (() => {
-    const [y,m]=mesSel.split('-').map(Number);
-    const hs=hoy();
-    const fm=mesSel+'-'+String(new Date(y,m,0).getDate()).padStart(2,'0');
-    return fm<hs?fm:hs;
-  })();
-  const esPorAlumno = q.length > 0;
-  const esPorAula   = grado && grado !== 'TODOS' && seccion && seccion !== 'TODOS';
+  try {
+    const grado   = document.getElementById('filter-grado').value;
+    const seccion = document.getElementById('filter-seccion').value;
+    const q       = (document.getElementById('filter-search').value||'').trim();
+    const mesSel  = document.getElementById('reg-mes-select')?.value || mesActual();
+    const desde   = document.getElementById('filter-desde').value || mesSel+'-01';
+    const hasta   = document.getElementById('filter-hasta').value || (() => {
+      const [y,m]=mesSel.split('-').map(Number);
+      const hs=hoy();
+      const fm=mesSel+'-'+String(new Date(y,m,0).getDate()).padStart(2,'0');
+      return fm<hs?fm:hs;
+    })();
+    const esPorAlumno = q.length > 0;
+    const esPorAula   = grado && grado !== 'TODOS' && seccion && seccion !== 'TODOS';
 
-  if(!esPorAlumno && !esPorAula) {
-    const overlay = document.createElement('div');
-    overlay.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;padding:20px;';
-    overlay.innerHTML = `<div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:28px 24px;max-width:360px;width:100%;text-align:center;"><div style="font-size:2rem;margin-bottom:12px;">⚠️</div><div style="font-weight:800;font-size:1rem;margin-bottom:8px;">Filtro requerido</div><div style="font-size:0.85rem;color:var(--muted);margin-bottom:20px;">Selecciona un aula especifica o busca un alumno.</div><button onclick="this.closest('div[style*=fixed]').remove()" style="background:var(--accent);color:#fff;border:none;border-radius:8px;padding:10px 28px;font-weight:700;cursor:pointer;">Entendido</button></div>`;
-    overlay.addEventListener('click', e => { if(e.target===overlay) overlay.remove(); });
-    document.body.appendChild(overlay);
-    return;
-  }
-
-  const regs = await getRegistrosFiltrados();
-  if(!regs.length){ toast('No hay registros','warning'); return; }
-
-  if(!window.XLSX) {
-    toast('Cargando libreria Excel...','info');
-    await new Promise((res,rej) => {
-      const s=document.createElement('script');
-      s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
-      s.onload=res; s.onerror=()=>rej(new Error('Error'));
-      document.head.appendChild(s);
-    });
-  }
-
-  const cfg = await getConfig();
-  const nombreColegio = cfg?.nombreColegio || 'I.E.P "SANTO DOMINGO DE GUZMAN"';
-  const fechaExport = new Date().toLocaleDateString('es-PE',{day:'2-digit',month:'2-digit',year:'numeric'});
-  const diasSemana  = ['Domingo','Lunes','Martes','Miercoles','Jueves','Viernes','Sabado'];
-
-  if(esPorAula) {
-    // ── FORMATO MATRICIAL — por aula ──
-    const todosAlumnos = await DB.getAlumnos();
-    const alumnosAula = todosAlumnos
-      .filter(a => a.grado===grado && a.seccion===seccion)
-      .sort((a,b)=>((a.apellidos||'')+(a.nombres||'')).localeCompare((b.apellidos||'')+(b.nombres||'')));
-
-    // Días hábiles del rango
-    const diasHabiles=[];
-    let cur=new Date(desde+'T12:00:00'), fin=new Date(hasta+'T12:00:00');
-    while(cur<=fin) {
-      const dow=cur.getDay();
-      if(dow!==0&&dow!==6) diasHabiles.push({
-        fecha:cur.toISOString().slice(0,10),
-        label:diasSemana[dow].substring(0,3)+' '+String(cur.getDate()).padStart(2,'0')
-      });
-      cur.setDate(cur.getDate()+1);
+    if(!esPorAlumno && !esPorAula) {
+      const overlay = document.createElement('div');
+      overlay.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;padding:20px;';
+      overlay.innerHTML = `<div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:28px 24px;max-width:360px;width:100%;text-align:center;"><div style="font-size:2rem;margin-bottom:12px;">⚠️</div><div style="font-weight:800;font-size:1rem;margin-bottom:8px;">Filtro requerido</div><div style="font-size:0.85rem;color:var(--muted);margin-bottom:20px;">Selecciona un aula especifica o busca un alumno.</div><button onclick="this.closest('div[style*=fixed]').remove()" style="background:var(--accent);color:#fff;border:none;border-radius:8px;padding:10px 28px;font-weight:700;cursor:pointer;">Entendido</button></div>`;
+      overlay.addEventListener('click', e => { if(e.target===overlay) overlay.remove(); });
+      document.body.appendChild(overlay);
+      return;
     }
 
-    // Mapa alumnoId → fecha → cod
-    const mapa={};
-    regs.forEach(r=>{
-      if(!mapa[r.dni]) mapa[r.dni]={};
-      const st=(r.estado||'').toLowerCase();
-      let cod='A';
-      if(st.includes('tardanza')) cod='T';
-      else if(st.includes('tiempo')||st.includes('puntual')||r.ingreso) cod='P';
-      mapa[r.dni][r.fecha]=cod;
-    });
+    const regs = await getRegistrosFiltrados();
+    if(!regs.length){ toast('No hay registros','warning'); return; }
 
-    const nCols=2+diasHabiles.length+3;
-    const aoa=[],merges=[],styleMap={};
+    if(!window.XLSX) {
+      toast('Cargando libreria Excel...','info');
+      await new Promise((res,rej) => {
+        const s=document.createElement('script');
+        s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+        s.onload=res; s.onerror=()=>rej(new Error('Error'));
+        document.head.appendChild(s);
+      });
+    }
 
-    aoa.push([nombreColegio,...Array(nCols-1).fill('')]); merges.push({s:{r:0,c:0},e:{r:0,c:nCols-1}}); styleMap[0]='title';
-    const nivel=alumnosAula[0]?.turno||'';
-    aoa.push([`${nivel} ${grado} Seccion ${seccion} - Registro de Asistencia - ${fechaExport}`,...Array(nCols-1).fill('')]); merges.push({s:{r:1,c:0},e:{r:1,c:nCols-1}}); styleMap[1]='subtitle';
-    aoa.push(Array(nCols).fill(''));
-    aoa.push(['DNI','Alumno',...diasHabiles.map(d=>d.label),'P','T','A']); styleMap[aoa.length-1]='header';
+    const cfg = await getConfig();
+    const nombreColegio = cfg?.nombreColegio || 'I.E.P "SANTO DOMINGO DE GUZMAN"';
+    const fechaExport = new Date().toLocaleDateString('es-PE',{day:'2-digit',month:'2-digit',year:'numeric'});
+    const diasSemana  = ['Domingo','Lunes','Martes','Miercoles','Jueves','Viernes','Sabado'];
 
-    alumnosAula.forEach((a,ai)=>{
-      const nombre=((a.apellidos||'')+' '+(a.nombres||'')).trim();
-      const row=[a.id,nombre];
-      let pC=0,tC=0,aC=0;
+    if(esPorAula) {
+      // ── FORMATO MATRICIAL — por aula ──
+      const todosAlumnos = await DB.getAlumnos();
+      const alumnosAula = todosAlumnos
+        .filter(a => a.grado===grado && a.seccion===seccion)
+        .sort((a,b)=>((a.apellidos||'')+(a.nombres||'')).localeCompare((b.apellidos||'')+(b.nombres||'')));
+
+      // Días hábiles del rango
+      const diasHabiles=[];
+      let cur=new Date(desde+'T12:00:00'), fin=new Date(hasta+'T12:00:00');
+      while(cur<=fin) {
+        const dow=cur.getDay();
+        if(dow!==0&&dow!==6) diasHabiles.push({
+          fecha:cur.toISOString().slice(0,10),
+          label:diasSemana[dow].substring(0,3)+' '+String(cur.getDate()).padStart(2,'0')
+        });
+        cur.setDate(cur.getDate()+1);
+      }
+
+      // Mapa alumnoId → fecha → cod
+      const mapa={};
+      regs.forEach(r=>{
+        if(!mapa[r.dni]) mapa[r.dni]={};
+        const st=(r.estado||'').toLowerCase();
+        let cod='A';
+        if(st.includes('tardanza')) cod='T';
+        else if(st.includes('tiempo')||st.includes('puntual')||r.ingreso) cod='P';
+        mapa[r.dni][r.fecha]=cod;
+      });
+
+      const nCols=2+diasHabiles.length+3;
+      const aoa=[],merges=[],styleMap={};
+
+      aoa.push([nombreColegio,...Array(nCols-1).fill('')]); merges.push({s:{r:0,c:0},e:{r:0,c:nCols-1}}); styleMap[0]='title';
+      const nivel=alumnosAula[0]?.turno||'';
+      aoa.push([`${nivel} ${grado} Seccion ${seccion} - Registro de Asistencia - ${fechaExport}`,...Array(nCols-1).fill('')]); merges.push({s:{r:1,c:0},e:{r:1,c:nCols-1}}); styleMap[1]='subtitle';
+      aoa.push(Array(nCols).fill(''));
+      aoa.push(['DNI','Alumno',...diasHabiles.map(d=>d.label),'P','T','A']); styleMap[aoa.length-1]='header';
+
+      alumnosAula.forEach((a,ai)=>{
+        const nombre=((a.apellidos||'')+' '+(a.nombres||'')).trim();
+        const row=[a.id,nombre];
+        let pC=0,tC=0,aC=0;
+        diasHabiles.forEach(d=>{
+          const cod=(mapa[a.id]&&mapa[a.id][d.fecha])||'A';
+          row.push(cod);
+          if(cod==='P') pC++; else if(cod==='T') tC++; else aC++;
+        });
+        row.push(pC,tC,aC);
+        aoa.push(row); styleMap[aoa.length-1]=ai%2===0?'even':'odd';
+      });
+
+      // Fila presentes por día
+      const totRow=['','Presentes'];
       diasHabiles.forEach(d=>{
-        const cod=(mapa[a.id]&&mapa[a.id][d.fecha])||'A';
-        row.push(cod);
-        if(cod==='P') pC++; else if(cod==='T') tC++; else aC++;
+        const pres=alumnosAula.filter(a=>{const c=mapa[a.id]&&mapa[a.id][d.fecha];return c==='P'||c==='T';}).length;
+        totRow.push(pres);
       });
-      row.push(pC,tC,aC);
-      aoa.push(row); styleMap[aoa.length-1]=ai%2===0?'even':'odd';
-    });
+      totRow.push('','','');
+      aoa.push(totRow); styleMap[aoa.length-1]='summary';
+      aoa.push(Array(nCols).fill(''));
+      aoa.push(['P = Puntual   T = Tardanza   A = Ausente',...Array(nCols-1).fill('')]); styleMap[aoa.length-1]='legend';
+      merges.push({s:{r:aoa.length-1,c:0},e:{r:aoa.length-1,c:nCols-1}});
 
-    // Fila presentes por día
-    const totRow=['','Presentes'];
-    diasHabiles.forEach(d=>{
-      const pres=alumnosAula.filter(a=>{const c=mapa[a.id]&&mapa[a.id][d.fecha];return c==='P'||c==='T';}).length;
-      totRow.push(pres);
-    });
-    totRow.push('','','');
-    aoa.push(totRow); styleMap[aoa.length-1]='summary';
-    aoa.push(Array(nCols).fill(''));
-    aoa.push(['P = Puntual   T = Tardanza   A = Ausente',...Array(nCols-1).fill('')]); styleMap[aoa.length-1]='legend';
-    merges.push({s:{r:aoa.length-1,c:0},e:{r:aoa.length-1,c:nCols-1}});
+      const ws=XLSX.utils.aoa_to_sheet(aoa);
+      ws['!cols']=[{wch:12},{wch:32},...diasHabiles.map(()=>({wch:7})),{wch:5},{wch:5},{wch:5}];
+      ws['!merges']=merges;
 
-    const ws=XLSX.utils.aoa_to_sheet(aoa);
-    ws['!cols']=[{wch:12},{wch:32},...diasHabiles.map(()=>({wch:7})),{wch:5},{wch:5},{wch:5}];
-    ws['!merges']=merges;
-
-    aoa.forEach((row,ri)=>{
-      row.forEach((_,ci)=>{
-        const addr=XLSX.utils.encode_cell({r:ri,c:ci});
-        if(!ws[addr]) return;
-        const st=styleMap[ri];
-        let fill,font,alignment;
-        if(st==='title')   {fill={fgColor:{rgb:'0D1A3A'}};font={bold:true,color:{rgb:'FFFFFF'},sz:13};alignment={horizontal:'center'};}
-        else if(st==='subtitle'){fill={fgColor:{rgb:'0D1A3A'}};font={color:{rgb:'B0C4E8'},sz:9};alignment={horizontal:'center'};}
-        else if(st==='header')  {fill={fgColor:{rgb:'0D1A3A'}};font={bold:true,color:{rgb:'C9A84C'},sz:9};alignment={horizontal:'center'};}
-        else if(st==='even')    {fill={fgColor:{rgb:'F0F2F8'}};font={sz:8,color:{rgb:'1E293B'}};alignment={horizontal:'center'};}
-        else if(st==='odd')     {fill={fgColor:{rgb:'FFFFFF'}};font={sz:8,color:{rgb:'1E293B'}};alignment={horizontal:'center'};}
-        else if(st==='summary') {fill={fgColor:{rgb:'0D1A3A'}};font={bold:true,color:{rgb:'FFFFFF'},sz:8};alignment={horizontal:'center'};}
-        else if(st==='legend')  {font={italic:true,sz:8,color:{rgb:'64748B'}};}
-        if(ci===1&&(st==='even'||st==='odd'||st==='summary')) alignment={horizontal:'left'};
-        if((st==='even'||st==='odd')&&ci>=2&&ci<2+diasHabiles.length){
-          const v=ws[addr].v;
-          if(v==='P') font={...font,color:{rgb:'16A34A'},bold:true};
-          else if(v==='T') font={...font,color:{rgb:'D97706'},bold:true};
-          else if(v==='A') font={...font,color:{rgb:'DC2626'},bold:true};
-        }
-        if((st==='even'||st==='odd')&&ci>=2+diasHabiles.length){
-          if(ci===2+diasHabiles.length)   font={...font,color:{rgb:'16A34A'},bold:true};
-          else if(ci===3+diasHabiles.length) font={...font,color:{rgb:'D97706'},bold:true};
-          else if(ci===4+diasHabiles.length) font={...font,color:{rgb:'DC2626'},bold:true};
-        }
-        ws[addr].s={fill,font,alignment,border:{bottom:{style:'thin',color:{rgb:'DCE2EE'}}}};
+      aoa.forEach((row,ri)=>{
+        row.forEach((_,ci)=>{
+          const addr=XLSX.utils.encode_cell({r:ri,c:ci});
+          if(!ws[addr]) return;
+          const st=styleMap[ri];
+          let fill,font,alignment;
+          if(st==='title')   {fill={fgColor:{rgb:'0D1A3A'}};font={bold:true,color:{rgb:'FFFFFF'},sz:13};alignment={horizontal:'center'};}
+          else if(st==='subtitle'){fill={fgColor:{rgb:'0D1A3A'}};font={color:{rgb:'B0C4E8'},sz:9};alignment={horizontal:'center'};}
+          else if(st==='header')  {fill={fgColor:{rgb:'0D1A3A'}};font={bold:true,color:{rgb:'C9A84C'},sz:9};alignment={horizontal:'center'};}
+          else if(st==='even')    {fill={fgColor:{rgb:'F0F2F8'}};font={sz:8,color:{rgb:'1E293B'}};alignment={horizontal:'center'};}
+          else if(st==='odd')     {fill={fgColor:{rgb:'FFFFFF'}};font={sz:8,color:{rgb:'1E293B'}};alignment={horizontal:'center'};}
+          else if(st==='summary') {fill={fgColor:{rgb:'0D1A3A'}};font={bold:true,color:{rgb:'FFFFFF'},sz:8};alignment={horizontal:'center'};}
+          else if(st==='legend')  {font={italic:true,sz:8,color:{rgb:'64748B'}};}
+          if(ci===1&&(st==='even'||st==='odd'||st==='summary')) alignment={horizontal:'left'};
+          if((st==='even'||st==='odd')&&ci>=2&&ci<2+diasHabiles.length){
+            const v=ws[addr].v;
+            if(v==='P') font={...font,color:{rgb:'16A34A'},bold:true};
+            else if(v==='T') font={...font,color:{rgb:'D97706'},bold:true};
+            else if(v==='A') font={...font,color:{rgb:'DC2626'},bold:true};
+          }
+          if((st==='even'||st==='odd')&&ci>=2+diasHabiles.length){
+            if(ci===2+diasHabiles.length)   font={...font,color:{rgb:'16A34A'},bold:true};
+            else if(ci===3+diasHabiles.length) font={...font,color:{rgb:'D97706'},bold:true};
+            else if(ci===4+diasHabiles.length) font={...font,color:{rgb:'DC2626'},bold:true};
+          }
+          ws[addr].s={fill,font,alignment,border:{bottom:{style:'thin',color:{rgb:'DCE2EE'}}}};
+        });
       });
-    });
 
-    const wb=XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb,ws,'Asistencia');
-    XLSX.writeFile(wb,'asistencia_'+grado+seccion+'_'+hoy()+'.xlsx');
+      const wb=XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb,ws,'Asistencia');
+      XLSX.writeFile(wb,'asistencia_'+grado+seccion+'_'+hoy()+'.xlsx');
 
-  } else {
-    // ── FORMATO LISTA CON SEPARADORES — alumno individual ──
-    const COLS=['Fecha','DNI','Nombre','Nivel','Grado','Seccion','H. Ingreso','H. Salida','Estado'];
-    const WIDTHS=[13,12,32,12,10,10,14,12,16];
-    const aoa=[],merges=[],styles={};
+    } else {
+      // ── FORMATO LISTA CON SEPARADORES — alumno individual ──
+      const COLS=['Fecha','DNI','Nombre','Nivel','Grado','Seccion','H. Ingreso','H. Salida','Estado'];
+      const WIDTHS=[13,12,32,12,10,10,14,12,16];
+      const aoa=[],merges=[],styles={};
 
-    aoa.push([nombreColegio,...Array(COLS.length-1).fill('')]); merges.push({s:{r:0,c:0},e:{r:0,c:COLS.length-1}}); styles[0]='title';
-    aoa.push([`${q} - Registro de Asistencia - ${fechaExport}`,...Array(COLS.length-1).fill('')]); merges.push({s:{r:1,c:0},e:{r:1,c:COLS.length-1}}); styles[1]='subtitle';
-    aoa.push(Array(COLS.length).fill(''));
-    aoa.push(COLS); styles[aoa.length-1]='header';
+      aoa.push([nombreColegio,...Array(COLS.length-1).fill('')]); merges.push({s:{r:0,c:0},e:{r:0,c:COLS.length-1}}); styles[0]='title';
+      aoa.push([`${q} - Registro de Asistencia - ${fechaExport}`,...Array(COLS.length-1).fill('')]); merges.push({s:{r:1,c:0},e:{r:1,c:COLS.length-1}}); styles[1]='subtitle';
+      aoa.push(Array(COLS.length).fill(''));
+      aoa.push(COLS); styles[aoa.length-1]='header';
 
-    regs.forEach((r,i)=>{
-      const fp=(r.fecha||'').split('-');
-      const ff=fp.length===3?fp[2]+'/'+fp[1]+'/'+fp[0]:r.fecha;
-      aoa.push([ff,r.dni,r.nombre,r.nivel,r.grado,r.seccion,r.ingreso||'-',r.salida||'-',r.estado||'Sin registro']);
-      styles[aoa.length-1]=i%2===0?'even':'odd';
-    });
-
-    aoa.push(Array(COLS.length).fill(''));
-    aoa.push([`Total: ${regs.length} registro${regs.length!==1?'s':''}`,...Array(COLS.length-1).fill('')]); styles[aoa.length-1]='total';
-
-    const ws=XLSX.utils.aoa_to_sheet(aoa);
-    ws['!cols']=WIDTHS.map(w=>({wch:w}));
-    ws['!merges']=merges;
-
-    aoa.forEach((row,ri)=>{
-      row.forEach((_,ci)=>{
-        const addr=XLSX.utils.encode_cell({r:ri,c:ci});
-        if(!ws[addr]) return;
-        const st=styles[ri];
-        let fill,font,alignment;
-        if(st==='title')   {fill={fgColor:{rgb:'0D1A3A'}};font={bold:true,color:{rgb:'FFFFFF'},sz:13};alignment={horizontal:'center'};}
-        else if(st==='subtitle'){fill={fgColor:{rgb:'0D1A3A'}};font={color:{rgb:'B0C4E8'},sz:9};alignment={horizontal:'center'};}
-        else if(st==='header')  {fill={fgColor:{rgb:'0D1A3A'}};font={bold:true,color:{rgb:'FFFFFF'},sz:9};alignment={horizontal:'center'};}
-        else if(st==='daterow') {fill={fgColor:{rgb:'0D1A3A'}};font={bold:true,color:{rgb:'C9A84C'},sz:9};alignment={horizontal:'left'};}
-        else if(st==='even')    {fill={fgColor:{rgb:'F0F2F8'}};font={sz:8,color:{rgb:'1E293B'}};alignment={horizontal:'center'};}
-        else if(st==='odd')     {fill={fgColor:{rgb:'FFFFFF'}};font={sz:8,color:{rgb:'1E293B'}};alignment={horizontal:'center'};}
-        else if(st==='total')   {font={italic:true,sz:8,color:{rgb:'64748B'}};}
-        if(ci===2&&(st==='even'||st==='odd')) alignment={horizontal:'left'};
-        if((st==='even'||st==='odd')&&ci===COLS.length-1&&ws[addr].v){
-          const v=String(ws[addr].v).toLowerCase();
-          if(v.includes('tardanza')) font={...font,color:{rgb:'D97706'},bold:true};
-          else if(v.includes('tiempo')||v.includes('puntual')) font={...font,color:{rgb:'16A34A'},bold:true};
-          else if(v.includes('sin registro')||v.includes('ausente')) font={...font,color:{rgb:'DC2626'},bold:true};
-        }
-        ws[addr].s={fill,font,alignment,border:{bottom:{style:'thin',color:{rgb:'DCE2EE'}}}};
+      regs.forEach((r,i)=>{
+        const fp=(r.fecha||'').split('-');
+        const ff=fp.length===3?fp[2]+'/'+fp[1]+'/'+fp[0]:r.fecha;
+        aoa.push([ff,r.dni,r.nombre,r.nivel,r.grado,r.seccion,r.ingreso||'-',r.salida||'-',r.estado||'Sin registro']);
+        styles[aoa.length-1]=i%2===0?'even':'odd';
       });
-    });
 
-    const wb=XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb,ws,'Asistencia');
-    XLSX.writeFile(wb,'asistencia_'+q.substring(0,20).replace(/\s/g,'_')+'_'+hoy()+'.xlsx');
+      aoa.push(Array(COLS.length).fill(''));
+      aoa.push([`Total: ${regs.length} registro${regs.length!==1?'s':''}`,...Array(COLS.length-1).fill('')]); styles[aoa.length-1]='total';
+
+      const ws=XLSX.utils.aoa_to_sheet(aoa);
+      ws['!cols']=WIDTHS.map(w=>({wch:w}));
+      ws['!merges']=merges;
+
+      aoa.forEach((row,ri)=>{
+        row.forEach((_,ci)=>{
+          const addr=XLSX.utils.encode_cell({r:ri,c:ci});
+          if(!ws[addr]) return;
+          const st=styles[ri];
+          let fill,font,alignment;
+          if(st==='title')   {fill={fgColor:{rgb:'0D1A3A'}};font={bold:true,color:{rgb:'FFFFFF'},sz:13};alignment={horizontal:'center'};}
+          else if(st==='subtitle'){fill={fgColor:{rgb:'0D1A3A'}};font={color:{rgb:'B0C4E8'},sz:9};alignment={horizontal:'center'};}
+          else if(st==='header')  {fill={fgColor:{rgb:'0D1A3A'}};font={bold:true,color:{rgb:'FFFFFF'},sz:9};alignment={horizontal:'center'};}
+          else if(st==='daterow') {fill={fgColor:{rgb:'0D1A3A'}};font={bold:true,color:{rgb:'C9A84C'},sz:9};alignment={horizontal:'left'};}
+          else if(st==='even')    {fill={fgColor:{rgb:'F0F2F8'}};font={sz:8,color:{rgb:'1E293B'}};alignment={horizontal:'center'};}
+          else if(st==='odd')     {fill={fgColor:{rgb:'FFFFFF'}};font={sz:8,color:{rgb:'1E293B'}};alignment={horizontal:'center'};}
+          else if(st==='total')   {font={italic:true,sz:8,color:{rgb:'64748B'}};}
+          if(ci===2&&(st==='even'||st==='odd')) alignment={horizontal:'left'};
+          if((st==='even'||st==='odd')&&ci===COLS.length-1&&ws[addr].v){
+            const v=String(ws[addr].v).toLowerCase();
+            if(v.includes('tardanza')) font={...font,color:{rgb:'D97706'},bold:true};
+            else if(v.includes('tiempo')||v.includes('puntual')) font={...font,color:{rgb:'16A34A'},bold:true};
+            else if(v.includes('sin registro')||v.includes('ausente')) font={...font,color:{rgb:'DC2626'},bold:true};
+          }
+          ws[addr].s={fill,font,alignment,border:{bottom:{style:'thin',color:{rgb:'DCE2EE'}}}};
+        });
+      });
+
+      const wb=XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb,ws,'Asistencia');
+      XLSX.writeFile(wb,'asistencia_'+q.substring(0,20).replace(/\s/g,'_')+'_'+hoy()+'.xlsx');
+    }
+
+    toast('Excel exportado','success');
+  } catch(e) {
+    console.error('exportXLSX:', e);
+    toast('Error en exportXLSX', 'error');
   }
-
-  toast('Excel exportado','success');
 }
 
 
@@ -6719,6 +6811,10 @@ async function iniciarFiltrosReportes() {
   if(!nivEl) return;
   nivEl.innerHTML = '<option value="">Todos</option>';
   (cfg.niveles||[]).forEach(n => { nivEl.innerHTML += `<option value="${n.nombre}">${n.nombre}</option>`; });
+}
+
+function cargarReportesAnio() {
+  renderReportes(true);
 }
 
 async function renderReportes(anioCompleto=false) {
@@ -9074,4 +9170,11 @@ window.addEventListener('beforeunload', function() {
       </div>
       <div id="u-niveles-checks" style="max-height:60vh;overflow-y:auto;"></div>
       <div style="display:flex;gap:10px;margin-top:20px;">
-        <button class="btn btn-primary" onclick="savePrivilegios()" style="flex:1;justify-content:c
+        <button class="btn btn-primary" onclick="savePrivilegios()" style="flex:1;justify-content:center;">💾 Guardar</button>
+        <button class="btn btn-ghost" onclick="closeModal('modal-privilegios')" style="flex:1;justify-content:center;">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>
