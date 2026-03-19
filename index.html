@@ -7703,7 +7703,12 @@ async function guardarIncidente() {
     // Mostrar botón de llamada INMEDIATAMENTE en móvil (sin esperar PDF ni WhatsApp)
     const alumnoData = incAlumnoSeleccionado;
     if(alumnoData?.telefono && /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent)) {
-      mostrarBotonLlamada(alumnoData.telefono, (alumnoData.apoderadoNombres||'') + ' ' + (alumnoData.apoderadoApellidos||''));
+      mostrarBotonLlamada(
+        alumnoData.telefono,
+        (alumnoData.apoderadoNombres||'') + ' ' + (alumnoData.apoderadoApellidos||''),
+        alumnoData.telefono2||'',
+        (alumnoData.apoderado2Nombres||'') + ' ' + (alumnoData.apoderado2Apellidos||'')
+      );
     }
 
     // PDF y WhatsApp corren en segundo plano sin bloquear la UI
@@ -7715,7 +7720,12 @@ async function guardarIncidente() {
       const linkText = pdfLink
         ? `\n\n📎 *Reporte PDF:* ${pdfLink}\n_(disponible por 7 días)_`
         : '';
-      const msg = `🚨 *REPORTE DE INCIDENCIA*\n${encabezado}\n\n👤 *Alumno:* ${incidente.alumnoNombre}\n🏫 *Grado:* ${incidente.grado} ${incidente.seccion} — ${incidente.turno}\n📋 *Tipo:* ${incidente.tipo}\n${sevEmoji} *Severidad:* ${incidente.severidad}\n📅 *Fecha:* ${incidente.fecha} ${incidente.hora}\n\n📝 El colegio ha registrado un incidente con su hijo/a. Por favor comuníquese con la institución a la brevedad.${linkText}\n\n📞 Para más información contacte a la dirección del colegio.`;
+      const nombre1 = ((alumnoData.apoderadoNombres||'') + ' ' + (alumnoData.apoderadoApellidos||'')).trim() || 'Apoderado';
+      const nombre2 = alumnoData.telefono2 ? (((alumnoData.apoderado2Nombres||'') + ' ' + (alumnoData.apoderado2Apellidos||'')).trim() || 'Apoderado 2') : '';
+      const contactos = alumnoData.telefono2
+        ? `👨‍👩‍👧 *Apoderados notificados:*\n• ${nombre1}: ${alumnoData.telefono}\n• ${nombre2}: ${alumnoData.telefono2}`
+        : `👤 *Apoderado notificado:* ${nombre1}: ${alumnoData.telefono}`;
+      const msg = `🚨 *REPORTE DE INCIDENCIA*\n${encabezado}\n\n👤 *Alumno:* ${incidente.alumnoNombre}\n🏫 *Grado:* ${incidente.grado} ${incidente.seccion} — ${incidente.turno}\n📋 *Tipo:* ${incidente.tipo}\n${sevEmoji} *Severidad:* ${incidente.severidad}\n📅 *Fecha:* ${incidente.fecha} ${incidente.hora}\n\n📝 El colegio ha registrado un incidente con su hijo/a. Por favor comuníquese con la institución a la brevedad.${linkText}\n\n${contactos}\n📞 Para más información contacte a la dirección del colegio.`;
       const enviado = await sendWhatsApp(alumnoData.telefono, msg);
       if(alumnoData.telefono2) sendWhatsApp(alumnoData.telefono2, msg);
       if(enviado) toast('✅ WhatsApp enviado al apoderado' + (alumnoData.telefono2 ? 's' : '') + (pdfLink ? ' con link PDF ✅' : ''),'success');
@@ -7729,10 +7739,18 @@ async function guardarIncidente() {
   } catch(e) { reactivarBtn(); toast('Error al guardar: ' + e.message, 'error'); }
 }
 
-function mostrarBotonLlamada(telefono, nombreApoderado) {
+function mostrarBotonLlamada(telefono, nombreApoderado, telefono2, nombreApoderado2) {
   // Limpiar número
   let num = telefono.replace(/[^0-9]/g, '');
   if(num.length === 9) num = '51' + num;
+
+  // Segundo apoderado
+  const tieneApo2 = telefono2 && telefono2.trim();
+  let num2 = '';
+  if(tieneApo2) {
+    num2 = telefono2.replace(/[^0-9]/g, '');
+    if(num2.length === 9) num2 = '51' + num2;
+  }
 
   // Eliminar modal anterior si existe
   const existing = document.getElementById('modal-llamada');
@@ -7744,12 +7762,27 @@ function mostrarBotonLlamada(telefono, nombreApoderado) {
   modal.innerHTML = `
     <div style="background:var(--surface);border-radius:20px;padding:28px 24px;max-width:320px;width:100%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,0.5);">
       <div style="font-size:2.5rem;margin-bottom:8px;">📞</div>
-      <div style="font-size:1rem;font-weight:700;color:var(--text);margin-bottom:4px;">Llamar al apoderado</div>
-      <div style="font-size:0.85rem;color:var(--muted);margin-bottom:6px;">${nombreApoderado || 'Apoderado'}</div>
-      <div style="font-size:1.1rem;font-weight:700;color:var(--accent);margin-bottom:20px;letter-spacing:1px;">${telefono}</div>
-      <a href="tel:+${num}" style="display:block;background:linear-gradient(135deg,#16a34a,#22c55e);color:#fff;text-decoration:none;border-radius:12px;padding:14px;font-size:1rem;font-weight:700;margin-bottom:10px;" onclick="document.getElementById('modal-llamada').remove()">
-        📞 Llamar ahora
-      </a>
+      <div style="font-size:1rem;font-weight:700;color:var(--text);margin-bottom:16px;">Llamar al apoderado</div>
+
+      <!-- Apoderado 1 -->
+      <div style="margin-bottom:${tieneApo2 ? '12px' : '20px'};">
+        <div style="font-size:0.82rem;color:var(--muted);margin-bottom:3px;">${nombreApoderado || 'Apoderado 1'}</div>
+        <div style="font-size:1rem;font-weight:700;color:var(--accent);margin-bottom:8px;letter-spacing:1px;">${telefono}</div>
+        <a href="tel:+${num}" style="display:block;background:linear-gradient(135deg,#16a34a,#22c55e);color:#fff;text-decoration:none;border-radius:12px;padding:12px;font-size:0.95rem;font-weight:700;" onclick="document.getElementById('modal-llamada').remove()">
+          📞 Llamar
+        </a>
+      </div>
+
+      <!-- Apoderado 2 (si existe) -->
+      ${tieneApo2 ? `
+      <div style="margin-bottom:20px;padding-top:12px;border-top:1px solid var(--border);">
+        <div style="font-size:0.82rem;color:var(--muted);margin-bottom:3px;">${nombreApoderado2 || 'Apoderado 2'}</div>
+        <div style="font-size:1rem;font-weight:700;color:#f59e0b;margin-bottom:8px;letter-spacing:1px;">${telefono2}</div>
+        <a href="tel:+${num2}" style="display:block;background:linear-gradient(135deg,#b45309,#f59e0b);color:#fff;text-decoration:none;border-radius:12px;padding:12px;font-size:0.95rem;font-weight:700;" onclick="document.getElementById('modal-llamada').remove()">
+          📞 Llamar
+        </a>
+      </div>` : ''}
+
       <button onclick="document.getElementById('modal-llamada').remove()" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:12px;color:var(--muted);font-size:0.9rem;cursor:pointer;">
         Omitir
       </button>
