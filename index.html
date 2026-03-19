@@ -3029,7 +3029,7 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 const auth = firebase.auth();
 
-// Persistencia SESSION: la sesión se borra al cerrar el navegador/pestaña
+// Persistencia LOCAL: la sesión persiste entre páginas y recargas
 auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(e => console.warn('setPersistence:', e));
 
 // Usuario actual
