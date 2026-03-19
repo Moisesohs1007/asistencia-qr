@@ -707,21 +707,14 @@ setTimeout(function() {
 }, 6000);
 
 // Verificar sesion
-// Firebase puede tardar en resolver la sesión al cargar la página.
-// Esperamos hasta 5s antes de redirigir si no hay usuario.
-var _apoRedirigido = false;
-var _apoTimer = setTimeout(function() {
-  if(!firebase.auth().currentUser && !_apoRedirigido) {
-    _apoRedirigido = true;
-    document.getElementById('apo-app').style.display = 'none';
-    window.location.href = 'index.html';
-  }
-}, 5000);
-
 auth.onAuthStateChanged(function(user) {
   console.log('[APO] auth state:', user ? user.email : 'NO SESSION');
-  if(!user) return; // esperar al timer si no hay usuario aún
-  clearTimeout(_apoTimer); // hay usuario — cancelar el timer
+  if(!user) { 
+    // Sin sesión — mostrar loading antes de redirigir
+    document.getElementById('apo-app').style.display = 'none';
+    window.location.href = 'index.html'; 
+    return; 
+  }
   var dni = null;
   if(user.email.indexOf('@apo.marello.pe') !== -1) {
     dni = user.email.replace('@apo.marello.pe', '');
@@ -1666,12 +1659,13 @@ function initApoSidebar() {
 }
 
 // ── CERRAR SESIÓN AL CERRAR PESTAÑA / VENTANA ──────────────────────────────
-// No hacemos signOut en beforeunload/pagehide: esos eventos se disparan
-// también al navegar entre páginas y destruirían la sesión activa.
-// El usuario cierra sesión solo con el botón manual.
+// NOTA: Se eliminó el signOut de beforeunload/pagehide porque esos eventos
+// se disparan también al navegar entre páginas (index→apoderado), destruyendo
+// la sesión activa. El usuario cierra sesión con el botón manual.
 window.addEventListener('pagehide', function(e) {
   if (!e.persisted) {
     try { sessionStorage.removeItem('asmqr_apo_lastTab'); } catch(ex) {}
+    try { sessionStorage.removeItem('asmqr_haySession'); } catch(ex) {}
   }
 });
 
