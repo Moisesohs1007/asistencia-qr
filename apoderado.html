@@ -705,8 +705,7 @@ setTimeout(function() {
   }
 }, 6000);
 
-// Verificar sesion — registrar listener DESPUÉS de que setPersistence resuelva
-// para garantizar que Firebase ya sabe dónde leer la sesión (localStorage)
+// Verificar sesion
 auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).then(function() {
   auth.onAuthStateChanged(function(user) {
     console.log('[APO] auth state:', user ? user.email : 'NO SESSION');
@@ -716,26 +715,26 @@ auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).then(function() {
       return;
     }
     var dni = null;
-  if(user.email.indexOf('@apo.marello.pe') !== -1) {
-    dni = user.email.replace('@apo.marello.pe', '');
-    console.log('[APO] email virtual, dni:', dni);
-  } else {
-    console.log('[APO] correo real, buscando emailReal:', user.email);
-    db.collection('apoderados').where('emailReal', '==', user.email).limit(1).get().then(function(snap) {
-      console.log('[APO] emailReal snap.empty:', snap.empty, 'docs:', snap.docs.length);
-      if(snap.empty) { auth.signOut(); window.location.href = 'index.html'; return; }
-      var dniReal = snap.docs[0].id;
-      console.log('[APO] dniReal:', dniReal);
-      continuarCargaApoderado(user, dniReal);
-    }).catch(function(e) {
-      console.error('[APO] ERROR emailReal query:', e.message);
-      auth.signOut(); window.location.href = 'index.html';
-    });
-    return;
-  }
-  continuarCargaApoderado(user, dni);
-  }); // fin onAuthStateChanged
-}); // fin setPersistence.then()
+    if(user.email.indexOf('@apo.marello.pe') !== -1) {
+      dni = user.email.replace('@apo.marello.pe', '');
+      console.log('[APO] email virtual, dni:', dni);
+    } else {
+      console.log('[APO] correo real, buscando emailReal:', user.email);
+      db.collection('apoderados').where('emailReal', '==', user.email).limit(1).get().then(function(snap) {
+        console.log('[APO] emailReal snap.empty:', snap.empty, 'docs:', snap.docs.length);
+        if(snap.empty) { auth.signOut(); window.location.href = 'index.html'; return; }
+        var dniReal = snap.docs[0].id;
+        console.log('[APO] dniReal:', dniReal);
+        continuarCargaApoderado(user, dniReal);
+      }).catch(function(e) {
+        console.error('[APO] ERROR emailReal query:', e.message);
+        auth.signOut(); window.location.href = 'index.html';
+      });
+      return;
+    }
+    continuarCargaApoderado(user, dni);
+  });
+});
 
 function continuarCargaApoderado(user, dni) {
   console.log('[APO] continuarCarga dni:', dni);
@@ -1660,9 +1659,9 @@ function initApoSidebar() {
 }
 
 // ── CERRAR SESIÓN AL CERRAR PESTAÑA / VENTANA ──────────────────────────────
-// NOTA: No hacemos signOut en beforeunload/pagehide porque esos eventos
-// también se disparan al navegar entre páginas (index→apoderado), lo que
-// destruiría la sesión activa. El usuario cierra sesión con el botón manual.
+// No hacemos signOut en beforeunload/pagehide porque esos eventos se disparan
+// también al navegar entre páginas y destruirían la sesión activa.
+// El cierre de sesión se hace solo con el botón manual.
 window.addEventListener('pagehide', function(e) {
   if (!e.persisted) {
     try { sessionStorage.removeItem('asmqr_apo_lastTab'); } catch(ex) {}
