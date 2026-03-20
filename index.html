@@ -1541,6 +1541,91 @@
       padding-left: 24px;
     }
   }
+
+  /* ── Modal Alumno: layout PC sin scroll ── */
+  @media (min-width: 768px) {
+    #modal-alumno .modal {
+      max-width: 980px !important;
+      max-height: none !important;
+      overflow-y: visible !important;
+      padding: 14px 24px !important;
+    }
+
+    /* Estudiante: 3 columnas */
+    #modal-alumno .alum-estudiante-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-top: 6px;
+    }
+    #modal-alumno .alum-estudiante-grid .alum-span-full {
+      grid-column: 1 / -1;
+    }
+
+    /* Apoderados: 2 columnas */
+    #modal-alumno .alum-apoderados-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    #modal-alumno .alum-apoderados-grid fieldset {
+      margin-bottom: 0 !important;
+    }
+
+    /* Compactar form-groups dentro del modal alumno */
+    #modal-alumno .form-group {
+      gap: 3px !important;
+      margin-bottom: 0 !important;
+    }
+    #modal-alumno .form-group label {
+      font-size: 0.68rem !important;
+    }
+    #modal-alumno .form-group input,
+    #modal-alumno .form-group select {
+      padding: 6px 10px !important;
+      font-size: 0.8rem !important;
+      border-radius: 7px !important;
+    }
+
+    /* Fieldsets más compactos */
+    #modal-alumno fieldset {
+      padding: 7px 12px 10px !important;
+      margin-bottom: 0 !important;
+      border-radius: 8px !important;
+    }
+    #modal-alumno legend {
+      font-size: 0.68rem !important;
+      padding: 0 6px !important;
+    }
+
+    /* Gap general del modal */
+    #modal-alumno .modal {
+      display: flex !important;
+      flex-direction: column !important;
+      gap: 8px !important;
+    }
+
+    /* Título más compacto */
+    #modal-alumno .modal-title {
+      font-size: 1rem !important;
+      margin-bottom: 0 !important;
+    }
+
+    /* Foto más pequeña */
+    #modal-alumno #foto-preview-wrap {
+      width: 44px !important;
+      height: 44px !important;
+    }
+    #modal-alumno #foto-preview-placeholder {
+      font-size: 1.1rem !important;
+    }
+
+    /* Botones footer */
+    #modal-alumno .modal > div:last-child {
+      padding-top: 8px !important;
+      margin-top: 0 !important;
+    }
+  }
 </style>
 </head>
 <body>
@@ -2807,16 +2892,16 @@
     <!-- ── DATOS DEL ESTUDIANTE ── -->
     <fieldset style="border:1px solid var(--border);border-radius:10px;padding:14px 16px 10px;margin-bottom:14px;">
       <legend style="font-size:0.78rem;font-weight:700;color:var(--accent);padding:0 8px;letter-spacing:0.04em;">DATOS DEL ESTUDIANTE</legend>
-      <div class="form-grid" style="margin:0;">
-        <div class="form-group form-full">
+      <div class="form-grid alum-estudiante-grid" style="margin:0;">
+        <div class="form-group form-full alum-span-full">
           <label>DNI del alumno * <span style="color:var(--muted);font-weight:400;">(será usado como ID — 8 dígitos)</span></label>
           <input type="text" id="f-id" placeholder="Ej: 12345678" maxlength="8" oninput="this.value=this.value.replace(/\D/g,'')">
         </div>
-        <div class="form-group form-full">
+        <div class="form-group form-full alum-span-full">
           <label>Nombres *</label>
           <input type="text" id="f-nombres" placeholder="Ej: Juan Carlos">
         </div>
-        <div class="form-group form-full">
+        <div class="form-group form-full alum-span-full">
           <label>Apellidos *</label>
           <input type="text" id="f-apellidos" placeholder="Ej: García López">
         </div>
@@ -2832,13 +2917,13 @@
             <option value="">Seleccionar</option>
           </select>
         </div>
-        <div class="form-group form-full">
+        <div class="form-group">
           <label>Sección</label>
           <select id="f-seccion">
             <option value="">Seleccionar</option>
           </select>
         </div>
-        <div class="form-group form-full">
+        <div class="form-group form-full alum-span-full">
           <label>Foto del alumno</label>
           <div style="display:flex;gap:10px;align-items:flex-start;flex-wrap:wrap;">
             <div id="foto-preview-wrap" style="width:80px;height:80px;border-radius:50%;background:var(--surface2);border:2px dashed var(--border);display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;">
@@ -2858,43 +2943,49 @@
       </div>
     </fieldset>
 
-    <!-- ── DATOS DEL APODERADO ── -->
-    <fieldset style="border:1px solid var(--border);border-radius:10px;padding:14px 16px 10px;margin-bottom:4px;">
-      <legend style="font-size:0.78rem;font-weight:700;color:var(--accent);padding:0 8px;letter-spacing:0.04em;">APODERADO 1</legend>
-      <div class="form-grid" style="margin:0;">
-        <div class="form-group form-full">
-          <label>Nombres</label>
-          <input type="text" id="f-apoderado-nombres" placeholder="Ej: María Rosa">
-        </div>
-        <div class="form-group form-full">
-          <label>Apellidos</label>
-          <input type="text" id="f-apoderado-apellidos" placeholder="Ej: García López">
-        </div>
-        <div class="form-group form-full">
-          <label>Celular / WhatsApp</label>
-          <input type="text" id="f-telefono" placeholder="+51 999 000 000">
-        </div>
-      </div>
-    </fieldset>
+    <!-- ── APODERADOS: 2 columnas en PC ── -->
+    <div class="alum-apoderados-grid">
 
-    <!-- ── DATOS DEL SEGUNDO APODERADO ── -->
-    <fieldset style="border:1px solid var(--border);border-radius:10px;padding:14px 16px 10px;margin-bottom:4px;">
-      <legend style="font-size:0.78rem;font-weight:700;color:#f59e0b;padding:0 8px;letter-spacing:0.04em;">APODERADO 2 <span style="font-weight:400;font-size:0.72rem;opacity:0.7;">(opcional)</span></legend>
-      <div class="form-grid" style="margin:0;">
-        <div class="form-group form-full">
-          <label>Nombres</label>
-          <input type="text" id="f-apoderado2-nombres" placeholder="Ej: Juan Carlos">
+      <!-- ── DATOS DEL APODERADO ── -->
+      <fieldset style="border:1px solid var(--border);border-radius:10px;padding:14px 16px 10px;margin-bottom:4px;">
+        <legend style="font-size:0.78rem;font-weight:700;color:var(--accent);padding:0 8px;letter-spacing:0.04em;">APODERADO 1</legend>
+        <div class="form-grid" style="margin:0;">
+          <div class="form-group form-full">
+            <label>Nombres</label>
+            <input type="text" id="f-apoderado-nombres" placeholder="Ej: María Rosa">
+          </div>
+          <div class="form-group form-full">
+            <label>Apellidos</label>
+            <input type="text" id="f-apoderado-apellidos" placeholder="Ej: García López">
+          </div>
+          <div class="form-group form-full">
+            <label>Celular / WhatsApp</label>
+            <input type="text" id="f-telefono" placeholder="+51 999 000 000">
+          </div>
         </div>
-        <div class="form-group form-full">
-          <label>Apellidos</label>
-          <input type="text" id="f-apoderado2-apellidos" placeholder="Ej: Pérez Díaz">
+      </fieldset>
+
+      <!-- ── DATOS DEL SEGUNDO APODERADO ── -->
+      <fieldset style="border:1px solid var(--border);border-radius:10px;padding:14px 16px 10px;margin-bottom:4px;">
+        <legend style="font-size:0.78rem;font-weight:700;color:#f59e0b;padding:0 8px;letter-spacing:0.04em;">APODERADO 2 <span style="font-weight:400;font-size:0.72rem;opacity:0.7;">(opcional)</span></legend>
+        <div class="form-grid" style="margin:0;">
+          <div class="form-group form-full">
+            <label>Nombres</label>
+            <input type="text" id="f-apoderado2-nombres" placeholder="Ej: Juan Carlos">
+          </div>
+          <div class="form-group form-full">
+            <label>Apellidos</label>
+            <input type="text" id="f-apoderado2-apellidos" placeholder="Ej: Pérez Díaz">
+          </div>
+          <div class="form-group form-full">
+            <label>Celular / WhatsApp</label>
+            <input type="text" id="f-telefono2" placeholder="+51 999 000 000">
+          </div>
         </div>
-        <div class="form-group form-full">
-          <label>Celular / WhatsApp</label>
-          <input type="text" id="f-telefono2" placeholder="+51 999 000 000">
-        </div>
-      </div>
-    </fieldset>
+      </fieldset>
+
+    </div><!-- fin alum-apoderados-grid -->
+
     <hr class="divider">
     <div style="display:flex;justify-content:flex-end;gap:10px;">
       <button class="btn btn-ghost" onclick="closeModal('modal-alumno')">Cancelar</button>
