@@ -1542,13 +1542,15 @@
     }
   }
 
-  /* ══ Modal Alumno: solo PC ≥768px — sin scroll, layout compacto ══ */
+  /* ══ Modal Alumno: solo PC ≥768px — sin scroll, layout compacto ══
+       IMPORTANTE: este bloque NO afecta móvil (<768px).
+       Los cambios de columnas y compactado son exclusivos de escritorio. ══ */
   @media (min-width: 768px) {
     #modal-alumno .modal {
-      max-width: 980px !important;
+      max-width: 660px !important;
       max-height: none !important;
       overflow-y: visible !important;
-      padding: 14px 24px !important;
+      padding: 18px 22px !important;
       display: flex !important;
       flex-direction: column !important;
       gap: 8px !important;
@@ -1557,14 +1559,19 @@
       font-size: 1rem !important;
       margin-bottom: 0 !important;
     }
-    /* Estudiante: 3 columnas — DNI|Nombres|Apellidos / Nivel|Grado|Sección / Foto full */
+    /* Grid del bloque estudiante: 3 columnas */
     #modal-alumno .alum-estudiante-grid {
       display: grid !important;
       grid-template-columns: repeat(3, 1fr) !important;
       gap: 8px !important;
-      margin-top: 6px !important;
+      margin-top: 4px !important;
     }
-    #modal-alumno .alum-span-full {
+    /* DNI, Nombres y Apellidos: 1 columna cada uno (cancelar span-full) */
+    #modal-alumno .alum-campo-principal {
+      grid-column: auto !important;
+    }
+    /* La fila de Foto sigue ocupando las 3 columnas */
+    #modal-alumno .alum-span-full:not(.alum-campo-principal) {
       grid-column: 1 / -1 !important;
     }
     /* Apoderados: 2 columnas */
@@ -1582,34 +1589,35 @@
       margin-bottom: 0 !important;
     }
     #modal-alumno .form-group label {
-      font-size: 0.68rem !important;
+      font-size: 0.72rem !important;
     }
     #modal-alumno .form-group input,
     #modal-alumno .form-group select {
-      padding: 6px 10px !important;
-      font-size: 0.8rem !important;
+      padding: 7px 10px !important;
+      font-size: 0.82rem !important;
       border-radius: 7px !important;
     }
     #modal-alumno fieldset {
-      padding: 7px 12px 10px !important;
+      padding: 8px 12px 10px !important;
       margin-bottom: 0 !important;
       border-radius: 8px !important;
     }
     #modal-alumno legend {
-      font-size: 0.68rem !important;
+      font-size: 0.7rem !important;
       padding: 0 6px !important;
     }
-    /* Foto más pequeña */
+    /* Foto más compacta */
     #modal-alumno #foto-preview-wrap {
-      width: 44px !important;
-      height: 44px !important;
+      width: 48px !important;
+      height: 48px !important;
     }
     #modal-alumno #foto-preview-placeholder {
-      font-size: 1.1rem !important;
+      font-size: 1.2rem !important;
     }
-    #modal-alumno .modal-footer {
-      padding-top: 8px !important;
-      margin-top: 0 !important;
+    /* Botones del footer más compactos */
+    #modal-alumno .modal > div:last-child .btn {
+      padding: 7px 14px !important;
+      font-size: 0.82rem !important;
     }
   }
 </style>
@@ -2879,15 +2887,15 @@
     <fieldset style="border:1px solid var(--border);border-radius:10px;padding:14px 16px 10px;margin-bottom:14px;">
       <legend style="font-size:0.78rem;font-weight:700;color:var(--accent);padding:0 8px;letter-spacing:0.04em;">DATOS DEL ESTUDIANTE</legend>
       <div class="form-grid alum-estudiante-grid" style="margin:0;">
-        <div class="form-group form-full alum-span-full">
+        <div class="form-group form-full alum-span-full alum-campo-principal">
           <label>DNI del alumno * <span style="color:var(--muted);font-weight:400;">(será usado como ID — 8 dígitos)</span></label>
           <input type="text" id="f-id" placeholder="Ej: 12345678" maxlength="8" oninput="this.value=this.value.replace(/\D/g,'')">
         </div>
-        <div class="form-group form-full alum-span-full">
+        <div class="form-group form-full alum-span-full alum-campo-principal">
           <label>Nombres *</label>
           <input type="text" id="f-nombres" placeholder="Ej: Juan Carlos">
         </div>
-        <div class="form-group form-full alum-span-full">
+        <div class="form-group form-full alum-span-full alum-campo-principal">
           <label>Apellidos *</label>
           <input type="text" id="f-apellidos" placeholder="Ej: García López">
         </div>
