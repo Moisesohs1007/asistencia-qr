@@ -3368,16 +3368,38 @@ async function cambiarPassPersonal() {
 
 function toggleUserMenu() {
   const menu = document.getElementById('user-dropdown-menu');
-  menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
+  if(menu.style.display === 'block') { closeUserMenu(); return; }
+
+  // En móvil: posicionar fixed relativo al avatar del topbar móvil
+  if(window.innerWidth <= 700) {
+    const msbAv = document.getElementById('msb-avatar');
+    if(msbAv) {
+      const rect = msbAv.getBoundingClientRect();
+      menu.style.position = 'fixed';
+      menu.style.top  = (rect.bottom + 6) + 'px';
+      menu.style.right = (window.innerWidth - rect.right) + 'px';
+      menu.style.left  = 'auto';
+      menu.style.zIndex = '9999';
+    }
+  } else {
+    menu.style.position = 'absolute';
+    menu.style.top  = '42px';
+    menu.style.right = '0';
+    menu.style.left  = 'auto';
+    menu.style.zIndex = '1000';
+  }
+  menu.style.display = 'block';
 }
 function closeUserMenu() {
   const menu = document.getElementById('user-dropdown-menu');
   if(menu) menu.style.display = 'none';
 }
 document.addEventListener('click', function(e) {
-  const btn = document.getElementById('avatar-btn');
-  const menu = document.getElementById('user-dropdown-menu');
-  if(btn && menu && !btn.contains(e.target) && !menu.contains(e.target)) {
+  const btn   = document.getElementById('avatar-btn');
+  const msbAv = document.getElementById('msb-avatar');
+  const menu  = document.getElementById('user-dropdown-menu');
+  const clickedAvatar = (btn && btn.contains(e.target)) || (msbAv && msbAv.contains(e.target));
+  if(menu && !clickedAvatar && !menu.contains(e.target)) {
     menu.style.display = 'none';
   }
 });
@@ -8528,7 +8550,7 @@ function msbInit() {
   if(tbRight) {
     tbRight.innerHTML = `
       <span style="color:#C9A84C;font-size:10px;border:0.5px solid rgba(201,168,76,0.4);padding:2px 7px;border-radius:4px;">${new Date().getFullYear()}</span>
-      <div id="msb-avatar" onclick="toggleUserMenu&&toggleUserMenu()" style="width:28px;height:28px;border-radius:50%;background:#7B1535;border:1.5px solid rgba(255,255,255,0.2);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff;cursor:pointer;">
+      <div id="msb-avatar" onclick="toggleUserMenu()" style="width:28px;height:28px;border-radius:50%;background:#7B1535;border:1.5px solid rgba(255,255,255,0.2);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff;cursor:pointer;user-select:none;">
         <span id="msb-avatar-text">?</span>
       </div>`;
   }
