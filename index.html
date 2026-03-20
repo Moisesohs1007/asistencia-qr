@@ -1542,37 +1542,41 @@
     }
   }
 
-  /* ── Modal Alumno: layout PC sin scroll ── */
+  /* ══ Modal Alumno: solo PC ≥768px — sin scroll, layout compacto ══ */
   @media (min-width: 768px) {
     #modal-alumno .modal {
       max-width: 980px !important;
       max-height: none !important;
       overflow-y: visible !important;
       padding: 14px 24px !important;
+      display: flex !important;
+      flex-direction: column !important;
+      gap: 8px !important;
     }
-
-    /* Estudiante: 3 columnas */
+    #modal-alumno .modal-title {
+      font-size: 1rem !important;
+      margin-bottom: 0 !important;
+    }
+    /* Estudiante: 3 columnas — DNI|Nombres|Apellidos / Nivel|Grado|Sección / Foto full */
     #modal-alumno .alum-estudiante-grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 8px;
-      margin-top: 6px;
+      display: grid !important;
+      grid-template-columns: repeat(3, 1fr) !important;
+      gap: 8px !important;
+      margin-top: 6px !important;
     }
-    #modal-alumno .alum-estudiante-grid .alum-span-full {
-      grid-column: 1 / -1;
+    #modal-alumno .alum-span-full {
+      grid-column: 1 / -1 !important;
     }
-
     /* Apoderados: 2 columnas */
     #modal-alumno .alum-apoderados-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 10px;
+      display: grid !important;
+      grid-template-columns: 1fr 1fr !important;
+      gap: 10px !important;
     }
     #modal-alumno .alum-apoderados-grid fieldset {
       margin-bottom: 0 !important;
     }
-
-    /* Compactar form-groups dentro del modal alumno */
+    /* Compactar form-groups */
     #modal-alumno .form-group {
       gap: 3px !important;
       margin-bottom: 0 !important;
@@ -1586,8 +1590,6 @@
       font-size: 0.8rem !important;
       border-radius: 7px !important;
     }
-
-    /* Fieldsets más compactos */
     #modal-alumno fieldset {
       padding: 7px 12px 10px !important;
       margin-bottom: 0 !important;
@@ -1597,20 +1599,6 @@
       font-size: 0.68rem !important;
       padding: 0 6px !important;
     }
-
-    /* Gap general del modal */
-    #modal-alumno .modal {
-      display: flex !important;
-      flex-direction: column !important;
-      gap: 8px !important;
-    }
-
-    /* Título más compacto */
-    #modal-alumno .modal-title {
-      font-size: 1rem !important;
-      margin-bottom: 0 !important;
-    }
-
     /* Foto más pequeña */
     #modal-alumno #foto-preview-wrap {
       width: 44px !important;
@@ -1619,9 +1607,7 @@
     #modal-alumno #foto-preview-placeholder {
       font-size: 1.1rem !important;
     }
-
-    /* Botones footer */
-    #modal-alumno .modal > div:last-child {
+    #modal-alumno .modal-footer {
       padding-top: 8px !important;
       margin-top: 0 !important;
     }
