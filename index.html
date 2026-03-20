@@ -157,8 +157,8 @@
   }
   /* Cuando sec-scan está activo, main no hace scroll — controlado por JS */
   @media(max-width:700px){
-    main { padding: 14px 12px 90px; }
-    /* Ninguna sección puede tapar el bottom-nav */
+    main { padding: 14px 12px 16px; }
+    /* Sidebar móvil activo */
     .section { position: relative; z-index: 1; }
     .card { position: relative; z-index: auto; }
     .stats-row { grid-template-columns: 1fr 1fr; gap: 8px; }
@@ -1318,9 +1318,324 @@
     .logo { font-size: 1.1rem; }
     .page-title { font-size: 1.4rem; }
   }
+
+  /* ═══════════════════════════════════════
+     SIDEBAR MÓVIL (solo max-width:700px)
+  ═══════════════════════════════════════ */
+  @media(max-width:700px){
+    /* Ocultar header y bottom-nav originales */
+    #app-header { display: none !important; }
+    #nav-tabs    { display: none !important; }
+    #bottom-nav  { display: none !important; }
+
+    /* Wrapper que envuelve sidebar + contenido */
+    #mobile-layout {
+      display: flex;
+      position: fixed;
+      inset: 0;
+      z-index: 1;
+      background: var(--bg);
+    }
+
+    /* Mini topbar dentro del layout móvil */
+    #mobile-topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 48px;
+      background: #0D1A3A;
+      padding: 0 14px;
+      flex-shrink: 0;
+      position: fixed;
+      top: 0; left: 54px; right: 0;
+      z-index: 600;
+    }
+    #mobile-topbar.sidebar-open { left: 230px; }
+    #mobile-topbar-title { color: #fff; font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    #mobile-topbar-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+
+    /* Main con offset para topbar */
+    body.mobile-active main {
+      margin-left: 54px;
+      margin-top: 48px;
+      padding: 14px 12px 16px;
+      width: calc(100% - 54px);
+      min-height: calc(100vh - 48px);
+      transition: margin-left 0.3s cubic-bezier(0.4,0,0.2,1), width 0.3s;
+    }
+    body.mobile-active.sidebar-open main {
+      margin-left: 230px;
+      width: calc(100% - 230px);
+    }
+
+    /* SIDEBAR */
+    #mobile-sidebar {
+      position: fixed;
+      top: 0; left: 0; bottom: 0;
+      width: 54px;
+      background: #0D1A3A;
+      display: flex;
+      flex-direction: column;
+      z-index: 700;
+      overflow: hidden;
+      transition: width 0.3s cubic-bezier(0.4,0,0.2,1);
+      flex-shrink: 0;
+    }
+    #mobile-sidebar.open { width: 230px; }
+
+    /* Header del sidebar */
+    .msb-header {
+      background: #091229;
+      padding: 14px 0 12px;
+      display: flex; flex-direction: column; align-items: center;
+      border-bottom: 1px solid rgba(255,255,255,0.07);
+      flex-shrink: 0; cursor: pointer; user-select: none;
+    }
+    .msb-logo {
+      width: 34px; height: 34px; border-radius: 50%;
+      border: 1.5px solid rgba(201,168,76,0.5);
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+      overflow: hidden;
+    }
+    .msb-logo img { width: 28px; height: 28px; object-fit: contain; }
+    .msb-info {
+      opacity: 0; max-height: 0; overflow: hidden;
+      transition: opacity 0.2s 0.08s, max-height 0.3s;
+      text-align: center; padding: 0 8px; white-space: nowrap;
+    }
+    #mobile-sidebar.open .msb-info { opacity: 1; max-height: 80px; margin-top: 8px; }
+    .msb-school { color: #C9A84C; font-size: 9px; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; line-height: 1.3; }
+    .msb-user   { color: #fff; font-size: 12px; font-weight: 600; margin-top: 4px; }
+    .msb-role   { color: rgba(255,255,255,0.4); font-size: 9px; letter-spacing: 0.06em; text-transform: uppercase; }
+
+    /* Nav items */
+    .msb-nav { flex: 1; overflow-y: auto; overflow-x: hidden; padding: 4px 0; }
+    .msb-nav::-webkit-scrollbar { width: 0; }
+
+    .msb-item {
+      display: flex; align-items: center;
+      height: 50px; width: 100%;
+      background: none; border: none; cursor: pointer;
+      color: rgba(255,255,255,0.65);
+      font-size: 13px; font-weight: 500;
+      white-space: nowrap; overflow: hidden;
+      position: relative;
+      transition: background 0.15s, color 0.15s;
+      text-align: left;
+    }
+    .msb-item:hover { background: rgba(255,255,255,0.05); color: #fff; }
+    .msb-item.active { background: rgba(201,168,76,0.12); color: #C9A84C; }
+    .msb-item.active::before {
+      content: ''; position: absolute; left: 0; top: 8px; bottom: 8px;
+      width: 3px; background: #C9A84C; border-radius: 0 2px 2px 0;
+    }
+    .msb-icon {
+      width: 54px; height: 50px;
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+    .msb-icon svg { width: 20px; height: 20px; opacity: 0.7; }
+    .msb-item.active .msb-icon svg { opacity: 1; }
+
+    .msb-label {
+      flex: 1; opacity: 0; transform: translateX(-6px);
+      transition: opacity 0.18s 0.08s, transform 0.18s 0.08s;
+      pointer-events: none;
+    }
+    #mobile-sidebar.open .msb-label { opacity: 1; transform: translateX(0); }
+
+    /* Flecha submenú */
+    .msb-arrow {
+      width: 24px; margin-right: 8px; opacity: 0; flex-shrink: 0;
+      transition: opacity 0.18s 0.08s, transform 0.3s;
+      color: rgba(255,255,255,0.3); font-size: 10px;
+    }
+    #mobile-sidebar.open .msb-arrow { opacity: 1; }
+    .msb-item.open .msb-arrow { transform: rotate(90deg); color: #C9A84C; }
+
+    /* Submenú */
+    .msb-sub {
+      max-height: 0; overflow: hidden;
+      background: rgba(0,0,0,0.2);
+      transition: max-height 0.3s cubic-bezier(0.4,0,0.2,1);
+    }
+    .msb-sub.open { max-height: 300px; }
+
+    .msb-subitem {
+      display: flex; align-items: center;
+      height: 42px; width: 100%;
+      background: none; border: none; cursor: pointer;
+      color: rgba(255,255,255,0.55);
+      font-size: 12px; font-weight: 400;
+      white-space: nowrap; overflow: hidden;
+      transition: background 0.15s, color 0.15s;
+      text-align: left;
+    }
+    .msb-subitem:hover { background: rgba(255,255,255,0.05); color: #fff; }
+    .msb-subitem.active { color: #C9A84C; background: rgba(201,168,76,0.08); }
+    .msb-dot {
+      width: 54px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+    .msb-dot span { width: 5px; height: 5px; border-radius: 50%; background: rgba(255,255,255,0.25); }
+    .msb-subitem.active .msb-dot span { background: #C9A84C; }
+    .msb-sublabel {
+      opacity: 0; transform: translateX(-4px);
+      transition: opacity 0.18s 0.1s, transform 0.18s 0.1s;
+      pointer-events: none;
+    }
+    #mobile-sidebar.open .msb-sublabel { opacity: 1; transform: translateX(0); }
+
+    /* Footer logout */
+    .msb-footer { padding: 6px 0; border-top: 1px solid rgba(255,255,255,0.07); flex-shrink: 0; }
+    .msb-logout {
+      display: flex; align-items: center;
+      height: 44px; width: 100%;
+      background: none; border: none; cursor: pointer;
+      color: rgba(255,107,107,0.8); font-size: 13px;
+      white-space: nowrap; overflow: hidden;
+      transition: background 0.15s;
+      text-align: left;
+    }
+    .msb-logout:hover { background: rgba(255,107,107,0.08); }
+
+    /* Overlay */
+    #msb-overlay {
+      display: none; position: fixed;
+      inset: 0; z-index: 699;
+    }
+    #msb-overlay.show { display: block; }
+  }
 </style>
 </head>
 <body>
+
+<!-- ═══════════════════════════════════════
+     SIDEBAR MÓVIL
+═══════════════════════════════════════ -->
+<div id="msb-overlay" onclick="msbCollapse()"></div>
+
+<div id="mobile-sidebar">
+  <!-- Header -->
+  <div class="msb-header" onclick="msbToggleHeader()">
+    <div class="msb-logo">
+      <img src="" id="msb-logo-img" alt="">
+    </div>
+    <div class="msb-info">
+      <div class="msb-school" id="msb-school-name">I.E.P. "SANTO DOMINGO DE GUZMÁN"</div>
+      <div class="msb-user" id="msb-user-name">—</div>
+      <div class="msb-role" id="msb-user-role">—</div>
+    </div>
+  </div>
+
+  <div class="msb-nav" id="msb-nav">
+
+    <!-- Inicio -->
+    <button class="msb-item active" id="msb-btn-inicio" onclick="msbGoInicio()">
+      <div class="msb-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+          <polyline points="9 22 9 12 15 12 15 22"/>
+        </svg>
+      </div>
+      <span class="msb-label">Inicio</span>
+    </button>
+
+    <!-- Asistencia -->
+    <button class="msb-item" id="msb-btn-asistencia" onclick="msbToggleSub('asistencia')">
+      <div class="msb-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="9 11 12 14 22 4"/>
+          <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+        </svg>
+      </div>
+      <span class="msb-label">Asistencia</span>
+      <span class="msb-arrow">›</span>
+    </button>
+    <div class="msb-sub" id="msb-sub-asistencia">
+      <button class="msb-subitem" onclick="msbPickSub(this,'scan','asistencia','📷 Escanear QR')">
+        <div class="msb-dot"><span></span></div><span class="msb-sublabel">Escanear QR</span>
+      </button>
+      <button class="msb-subitem" onclick="msbPickSub(this,'registro','asistencia','📋 Registro del día')">
+        <div class="msb-dot"><span></span></div><span class="msb-sublabel">Registro del día</span>
+      </button>
+      <button class="msb-subitem" onclick="msbPickSub(this,'reportes','asistencia','📊 Reportes')">
+        <div class="msb-dot"><span></span></div><span class="msb-sublabel">Reportes</span>
+      </button>
+    </div>
+
+    <!-- Aula -->
+    <button class="msb-item" id="msb-btn-aula" onclick="msbToggleSub('aula')">
+      <div class="msb-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+          <circle cx="9" cy="7" r="4"/>
+          <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+          <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+        </svg>
+      </div>
+      <span class="msb-label">Aula</span>
+      <span class="msb-arrow">›</span>
+    </button>
+    <div class="msb-sub" id="msb-sub-aula">
+      <button class="msb-subitem" onclick="msbPickSub(this,'alumnos','aula','👥 Alumnos')">
+        <div class="msb-dot"><span></span></div><span class="msb-sublabel">Alumnos</span>
+      </button>
+      <button class="msb-subitem" id="msb-sub-usuarios" onclick="msbPickSub(this,'usuarios','aula','👤 Usuarios')">
+        <div class="msb-dot"><span></span></div><span class="msb-sublabel">Usuarios</span>
+      </button>
+      <button class="msb-subitem" onclick="msbPickSub(this,'incidentes','aula','🚨 Incidentes')">
+        <div class="msb-dot"><span></span></div><span class="msb-sublabel">Incidentes</span>
+      </button>
+    </div>
+
+    <!-- Comunicación -->
+    <button class="msb-item" id="msb-btn-comunicacion" onclick="msbToggleSub('comunicacion')">
+      <div class="msb-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+        </svg>
+      </div>
+      <span class="msb-label">Comunicación</span>
+      <span class="msb-arrow">›</span>
+    </button>
+    <div class="msb-sub" id="msb-sub-comunicacion">
+      <button class="msb-subitem" onclick="msbPickSub(this,'mensajes','comunicacion','💬 Mensajes')">
+        <div class="msb-dot"><span></span></div><span class="msb-sublabel">Mensajes</span>
+      </button>
+    </div>
+
+    <!-- Configuración -->
+    <button class="msb-item" id="msb-btn-config" onclick="msbPickDirect(this,'config','⚙️ Configuración')">
+      <div class="msb-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+        </svg>
+      </div>
+      <span class="msb-label">Configuración</span>
+    </button>
+
+  </div>
+
+  <!-- Footer logout -->
+  <div class="msb-footer">
+    <button class="msb-logout" onclick="msbExpand();doLogout&&doLogout()">
+      <div class="msb-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+          <polyline points="16 17 21 12 16 7"/>
+          <line x1="21" y1="12" x2="9" y2="12"/>
+        </svg>
+      </div>
+      <span class="msb-label">Cerrar sesión</span>
+    </button>
+  </div>
+</div>
+
+<!-- Mini topbar móvil -->
+<div id="mobile-topbar" style="display:none;">
+  <span id="mobile-topbar-title">🏠 Inicio</span>
+  <div id="mobile-topbar-right"></div>
+</div>
 
 <!-- LOGIN SCREEN -->
 <!-- Aviso inactividad -->
@@ -3011,6 +3326,7 @@ async function guardarMisDatos() {
     document.getElementById('avatar-initials-menu').textContent = iniciales;
     document.getElementById('menu-user-name').textContent = nombre;
     document.getElementById('user-name-display').textContent = nombre;
+    setTimeout(() => msbUpdateUser && msbUpdateUser(), 100);
     okEl.textContent = 'Datos actualizados correctamente'; okEl.style.display = 'block';
     setTimeout(() => { document.getElementById('modal-mis-datos').style.display = 'none'; }, 1500);
   } catch(e) {
@@ -3146,6 +3462,7 @@ auth.onAuthStateChanged(async user => {
     document.getElementById('menu-user-name').textContent = nombre;
     document.getElementById('menu-user-rol').textContent = currentRol.toUpperCase();
     document.getElementById('avatar-btn').style.display = 'inline-flex';
+    setTimeout(() => msbUpdateUser && msbUpdateUser(), 200);
 
     // Aplicar permisos según rol (incluye mostrar/ocultar tab usuarios)
     aplicarPermisos(currentRol);
@@ -8092,11 +8409,149 @@ async function generarPDFIncidente(inc) {
 // ============================================================
 // BOTTOM NAV MOBILE
 // ============================================================
+// ─── SIDEBAR MÓVIL ───────────────────────────────────────
+function msbIsMobile() { return window.innerWidth <= 700; }
+
+function msbExpand() {
+  if(!msbIsMobile()) return;
+  document.getElementById('mobile-sidebar').classList.add('open');
+  document.getElementById('msb-overlay').classList.add('show');
+  const tb = document.getElementById('mobile-topbar');
+  if(tb) tb.classList.add('sidebar-open');
+  document.body.classList.add('sidebar-open');
+}
+function msbCollapse() {
+  document.getElementById('mobile-sidebar').classList.remove('open');
+  document.getElementById('msb-overlay').classList.remove('show');
+  const tb = document.getElementById('mobile-topbar');
+  if(tb) tb.classList.remove('sidebar-open');
+  document.body.classList.remove('sidebar-open');
+  // cerrar submenús
+  document.querySelectorAll('.msb-sub').forEach(s=>s.classList.remove('open'));
+  document.querySelectorAll('.msb-item').forEach(i=>i.classList.remove('open'));
+}
+function msbToggleHeader() {
+  document.getElementById('mobile-sidebar').classList.contains('open') ? msbCollapse() : msbExpand();
+}
+function msbToggleSub(id) {
+  if(!document.getElementById('mobile-sidebar').classList.contains('open')){ msbExpand(); return; }
+  const sub = document.getElementById('msb-sub-'+id);
+  const btn = document.getElementById('msb-btn-'+id);
+  const isOpen = sub && sub.classList.contains('open');
+  document.querySelectorAll('.msb-sub').forEach(s=>s.classList.remove('open'));
+  document.querySelectorAll('.msb-item').forEach(i=>i.classList.remove('open'));
+  if(!isOpen && sub && btn){ sub.classList.add('open'); btn.classList.add('open'); }
+}
+function msbGoInicio() {
+  if(!document.getElementById('mobile-sidebar').classList.contains('open')){ msbExpand(); return; }
+  document.querySelectorAll('.msb-item').forEach(i=>i.classList.remove('active'));
+  document.querySelectorAll('.msb-subitem').forEach(i=>i.classList.remove('active'));
+  document.getElementById('msb-btn-inicio').classList.add('active');
+  const tb = document.getElementById('mobile-topbar-title');
+  if(tb) tb.textContent = '🏠 Inicio';
+  showSection('inicio');
+  msbCollapse();
+}
+function msbPickDirect(el, sectionId, label) {
+  if(!document.getElementById('mobile-sidebar').classList.contains('open')){ msbExpand(); return; }
+  document.querySelectorAll('.msb-item').forEach(i=>i.classList.remove('active'));
+  document.querySelectorAll('.msb-subitem').forEach(i=>i.classList.remove('active'));
+  el.classList.add('active');
+  const tb = document.getElementById('mobile-topbar-title');
+  if(tb) tb.textContent = label || sectionId;
+  showSection(sectionId);
+  msbCollapse();
+}
+function msbPickSub(el, sectionId, parentId, label) {
+  document.querySelectorAll('.msb-item').forEach(i=>i.classList.remove('active'));
+  document.querySelectorAll('.msb-subitem').forEach(i=>i.classList.remove('active'));
+  const parentBtn = document.getElementById('msb-btn-'+parentId);
+  if(parentBtn) parentBtn.classList.add('active');
+  el.classList.add('active');
+  const tb = document.getElementById('mobile-topbar-title');
+  if(tb) tb.textContent = label || sectionId;
+  showSection(sectionId);
+  msbCollapse();
+}
+function msbSetActive(sectionId) {
+  if(!msbIsMobile()) return;
+  // Actualizar el topbar con la sección activa
+  const sectionLabels = {
+    inicio: '🏠 Inicio', scan: '📷 Escanear QR', registro: '📋 Registro del día',
+    reportes: '📊 Reportes', alumnos: '👥 Alumnos', usuarios: '👤 Usuarios',
+    incidentes: '🚨 Incidentes', mensajes: '💬 Mensajes',
+    config: '⚙️ Configuración',
+  };
+  const tb = document.getElementById('mobile-topbar-title');
+  if(tb) tb.textContent = sectionLabels[sectionId] || sectionId;
+
+  // Mapeo sección → menú padre
+  const parentMap = {
+    scan:'asistencia',registro:'asistencia',reportes:'asistencia',
+    alumnos:'aula',usuarios:'aula',incidentes:'aula',
+    mensajes:'comunicacion',
+  };
+  document.querySelectorAll('.msb-item').forEach(i=>i.classList.remove('active'));
+  document.querySelectorAll('.msb-subitem').forEach(i=>i.classList.remove('active'));
+  const parent = parentMap[sectionId];
+  if(parent) {
+    const btn = document.getElementById('msb-btn-'+parent);
+    if(btn) btn.classList.add('active');
+  } else {
+    const btn = document.getElementById('msb-btn-'+sectionId) || document.getElementById('msb-btn-config');
+    if(sectionId==='config' && document.getElementById('msb-btn-config')) document.getElementById('msb-btn-config').classList.add('active');
+    else if(sectionId==='inicio') document.getElementById('msb-btn-inicio').classList.add('active');
+    else if(btn) btn.classList.add('active');
+  }
+}
+function msbInit() {
+  if(!msbIsMobile()) return;
+  document.body.classList.add('mobile-active');
+  const tb = document.getElementById('mobile-topbar');
+  if(tb) tb.style.display = 'flex';
+  // Logo
+  try {
+    const logo = getLogo ? getLogo() : COLEGIO_LOGO;
+    const img = document.getElementById('msb-logo-img');
+    if(img && logo) img.src = logo;
+  } catch(e){}
+  // Nombre colegio
+  const schoolEl = document.getElementById('msb-school-name');
+  if(schoolEl) try { schoolEl.textContent = COLEGIO_NOMBRE || 'I.E.P.'; } catch(e){}
+  // Nombre usuario
+  msbUpdateUser();
+  // Visibilidad usuarios según rol
+  const usuariosBtn = document.getElementById('msb-sub-usuarios');
+  if(usuariosBtn) usuariosBtn.style.display = (currentRol==='profesor'||currentRol==='portero') ? 'none' : 'flex';
+  // Topbar right (iniciales)
+  const tbRight = document.getElementById('mobile-topbar-right');
+  if(tbRight) {
+    tbRight.innerHTML = `
+      <span style="color:#C9A84C;font-size:10px;border:0.5px solid rgba(201,168,76,0.4);padding:2px 7px;border-radius:4px;">${new Date().getFullYear()}</span>
+      <div id="msb-avatar" onclick="toggleUserMenu&&toggleUserMenu()" style="width:28px;height:28px;border-radius:50%;background:#7B1535;border:1.5px solid rgba(255,255,255,0.2);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff;cursor:pointer;">
+        <span id="msb-avatar-text">?</span>
+      </div>`;
+  }
+  msbUpdateUser();
+}
+function msbUpdateUser() {
+  if(!msbIsMobile()) return;
+  const nameEl = document.getElementById('user-name-display');
+  const rolEl  = document.getElementById('user-rol-badge');
+  const avatarEl = document.getElementById('avatar-initials');
+  const msbName = document.getElementById('msb-user-name');
+  const msbRole = document.getElementById('msb-user-role');
+  const msbAvatarText = document.getElementById('msb-avatar-text');
+  if(nameEl && msbName) msbName.textContent = nameEl.textContent || '—';
+  if(rolEl  && msbRole) msbRole.textContent  = rolEl.textContent  || '—';
+  if(avatarEl && msbAvatarText) msbAvatarText.textContent = avatarEl.textContent || '?';
+}
+
+// Compatibilidad: renderBottomNav llama msbInit en móvil
 function renderBottomNav() {
+  if(msbIsMobile()) { msbInit(); return; }
   const inner = document.getElementById('bottom-nav-inner');
   if(!inner) return;
-
-  // Menús con submenús para mobile
   const menus = [
     { id: 'inicio', icon: '🏠', label: 'Inicio', action: () => { showSection('inicio'); closeMobileMenu(); } },
     { id: 'asistencia', icon: '✅', label: 'Asistencia', sub: [
@@ -8113,7 +8568,6 @@ function renderBottomNav() {
       { id: 'config', icon: '⚙', label: 'Configuración' },
     ]},
   ];
-
   const permisos = {
     admin:    ['inicio','asistencia','aula','mas'],
     director: ['inicio','asistencia','mas'],
@@ -8121,7 +8575,6 @@ function renderBottomNav() {
     portero:  ['inicio','asistencia'],
   };
   const allowed = permisos[currentRol] || ['inicio','asistencia'];
-
   inner.innerHTML = menus
     .filter(m => allowed.includes(m.id))
     .map(m => `
@@ -8131,73 +8584,11 @@ function renderBottomNav() {
         <span>${m.label}</span>
       </button>
     `).join('');
-
-  // Crear panel de submenús si no existe
-  if(!document.getElementById('mobile-submenu-panel')) {
-    const panel = document.createElement('div');
-    panel.id = 'mobile-submenu-panel';
-    panel.style.cssText = 'display:none;position:fixed;bottom:0;left:0;right:0;background:#0D1A3A;border-radius:16px 16px 0 0;z-index:9000;padding:0 0 env(safe-area-inset-bottom);box-shadow:0 -4px 20px rgba(0,0,0,0.5);';
-    panel.innerHTML = '<div id="mobile-submenu-content"></div>';
-    panel.addEventListener('click', function(e){ if(e.target===panel) closeMobileMenu(); });
-    document.body.appendChild(panel);
-  }
-
-  // Overlay
-  if(!document.getElementById('mobile-menu-overlay')) {
-    const ov = document.createElement('div');
-    ov.id = 'mobile-menu-overlay';
-    ov.style.cssText = 'display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:8999;';
-    ov.addEventListener('click', closeMobileMenu);
-    document.body.appendChild(ov);
-  }
 }
-
-function openMobileMenu(menuId) {
-  const menus = {
-    asistencia: [
-      { id: 'scan',      icon: '📷', label: 'Escanear QR' },
-      { id: 'registro',  icon: '📋', label: 'Registro del día' },
-      { id: 'reportes',  icon: '📊', label: 'Reportes' },
-    ],
-    aula: [
-      { id: 'alumnos',    icon: '👥', label: 'Alumnos' },
-      { id: 'usuarios',   icon: '👤', label: 'Usuarios' },
-      { id: 'incidentes', icon: '🚨', label: 'Incidentes' },
-    ],
-    mas: [
-      { id: 'config', icon: '⚙', label: 'Configuración' },
-    ],
-  };
-  const items = menus[menuId] || [];
-  const panel = document.getElementById('mobile-submenu-panel');
-  const content = document.getElementById('mobile-submenu-content');
-  const overlay = document.getElementById('mobile-menu-overlay');
-  if(!panel || !content) return;
-
-  content.innerHTML =
-    '<div style="display:flex;justify-content:center;padding:10px 0 6px;">' +
-    '<div style="width:36px;height:4px;background:rgba(255,255,255,0.2);border-radius:2px;"></div></div>' +
-    items.map(item =>
-      '<button onclick="showSection(\'' + item.id + '\');closeMobileMenu();" ' +
-      'style="display:flex;align-items:center;gap:14px;width:100%;padding:14px 20px;background:none;border:none;' +
-      'border-bottom:0.5px solid rgba(255,255,255,0.08);color:rgba(255,255,255,0.85);font-size:14px;cursor:pointer;font-family:inherit;">' +
-      '<span style="font-size:18px;">' + item.icon + '</span>' +
-      '<span>' + item.label + '</span></button>'
-    ).join('') +
-    '<div style="height:16px;"></div>';
-
-  panel.style.display = 'block';
-  overlay.style.display = 'block';
-}
-
-function closeMobileMenu() {
-  const panel = document.getElementById('mobile-submenu-panel');
-  const overlay = document.getElementById('mobile-menu-overlay');
-  if(panel) panel.style.display = 'none';
-  if(overlay) overlay.style.display = 'none';
-}
-
+function openMobileMenu(menuId) {}
+function closeMobileMenu() {}
 function updateBottomNavActive(id) {
+  if(msbIsMobile()) { msbSetActive(id); return; }
   document.querySelectorAll('.bnav-btn').forEach(b => b.classList.remove('active'));
   const btn = document.getElementById('bnav-' + id);
   if(btn) btn.classList.add('active');
@@ -8208,6 +8599,7 @@ function updateBottomNavActive(id) {
 
 async function crearCuentaApoderado(alumno) {
   const email = `${alumno.id}@apo.marello.pe`;
+
   const pass  = alumno.id;
   let intentos = 0;
   while(intentos < 3) {
