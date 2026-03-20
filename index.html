@@ -1543,24 +1543,23 @@
   }
 
   /* ══ Modal Alumno: solo PC ≥768px — sin scroll, layout compacto ══
-       IMPORTANTE: este bloque NO afecta móvil (<768px).
-       Todos los cambios aquí son exclusivos de escritorio. ══ */
+       IMPORTANTE: este bloque NO afecta movil (<768px).
+       Todos los cambios aqui son exclusivos de escritorio. ══ */
   @media (min-width: 768px) {
-    /* Overlay: menos padding y alineado arriba para evitar corte */
+    /* Overlay: padding-top generoso para que el titulo no quede oculto */
     #modal-alumno {
       align-items: flex-start !important;
-      padding: 12px 20px !important;
+      padding: 60px 20px 16px !important;
     }
-    /* Modal contenedor */
+    /* Modal contenedor: alto controlado con scroll interno */
     #modal-alumno .modal {
       max-width: 660px !important;
-      max-height: none !important;
-      overflow-y: visible !important;
+      max-height: calc(100vh - 80px) !important;
+      overflow-y: auto !important;
       padding: 14px 20px !important;
       display: flex !important;
       flex-direction: column !important;
       gap: 6px !important;
-      margin-top: 4px !important;
     }
     /* Título más compacto */
     #modal-alumno .modal-title {
