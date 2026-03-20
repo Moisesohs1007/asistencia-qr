@@ -1525,6 +1525,22 @@
       width: auto !important;
     }
   }
+
+  /* ── Modal Incidente: layout horizontal solo en PC ── */
+  @media (min-width: 768px) {
+    #modal-incidente .modal {
+      max-width: 860px !important;
+    }
+    #modal-incidente .inc-body-pc {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0 24px;
+    }
+    #modal-incidente .inc-col-right {
+      border-left: 1px solid var(--border);
+      padding-left: 24px;
+    }
+  }
 </style>
 </head>
 <body>
@@ -2604,72 +2620,90 @@
         <button class="modal-close" onclick="closeModal('modal-incidente')">✕</button>
       </div>
 
-      <!-- Buscar alumno -->
-      <div class="form-group" style="margin-bottom:10px;">
-        <label>Buscar alumno por DNI o nombre</label>
-        <input type="text" id="inc-buscar" placeholder="Ej: 12345678 o Juan..." oninput="buscarAlumnoIncidente(this.value)">
-      </div>
-      <div id="inc-alumno-resultado" style="margin-bottom:14px;"></div>
-      <input type="hidden" id="inc-alumno-id">
+      <!-- Layout: en PC usa dos columnas (inc-body-pc), en celular es bloque normal -->
+      <div class="inc-body-pc">
 
-      <div class="form-grid">
-        <div class="form-group">
-          <label>Fecha</label>
-          <input type="date" id="inc-fecha">
+        <!-- COLUMNA IZQUIERDA (en PC) / bloque normal (en celular) -->
+        <div class="inc-col-left">
+
+          <!-- Buscar alumno -->
+          <div class="form-group" style="margin-bottom:10px;">
+            <label>Buscar alumno por DNI o nombre</label>
+            <input type="text" id="inc-buscar" placeholder="Ej: 12345678 o Juan..." oninput="buscarAlumnoIncidente(this.value)">
+          </div>
+          <div id="inc-alumno-resultado" style="margin-bottom:14px;"></div>
+          <input type="hidden" id="inc-alumno-id">
+
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Fecha</label>
+              <input type="date" id="inc-fecha">
+            </div>
+            <div class="form-group">
+              <label>Hora</label>
+              <input type="time" id="inc-hora">
+            </div>
+          </div>
+
+          <div class="form-group" style="margin-top:12px;">
+            <label>Tipo de incidente</label>
+            <select id="inc-tipo">
+              <option value="">Seleccionar...</option>
+              <option>Conducta</option>
+              <option>Tardanza reiterada</option>
+              <option>Accidente</option>
+              <option>Conflicto entre alumnos</option>
+              <option>Daño material</option>
+              <option>Otro</option>
+            </select>
+          </div>
+
+          <div class="form-group" style="margin-top:12px;">
+            <label>Severidad</label>
+            <div style="display:flex;gap:10px;margin-top:4px;">
+              <label style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:9px;border-radius:10px;border:1px solid var(--border);background:var(--surface2);cursor:pointer;font-size:0.82rem;font-weight:600;">
+                <input type="radio" name="inc-sev" value="Leve" style="accent-color:#10b981;"> 🟢 Leve
+              </label>
+              <label style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:9px;border-radius:10px;border:1px solid var(--border);background:var(--surface2);cursor:pointer;font-size:0.82rem;font-weight:600;">
+                <input type="radio" name="inc-sev" value="Moderado" checked style="accent-color:#f59e0b;"> 🟡 Moderado
+              </label>
+              <label style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:9px;border-radius:10px;border:1px solid var(--border);background:var(--surface2);cursor:pointer;font-size:0.82rem;font-weight:600;">
+                <input type="radio" name="inc-sev" value="Grave" style="accent-color:#ef4444;"> 🔴 Grave
+              </label>
+            </div>
+          </div>
+
         </div>
-        <div class="form-group">
-          <label>Hora</label>
-          <input type="time" id="inc-hora">
+        <!-- FIN COLUMNA IZQUIERDA -->
+
+        <!-- COLUMNA DERECHA (en PC) / bloque normal (en celular) -->
+        <div class="inc-col-right">
+
+          <div class="form-group" style="margin-top:12px;">
+            <label>Descripción del incidente *</label>
+            <textarea id="inc-descripcion" placeholder="Describe detalladamente lo ocurrido..." style="min-height:90px;"></textarea>
+          </div>
+
+          <div class="form-group" style="margin-top:12px;">
+            <label>Medidas tomadas</label>
+            <textarea id="inc-medidas" placeholder="¿Qué acciones se tomaron?" style="min-height:60px;"></textarea>
+          </div>
+
+          <div class="form-group" style="margin-top:12px;">
+            <label>Evidencia fotográfica <span style="color:var(--muted);font-weight:400;">(opcional — máx. 4 fotos)</span></label>
+            <input type="file" id="inc-foto" accept="image/*" multiple onchange="previewIncFotos(this)" style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:8px;color:var(--text);font-size:0.85rem;">
+            <div id="inc-foto-preview" style="display:none;margin-top:10px;">
+              <div id="inc-foto-grid" style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;"></div>
+              <div style="margin-top:6px;font-size:0.78rem;color:var(--muted);" id="inc-foto-count"></div>
+            </div>
+            <input type="hidden" id="inc-foto-data">
+          </div>
+
         </div>
-      </div>
+        <!-- FIN COLUMNA DERECHA -->
 
-      <div class="form-group" style="margin-top:12px;">
-        <label>Tipo de incidente</label>
-        <select id="inc-tipo">
-          <option value="">Seleccionar...</option>
-          <option>Conducta</option>
-          <option>Tardanza reiterada</option>
-          <option>Accidente</option>
-          <option>Conflicto entre alumnos</option>
-          <option>Daño material</option>
-          <option>Otro</option>
-        </select>
       </div>
-
-      <div class="form-group" style="margin-top:12px;">
-        <label>Severidad</label>
-        <div style="display:flex;gap:10px;margin-top:4px;">
-          <label style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:9px;border-radius:10px;border:1px solid var(--border);background:var(--surface2);cursor:pointer;font-size:0.82rem;font-weight:600;">
-            <input type="radio" name="inc-sev" value="Leve" style="accent-color:#10b981;"> 🟢 Leve
-          </label>
-          <label style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:9px;border-radius:10px;border:1px solid var(--border);background:var(--surface2);cursor:pointer;font-size:0.82rem;font-weight:600;">
-            <input type="radio" name="inc-sev" value="Moderado" checked style="accent-color:#f59e0b;"> 🟡 Moderado
-          </label>
-          <label style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:9px;border-radius:10px;border:1px solid var(--border);background:var(--surface2);cursor:pointer;font-size:0.82rem;font-weight:600;">
-            <input type="radio" name="inc-sev" value="Grave" style="accent-color:#ef4444;"> 🔴 Grave
-          </label>
-        </div>
-      </div>
-
-      <div class="form-group" style="margin-top:12px;">
-        <label>Descripción del incidente *</label>
-        <textarea id="inc-descripcion" placeholder="Describe detalladamente lo ocurrido..." style="min-height:90px;"></textarea>
-      </div>
-
-      <div class="form-group" style="margin-top:12px;">
-        <label>Medidas tomadas</label>
-        <textarea id="inc-medidas" placeholder="¿Qué acciones se tomaron?" style="min-height:60px;"></textarea>
-      </div>
-
-      <div class="form-group" style="margin-top:12px;">
-        <label>Evidencia fotográfica <span style="color:var(--muted);font-weight:400;">(opcional — máx. 4 fotos)</span></label>
-        <input type="file" id="inc-foto" accept="image/*" multiple onchange="previewIncFotos(this)" style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:8px;color:var(--text);font-size:0.85rem;">
-        <div id="inc-foto-preview" style="display:none;margin-top:10px;">
-          <div id="inc-foto-grid" style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;"></div>
-          <div style="margin-top:6px;font-size:0.78rem;color:var(--muted);" id="inc-foto-count"></div>
-        </div>
-        <input type="hidden" id="inc-foto-data">
-      </div>
+      <!-- FIN inc-body-pc -->
 
       <div style="display:flex;gap:10px;margin-top:20px;">
         <button class="btn btn-primary" onclick="guardarIncidente()" style="flex:1;justify-content:center;background:linear-gradient(135deg,#ef4444,#f97316);">🖨️ Guardar y Generar PDF</button>
