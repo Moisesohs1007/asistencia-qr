@@ -1504,6 +1504,27 @@
     }
     #msb-overlay.show { display: block; }
   }
+
+  /* ═══════════════════════════════════════
+     OCULTAR SIDEBAR MÓVIL EN PC (min-width:701px)
+     Evita que los elementos del sidebar móvil
+     se rendericen visibles en escritorio
+  ═══════════════════════════════════════ */
+  @media(min-width:701px) {
+    #mobile-sidebar   { display: none !important; }
+    #msb-overlay      { display: none !important; }
+    #mobile-topbar    { display: none !important; }
+    #mobile-layout    { display: none !important; }
+    body.mobile-active main {
+      margin-left: 0 !important;
+      margin-top: 0 !important;
+      width: auto !important;
+    }
+    body.mobile-active.sidebar-open main {
+      margin-left: 0 !important;
+      width: auto !important;
+    }
+  }
 </style>
 </head>
 <body>
