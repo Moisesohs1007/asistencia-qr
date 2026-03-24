@@ -3892,10 +3892,8 @@ const LSC = {
   TTL_USUARIOS:   30 * 60 * 1000,  // 30 minutos
 
   set(key, data, ttl) {
-    // No guardar en localStorage si el dato es muy grande (>200KB) para evitar QuotaExceededError
     try {
       const serialized = JSON.stringify({ data, ts: Date.now(), ttl });
-      if(serialized.length > 200000) return; // dato muy grande, solo usar cache en memoria
       try {
         localStorage.setItem('asmqr_' + key, serialized);
       } catch(e) {
