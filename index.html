@@ -3891,11 +3891,28 @@ const LSC = {
   TTL_USUARIOS:   30 * 60 * 1000,  // 30 minutos
 
   set(key, data, ttl) {
+    // No guardar en localStorage si el dato es muy grande (>200KB) para evitar QuotaExceededError
     try {
-      localStorage.setItem('asmqr_' + key, JSON.stringify({
-        data, ts: Date.now(), ttl
-      }));
-    } catch(e) { /* Storage lleno — ignorar */ }
+      const serialized = JSON.stringify({ data, ts: Date.now(), ttl });
+      if(serialized.length > 200000) return; // dato muy grande, solo usar cache en memoria
+      try {
+        localStorage.setItem('asmqr_' + key, serialized);
+      } catch(e) {
+        // Storage lleno: limpiar entradas viejas y reintentar una vez
+        try {
+          const ahora = Date.now();
+          Object.keys(localStorage)
+            .filter(k => k.startsWith('asmqr_'))
+            .forEach(k => {
+              try {
+                const obj = JSON.parse(localStorage.getItem(k));
+                if(ahora - obj.ts > obj.ttl) localStorage.removeItem(k);
+              } catch(_) { localStorage.removeItem(k); }
+            });
+          localStorage.setItem('asmqr_' + key, serialized);
+        } catch(_) { /* Si aun falla, continuar solo con cache en memoria */ }
+      }
+    } catch(e) { /* Error de serialización — ignorar */ }
   },
 
   get(key) {
@@ -4014,14 +4031,31 @@ const DB = {
         const desde = filtros.mes + '-01';
         const ultimo = new Date(y, m, 0).getDate();
         const hasta  = filtros.mes + '-' + String(ultimo).padStart(2,'0');
-        q = q.where('fecha','>=',desde).where('fecha','<=',hasta);
+        q = q.where('fecha','>=',desde).where('fecha','<=',hasta).orderBy('fecha');
       }
       // Filtro por año completo — solo admin/director
       if(filtros.anio) {
-        q = q.where('fecha','>=',filtros.anio+'-01-01').where('fecha','<=',filtros.anio+'-12-31');
+        q = q.where('fecha','>=',filtros.anio+'-01-01').where('fecha','<=',filtros.anio+'-12-31').orderBy('fecha');
       }
-      const snap = await q.limit(filtros.anio ? 20000 : 500).get();
-      const docs = snap.docs.map(d => d.data());
+      // Paginación completa: evita perder registros con límites fijos
+      // Para consultas diarias (fecha exacta) 5000 es suficiente (max ~2×alumnos)
+      // Para mensuales/anuales se pagina hasta traer todos los registros
+      let docs;
+      if(filtros.fecha) {
+        const snap = await q.limit(5000).get();
+        docs = snap.docs.map(d => d.data());
+      } else {
+        docs = [];
+        const PAGE = 1000;
+        let lastDoc = null;
+        while(true) {
+          const paged = lastDoc ? q.startAfter(lastDoc).limit(PAGE) : q.limit(PAGE);
+          const snap  = await paged.get();
+          snap.docs.forEach(d => docs.push(d.data()));
+          if(snap.docs.length < PAGE) break;
+          lastDoc = snap.docs[snap.docs.length - 1];
+        }
+      }
       const resultado = docs.sort((a,b) => (b.hora||'').localeCompare(a.hora||''));
 
       // Guardar en cache memoria
