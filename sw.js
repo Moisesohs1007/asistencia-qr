@@ -1,9 +1,22 @@
-const CACHE_NAME = 'asistencia-marello-v1';
+const CACHE_NAME = 'asistencia-marello-v2';
 const ASSETS = [
   '/asistencia-qr/consulta.html',
+  '/asistencia-qr/apoderado.html',
   '/asistencia-qr/manifest.json',
   '/asistencia-qr/icon-192.png',
-  '/asistencia-qr/icon-512.png'
+  '/asistencia-qr/icon-512.png',
+  '/asistencia-qr/img/logo-colegio.png',
+  '/asistencia-qr/img/apple-icon.png',
+  '/asistencia-qr/img/banner-login-1.png',
+  '/asistencia-qr/img/banner-login-2.png',
+  '/asistencia-qr/img/banner-login-3.png',
+  '/asistencia-qr/img/banner-login-4.png',
+  '/asistencia-qr/img/banner-login-5.png',
+  '/asistencia-qr/img/banner-default-1.jpg',
+  '/asistencia-qr/img/banner-default-2.jpg',
+  '/asistencia-qr/img/banner-default-3.jpg',
+  '/asistencia-qr/img/banner-default-4.jpg',
+  '/asistencia-qr/img/banner-default-5.jpg'
 ];
 
 // Instalar y cachear archivos base
