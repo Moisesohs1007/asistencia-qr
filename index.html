@@ -1985,34 +1985,13 @@
     <span id="user-name-display" style="display:none;"></span>
     <span id="user-rol-badge" style="display:none;"></span>
     <span id="btn-logout" style="display:none;"></span>
-    <div id="avatar-btn" onclick="toggleUserMenu()" style="width:34px;height:34px;border-radius:50%;background:#7B1535;border:1.5px solid rgba(255,255,255,0.25);display:none;align-items:center;justify-content:center;cursor:pointer;font-size:11px;font-weight:700;color:#fff;user-select:none;flex-shrink:0;" title="Mi cuenta">
+    <div id="avatar-btn" onclick="toggleUserMenu(event)" style="width:34px;height:34px;border-radius:50%;background:#7B1535;border:1.5px solid rgba(255,255,255,0.25);display:none;align-items:center;justify-content:center;cursor:pointer;font-size:11px;font-weight:700;color:#fff;user-select:none;flex-shrink:0;" title="Mi cuenta">
       <span id="avatar-initials">?</span>
     </div>
     </div>
   </div>
 </header>
 <nav class="nav-tabs" id="nav-tabs" style="background:#0D1A3A;position:sticky;top:52px;z-index:599;display:none;">
-
-<!-- DROPDOWN USUARIO (fuera del header, position fixed funciona en desktop y móvil) -->
-<div id="user-dropdown-menu" style="display:none;position:fixed;width:220px;background:var(--surface);border:1px solid var(--border);border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,0.3);z-index:9999;overflow:hidden;">
-  <div style="background:#7B1535;padding:14px;text-align:center;">
-    <div style="width:40px;height:40px;border-radius:50%;background:#9B2045;border:2px solid rgba(255,255,255,0.2);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#fff;margin:0 auto 8px;" id="avatar-initials-menu">?</div>
-    <div style="color:#fff;font-size:12px;font-weight:600;" id="menu-user-name"></div>
-    <div style="color:rgba(255,255,255,0.55);font-size:11px;margin-top:2px;" id="menu-user-rol"></div>
-  </div>
-  <div onclick="abrirMisDatos();closeUserMenu();" style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;cursor:pointer;font-size:12px;color:var(--text);border-bottom:1px solid var(--border);" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">
-    Mis datos
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="opacity:0.4"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
-  </div>
-  <div onclick="document.getElementById('modal-cambiar-pass-personal').style.display='flex';closeUserMenu();" style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;cursor:pointer;font-size:12px;color:var(--text);border-bottom:1px solid var(--border);" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">
-    Cambiar contraseña
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="opacity:0.4"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-  </div>
-  <div onclick="doLogout();closeUserMenu();" style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;cursor:pointer;font-size:12px;color:var(--danger);" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">
-    Cerrar sesión
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="opacity:0.6"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-  </div>
-</div>
     <!-- Inicio -->
     <button class="nav-tab active" id="tab-inicio" onclick="showSection('inicio');setActiveTab('tab-inicio')">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
@@ -2067,6 +2046,27 @@
     <button id="tab-reportes" style="display:none;"></button>
     <button id="tab-incidentes" style="display:none;"></button>
 </nav>
+
+<!-- DROPDOWN USUARIO (fuera del nav, funciona en desktop y móvil) -->
+<div id="user-dropdown-menu" onclick="event.stopPropagation()" style="display:none;position:fixed;width:220px;background:var(--surface);border:1px solid var(--border);border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,0.3);z-index:9999;overflow:hidden;">
+  <div style="background:#7B1535;padding:14px;text-align:center;">
+    <div style="width:40px;height:40px;border-radius:50%;background:#9B2045;border:2px solid rgba(255,255,255,0.2);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#fff;margin:0 auto 8px;" id="avatar-initials-menu">?</div>
+    <div style="color:#fff;font-size:12px;font-weight:600;" id="menu-user-name"></div>
+    <div style="color:rgba(255,255,255,0.55);font-size:11px;margin-top:2px;" id="menu-user-rol"></div>
+  </div>
+  <div onclick="abrirMisDatos();closeUserMenu();" style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;cursor:pointer;font-size:12px;color:var(--text);border-bottom:1px solid var(--border);" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">
+    Mis datos
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="opacity:0.4"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+  </div>
+  <div onclick="document.getElementById('modal-cambiar-pass-personal').style.display='flex';closeUserMenu();" style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;cursor:pointer;font-size:12px;color:var(--text);border-bottom:1px solid var(--border);" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">
+    Cambiar contraseña
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="opacity:0.4"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+  </div>
+  <div onclick="doLogout();closeUserMenu();" style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;cursor:pointer;font-size:12px;color:var(--danger);" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">
+    Cerrar sesión
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="opacity:0.6"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+  </div>
+</div>
 
 <!-- BOTTOM NAV MOBILE -->
 <div class="bottom-nav" id="bottom-nav" style="display:none;">
@@ -3520,7 +3520,8 @@ async function cambiarPassPersonal() {
   }
 }
 
-function toggleUserMenu() {
+function toggleUserMenu(e) {
+  if(e) e.stopPropagation();
   const menu = document.getElementById('user-dropdown-menu');
   if(menu.style.display === 'block') { closeUserMenu(); return; }
 
@@ -8732,7 +8733,7 @@ function msbInit() {
   if(tbRight) {
     tbRight.innerHTML = `
       <span style="color:#C9A84C;font-size:10px;border:0.5px solid rgba(201,168,76,0.4);padding:2px 7px;border-radius:4px;">${new Date().getFullYear()}</span>
-      <div id="msb-avatar" onclick="toggleUserMenu()" style="width:28px;height:28px;border-radius:50%;background:#7B1535;border:1.5px solid rgba(255,255,255,0.2);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff;cursor:pointer;user-select:none;">
+      <div id="msb-avatar" onclick="toggleUserMenu(event)" style="width:28px;height:28px;border-radius:50%;background:#7B1535;border:1.5px solid rgba(255,255,255,0.2);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff;cursor:pointer;user-select:none;">
         <span id="msb-avatar-text">?</span>
       </div>`;
   }
