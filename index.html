@@ -4498,14 +4498,20 @@ function showOverlay(tipo, nombre, grado, msg, sub) {
      <line x1="52" y1="44" x2="52" y2="60" stroke="#ef4444" stroke-width="4" stroke-linecap="round"/>
      <circle cx="52" cy="68" r="2.5" fill="#ef4444"/>`);
 
+  // Puerta naranja — salida sin ingreso previo
+  const iconSinIngreso = svgCircle('#f97316','rgba(249,115,22,0.15)',
+    `<text x="52" y="62" text-anchor="middle" font-size="34" fill="#f97316" font-family="sans-serif">!</text>`);
+
   const configs = {
-    loading:  { icon: `<div class="sro-spinner"></div>`,  dur: null  },
-    ok:       { icon: iconOk,       dur: 3000  },
-    tardanza: { icon: iconTardanza, dur: 3500  },
-    yaing:    { icon: iconError,    dur: 3000  },
-    yasal:    { icon: iconError,    dur: 3000  },
-    noqr:     { icon: iconError,    dur: 2500  },
-    nored:    { icon: iconError,    dur: 3000  },
+    loading:     { icon: `<div class="sro-spinner"></div>`, dur: null  },
+    ok:          { icon: iconOk,          dur: 3000  },
+    tardanza:    { icon: iconTardanza,    dur: 3500  },
+    sinIngreso:  { icon: iconSinIngreso,  dur: 4000  },
+    yaing:       { icon: iconError,       dur: 3000  },
+    yasal:       { icon: iconError,       dur: 3000  },
+    noqr:        { icon: iconError,       dur: 2500  },
+    nored:       { icon: iconError,       dur: 3000  },
+    salida:      { icon: iconOk,          dur: 3000  },
   };
   const cfg = configs[tipo] || configs.noqr;
 
@@ -4595,6 +4601,7 @@ async function autoRegistrar(alumno) {
 
     // ── Determinar tipo según estado del alumno y ventana horaria ──
     let tipo;
+    let sinIngresoPrevio = false;
     if (!tieneIngreso) {
       // Ventana de INGRESO
       if (ahoraMin < apertura) {
@@ -4602,10 +4609,17 @@ async function autoRegistrar(alumno) {
         return;
       }
       if (ahoraMin > corte) {
-        showOverlay('noqr', nombre, grado, 'Ventana de ingreso cerrada', `Solo se acepta ingreso hasta las ${horario.horaCorte}`);
-        return;
+        // Opción B: si ya es hora de salida, registrar salida sin ingreso previo
+        if (ahoraMin >= salida) {
+          tipo = 'SALIDA';
+          sinIngresoPrevio = true;
+        } else {
+          showOverlay('noqr', nombre, grado, 'Ventana de ingreso cerrada', `Solo se acepta ingreso hasta las ${horario.horaCorte}`);
+          return;
+        }
+      } else {
+        tipo = 'INGRESO';
       }
-      tipo = 'INGRESO';
     } else {
       // Ya ingresó → ventana de SALIDA
       if (ahoraMin < salida) {
@@ -4617,7 +4631,7 @@ async function autoRegistrar(alumno) {
 
     // ── Estado ──
     const tardanza = tipo === 'INGRESO' && ahoraMin > limite;
-    const estado   = tipo === 'SALIDA' ? 'Salida normal' : (tardanza ? 'Tardanza' : 'A tiempo');
+    const estado   = sinIngresoPrevio ? 'Sin ingreso previo' : (tipo === 'SALIDA' ? 'Salida normal' : (tardanza ? 'Tardanza' : 'A tiempo'));
 
     const reg = {
       alumnoId: alumno.id,
@@ -4640,6 +4654,8 @@ async function autoRegistrar(alumno) {
       showOverlay('tardanza', nombre, grado, '⚠ Tardanza registrada', reg.hora);
     } else if(tipo === 'INGRESO') {
       showOverlay('ok', nombre, grado, '✔ Ingreso registrado', reg.hora);
+    } else if(sinIngresoPrevio) {
+      showOverlay('sinIngreso', nombre, grado, '⚠ Salida sin ingreso previo', reg.hora);
     } else {
       showOverlay('salida', nombre, grado, '🚪 Salida registrada', reg.hora);
     }
@@ -4653,6 +4669,8 @@ async function autoRegistrar(alumno) {
         msg = `✅ *INGRESO REGISTRADO*\n${encabezado}\n\n👤 *Alumno:* ${nombre}\n🏫 *Grado:* ${alumno.grado} ${alumno.seccion} — ${alumno.turno}\n🕐 *Hora:* ${reg.hora}\n📅 *Fecha:* ${reg.fecha}\n\n✔️ Su hijo/a ingresó *puntualmente* al colegio.`;
       } else if(tipo === 'INGRESO' && estado === 'Tardanza') {
         msg = `⚠️ *TARDANZA REGISTRADA*\n${encabezado}\n\n👤 *Alumno:* ${nombre}\n🏫 *Grado:* ${alumno.grado} ${alumno.seccion} — ${alumno.turno}\n🕐 *Hora:* ${reg.hora}\n📅 *Fecha:* ${reg.fecha}\n\n⏰ Su hijo/a ingresó *con tardanza* al colegio.`;
+      } else if(tipo === 'SALIDA' && sinIngresoPrevio) {
+        msg = `⚠️ *SALIDA SIN INGRESO PREVIO*\n${encabezado}\n\n👤 *Alumno:* ${nombre}\n🏫 *Grado:* ${alumno.grado} ${alumno.seccion} — ${alumno.turno}\n🕐 *Hora de salida:* ${reg.hora}\n📅 *Fecha:* ${reg.fecha}\n\n⚠️ Su hijo/a registró salida pero *no tiene ingreso registrado* hoy. Por favor comuníquese con el colegio.`;
       } else if(tipo === 'SALIDA') {
         msg = `🚪 *SALIDA REGISTRADA*\n${encabezado}\n\n👤 *Alumno:* ${nombre}\n🏫 *Grado:* ${alumno.grado} ${alumno.seccion} — ${alumno.turno}\n🕐 *Hora:* ${reg.hora}\n📅 *Fecha:* ${reg.fecha}\n\n🏠 Su hijo/a ha salido del colegio.`;
       }
