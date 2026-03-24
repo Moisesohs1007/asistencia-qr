@@ -2502,8 +2502,8 @@
     
     <!-- Niveles y horarios -->
     <div class="card" style="margin-bottom:20px;padding:20px 24px;">
-      <div style="font-family:var(--font-display);font-size:1rem;font-weight:700;margin-bottom:4px;color:var(--accent);">🕐 Horarios de Ingreso por Nivel</div>
-      <div style="color:var(--muted);font-size:0.82rem;margin-bottom:16px;">La hora límite se usará para determinar tardanzas al registrar asistencia</div>
+      <div style="font-family:var(--font-display);font-size:1rem;font-weight:700;margin-bottom:4px;color:var(--accent);">🕐 Horarios de Ingreso y Salida por Nivel</div>
+      <div style="color:var(--muted);font-size:0.82rem;margin-bottom:16px;">Define las ventanas horarias para controlar ingresos, tardanzas y salidas por nivel</div>
       <div id="cfg-niveles-list"></div>
       <button class="btn btn-primary" onclick="guardarHorarios()" style="margin-top:12px;">💾 Guardar horarios</button>
     </div>
@@ -4584,19 +4584,40 @@ async function autoRegistrar(alumno) {
       return;
     }
 
-    // ── Ya registró INGRESO — NO registrar salida automáticamente ──
-    if(tieneIngreso && !tieneSalida) {
-      showOverlay('yaing', nombre, grado, 'Ya registró su ingreso hoy', '');
-      return;
+    // ── Obtener horario del nivel y calcular ventanas ──
+    const horario  = await getHorarioByNivel(alumno.turno);
+    const toMin    = s => { const [h,m] = (s||'00:00').split(':').map(Number); return h*60+m; };
+    const ahoraMin = now.getHours() * 60 + now.getMinutes();
+    const apertura = toMin(horario.horaApertura);
+    const limite   = toMin(horario.horaLimite);
+    const corte    = toMin(horario.horaCorte);
+    const salida   = toMin(horario.horaSalida);
+
+    // ── Determinar tipo según estado del alumno y ventana horaria ──
+    let tipo;
+    if (!tieneIngreso) {
+      // Ventana de INGRESO
+      if (ahoraMin < apertura) {
+        showOverlay('noqr', nombre, grado, 'Fuera de horario', `El ingreso abre a las ${horario.horaApertura}`);
+        return;
+      }
+      if (ahoraMin > corte) {
+        showOverlay('noqr', nombre, grado, 'Ventana de ingreso cerrada', `Solo se acepta ingreso hasta las ${horario.horaCorte}`);
+        return;
+      }
+      tipo = 'INGRESO';
+    } else {
+      // Ya ingresó → ventana de SALIDA
+      if (ahoraMin < salida) {
+        showOverlay('yaing', nombre, grado, 'Ya registró su ingreso', `La salida es desde las ${horario.horaSalida}`);
+        return;
+      }
+      tipo = 'SALIDA';
     }
 
-    const tipo = 'INGRESO';
-
-    // ── Verificar tardanza usando config ya cacheada ──
-    const limiteStr = await getLimiteByNivel(alumno.turno);
-    const [lh, lm] = limiteStr.split(':').map(Number);
-    const tardanza = tipo === 'INGRESO' && (now.getHours() > lh || (now.getHours() === lh && now.getMinutes() > lm));
-    const estado = tipo === 'SALIDA' ? 'Salida normal' : (tardanza ? 'Tardanza' : 'A tiempo');
+    // ── Estado ──
+    const tardanza = tipo === 'INGRESO' && ahoraMin > limite;
+    const estado   = tipo === 'SALIDA' ? 'Salida normal' : (tardanza ? 'Tardanza' : 'A tiempo');
 
     const reg = {
       alumnoId: alumno.id,
@@ -7652,9 +7673,9 @@ const CONFIG_DEFAULTS = {
   nombreColegio: 'I.E.P "SANTO DOMINGO DE GUZMAN"',
   anio: '2026',
   niveles: [
-    { nombre: 'Inicial',    horaLimite: '08:00' },
-    { nombre: 'Primaria',   horaLimite: '08:00' },
-    { nombre: 'Secundaria', horaLimite: '07:45' },
+    { nombre: 'Inicial',    horaApertura: '07:00', horaLimite: '08:00', horaCorte: '10:30', horaSalida: '13:00' },
+    { nombre: 'Primaria',   horaApertura: '07:00', horaLimite: '08:00', horaCorte: '10:30', horaSalida: '13:00' },
+    { nombre: 'Secundaria', horaApertura: '06:30', horaLimite: '07:45', horaCorte: '10:00', horaSalida: '13:00' },
   ],
   grados: {
     'Inicial':    ['3 años','4 años','5 años'],
@@ -7692,6 +7713,17 @@ async function getLimiteByNivel(nivel) {
   return n ? n.horaLimite : '08:00';
 }
 
+async function getHorarioByNivel(nivel) {
+  const cfg = await getConfig();
+  const n = (cfg.niveles||[]).find(x => x.nombre === nivel);
+  return {
+    horaApertura: n?.horaApertura || '07:00',
+    horaLimite:   n?.horaLimite   || '08:00',
+    horaCorte:    n?.horaCorte    || '10:30',
+    horaSalida:   n?.horaSalida   || '13:00',
+  };
+}
+
 async function renderConfig() {
   const cfg = await getConfig();
 
@@ -7706,13 +7738,25 @@ async function renderConfig() {
   // Niveles y horarios
   const nivelesEl = document.getElementById('cfg-niveles-list');
   nivelesEl.innerHTML = (cfg.niveles||[]).map((n,i) => `
-    <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;flex-wrap:wrap;">
-      <div style="flex:1;min-width:120px;">
-        <div style="font-weight:600;font-size:0.9rem;">${n.nombre}</div>
-      </div>
-      <div class="form-group" style="flex:1;min-width:140px;margin:0;">
-        <label style="font-size:0.75rem;">Hora límite ingreso</label>
-        <input type="time" id="cfg-hora-${i}" value="${n.horaLimite||'08:00'}">
+    <div style="margin-bottom:16px;padding:12px 14px;background:rgba(255,255,255,0.03);border-radius:10px;border:1px solid rgba(255,255,255,0.07);">
+      <div style="font-weight:700;font-size:0.95rem;margin-bottom:10px;color:var(--accent);">${n.nombre}</div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;">
+        <div class="form-group" style="flex:1;min-width:130px;margin:0;">
+          <label style="font-size:0.72rem;">🟢 Apertura (desde)</label>
+          <input type="time" id="cfg-apertura-${i}" value="${n.horaApertura||'07:00'}">
+        </div>
+        <div class="form-group" style="flex:1;min-width:130px;margin:0;">
+          <label style="font-size:0.72rem;">⚠️ Límite puntualidad</label>
+          <input type="time" id="cfg-hora-${i}" value="${n.horaLimite||'08:00'}">
+        </div>
+        <div class="form-group" style="flex:1;min-width:130px;margin:0;">
+          <label style="font-size:0.72rem;">🔴 Corte ingreso (hasta)</label>
+          <input type="time" id="cfg-corte-${i}" value="${n.horaCorte||'10:30'}">
+        </div>
+        <div class="form-group" style="flex:1;min-width:130px;margin:0;">
+          <label style="font-size:0.72rem;">🚪 Salida (desde)</label>
+          <input type="time" id="cfg-salida-${i}" value="${n.horaSalida||'13:00'}">
+        </div>
       </div>
     </div>
   `).join('');
@@ -7889,10 +7933,18 @@ async function guardarInfoColegio() {
 
 async function guardarHorarios() {
   const cfg = await getConfig();
-  const niveles = (cfg.niveles||[]).map((n,i) => ({
-    nombre: n.nombre,
-    horaLimite: document.getElementById('cfg-hora-'+i)?.value || '08:00'
-  }));
+  const niveles = (cfg.niveles||[]).map((n,i) => {
+    const apertura = document.getElementById('cfg-apertura-'+i)?.value || '07:00';
+    const limite   = document.getElementById('cfg-hora-'+i)?.value    || '08:00';
+    const corte    = document.getElementById('cfg-corte-'+i)?.value   || '10:30';
+    const salida   = document.getElementById('cfg-salida-'+i)?.value  || '13:00';
+    const toMin = s => { const [h,m] = s.split(':').map(Number); return h*60+m; };
+    if(toMin(apertura) >= toMin(limite)) { toast(`${n.nombre}: La apertura debe ser antes del límite de puntualidad`, 'warning'); return null; }
+    if(toMin(limite) >= toMin(corte))    { toast(`${n.nombre}: El límite de puntualidad debe ser antes del corte de ingreso`, 'warning'); return null; }
+    if(toMin(corte) >= toMin(salida))    { toast(`${n.nombre}: El corte de ingreso debe ser antes de la hora de salida`, 'warning'); return null; }
+    return { nombre: n.nombre, horaApertura: apertura, horaLimite: limite, horaCorte: corte, horaSalida: salida };
+  });
+  if(niveles.some(x => x === null)) return;
   try {
     await db.collection('config').doc('general').set({ niveles }, { merge: true });
     invalidateConfig();
