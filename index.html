@@ -3885,8 +3885,8 @@ document.addEventListener('DOMContentLoaded', function() {
 // Reduce lecturas Firestore entre sesiones del mismo día
 // ============================================================
 const LSC = {
-  TTL_ALUMNOS:    60 * 60 * 1000,  // 1 hora
-  TTL_CONFIG:     60 * 60 * 1000,  // 1 hora
+  TTL_ALUMNOS:    8 * 60 * 60 * 1000,  // 8 horas
+  TTL_CONFIG:     8 * 60 * 60 * 1000,  // 8 horas
   TTL_REGISTROS:  10 * 60 * 1000,  // 10 minutos
   TTL_INCIDENTES: 15 * 60 * 1000,  // 15 minutos
   TTL_USUARIOS:   30 * 60 * 1000,  // 30 minutos
