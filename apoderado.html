@@ -77,10 +77,10 @@
   <!-- DERECHA: insignia + iniciales apoderado + menú -->
   <div style="display:flex;align-items:center;gap:10px;position:relative;flex-shrink:0;">
     <img src="img/logo-colegio.png" style="width:32px;height:32px;object-fit:contain;" alt="Insignia">
-    <div id="apo-avatar-btn" onclick="toggleApoMenu()" style="width:30px;height:30px;border-radius:50%;background:#C9A84C;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:10px;font-weight:700;color:#0D1A3A;user-select:none;flex-shrink:0;" title="Mi cuenta">
+    <div id="apo-avatar-btn" onclick="toggleApoMenu(event)" style="width:30px;height:30px;border-radius:50%;background:#C9A84C;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:10px;font-weight:700;color:#0D1A3A;user-select:none;flex-shrink:0;" title="Mi cuenta">
       <span id="apo-avatar-initials">?</span>
     </div>
-    <div id="apo-user-menu" style="display:none;position:absolute;top:42px;right:0;width:220px;background:var(--surface);border:1px solid var(--border);border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,0.4);z-index:1000;overflow:hidden;">
+    <div id="apo-user-menu" onclick="event.stopPropagation()" style="display:none;position:absolute;top:42px;right:0;width:220px;background:var(--surface);border:1px solid var(--border);border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,0.4);z-index:1000;overflow:hidden;">
       <div style="background:#0D1A3A;padding:14px;text-align:center;">
         <div style="width:40px;height:40px;border-radius:50%;background:#C9A84C;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#0D1A3A;margin:0 auto 8px;" id="apo-avatar-initials-menu">?</div>
         <div style="color:#fff;font-size:12px;font-weight:600;" id="apo-menu-nombre"></div>
@@ -1237,7 +1237,8 @@ function guardarNuevaPass() {
   });
 }
 // ── AVATAR APODERADO ──
-function toggleApoMenu() {
+function toggleApoMenu(e) {
+  if(e) e.stopPropagation();
   closeApoDropdowns(); // cerrar nav dropdowns primero
   var menu = document.getElementById('apo-user-menu');
   if(!menu) return;
