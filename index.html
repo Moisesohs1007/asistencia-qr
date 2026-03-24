@@ -2502,8 +2502,8 @@
     
     <!-- Niveles y horarios -->
     <div class="card" style="margin-bottom:20px;padding:20px 24px;">
-      <div style="font-family:var(--font-display);font-size:1rem;font-weight:700;margin-bottom:4px;color:var(--accent);">🕐 Horarios de Ingreso por Nivel</div>
-      <div style="color:var(--muted);font-size:0.82rem;margin-bottom:16px;">La hora límite se usará para determinar tardanzas al registrar asistencia</div>
+      <div style="font-family:var(--font-display);font-size:1rem;font-weight:700;margin-bottom:4px;color:var(--accent);">🕐 Horarios de Ingreso y Salida por Nivel</div>
+      <div style="color:var(--muted);font-size:0.82rem;margin-bottom:16px;">Define las ventanas horarias para controlar ingresos, tardanzas y salidas por nivel</div>
       <div id="cfg-niveles-list"></div>
       <button class="btn btn-primary" onclick="guardarHorarios()" style="margin-top:12px;">💾 Guardar horarios</button>
     </div>
@@ -4498,14 +4498,20 @@ function showOverlay(tipo, nombre, grado, msg, sub) {
      <line x1="52" y1="44" x2="52" y2="60" stroke="#ef4444" stroke-width="4" stroke-linecap="round"/>
      <circle cx="52" cy="68" r="2.5" fill="#ef4444"/>`);
 
+  // Puerta naranja — salida sin ingreso previo
+  const iconSinIngreso = svgCircle('#f97316','rgba(249,115,22,0.15)',
+    `<text x="52" y="62" text-anchor="middle" font-size="34" fill="#f97316" font-family="sans-serif">!</text>`);
+
   const configs = {
-    loading:  { icon: `<div class="sro-spinner"></div>`,  dur: null  },
-    ok:       { icon: iconOk,       dur: 3000  },
-    tardanza: { icon: iconTardanza, dur: 3500  },
-    yaing:    { icon: iconError,    dur: 3000  },
-    yasal:    { icon: iconError,    dur: 3000  },
-    noqr:     { icon: iconError,    dur: 2500  },
-    nored:    { icon: iconError,    dur: 3000  },
+    loading:     { icon: `<div class="sro-spinner"></div>`, dur: null  },
+    ok:          { icon: iconOk,          dur: 3000  },
+    tardanza:    { icon: iconTardanza,    dur: 3500  },
+    sinIngreso:  { icon: iconSinIngreso,  dur: 4000  },
+    yaing:       { icon: iconError,       dur: 3000  },
+    yasal:       { icon: iconError,       dur: 3000  },
+    noqr:        { icon: iconError,       dur: 2500  },
+    nored:       { icon: iconError,       dur: 3000  },
+    salida:      { icon: iconOk,          dur: 3000  },
   };
   const cfg = configs[tipo] || configs.noqr;
 
@@ -4584,19 +4590,48 @@ async function autoRegistrar(alumno) {
       return;
     }
 
-    // ── Ya registró INGRESO — NO registrar salida automáticamente ──
-    if(tieneIngreso && !tieneSalida) {
-      showOverlay('yaing', nombre, grado, 'Ya registró su ingreso hoy', '');
-      return;
+    // ── Obtener horario del nivel y calcular ventanas ──
+    const horario  = await getHorarioByNivel(alumno.turno);
+    const toMin    = s => { const [h,m] = (s||'00:00').split(':').map(Number); return h*60+m; };
+    const ahoraMin = now.getHours() * 60 + now.getMinutes();
+    const apertura = toMin(horario.horaApertura);
+    const limite   = toMin(horario.horaLimite);
+    const corte    = toMin(horario.horaCorte);
+    const salida   = toMin(horario.horaSalida);
+
+    // ── Determinar tipo según estado del alumno y ventana horaria ──
+    let tipo;
+    let sinIngresoPrevio = false;
+    if (!tieneIngreso) {
+      // Ventana de INGRESO
+      if (ahoraMin < apertura) {
+        showOverlay('noqr', nombre, grado, 'Fuera de horario', `El ingreso abre a las ${horario.horaApertura}`);
+        return;
+      }
+      if (ahoraMin > corte) {
+        // Opción B: si ya es hora de salida, registrar salida sin ingreso previo
+        if (ahoraMin >= salida) {
+          tipo = 'SALIDA';
+          sinIngresoPrevio = true;
+        } else {
+          showOverlay('noqr', nombre, grado, 'Ventana de ingreso cerrada', `Solo se acepta ingreso hasta las ${horario.horaCorte}`);
+          return;
+        }
+      } else {
+        tipo = 'INGRESO';
+      }
+    } else {
+      // Ya ingresó → ventana de SALIDA
+      if (ahoraMin < salida) {
+        showOverlay('yaing', nombre, grado, 'Ya registró su ingreso', `La salida es desde las ${horario.horaSalida}`);
+        return;
+      }
+      tipo = 'SALIDA';
     }
 
-    const tipo = 'INGRESO';
-
-    // ── Verificar tardanza usando config ya cacheada ──
-    const limiteStr = await getLimiteByNivel(alumno.turno);
-    const [lh, lm] = limiteStr.split(':').map(Number);
-    const tardanza = tipo === 'INGRESO' && (now.getHours() > lh || (now.getHours() === lh && now.getMinutes() > lm));
-    const estado = tipo === 'SALIDA' ? 'Salida normal' : (tardanza ? 'Tardanza' : 'A tiempo');
+    // ── Estado ──
+    const tardanza = tipo === 'INGRESO' && ahoraMin > limite;
+    const estado   = sinIngresoPrevio ? 'Sin ingreso previo' : (tipo === 'SALIDA' ? 'Salida normal' : (tardanza ? 'Tardanza' : 'A tiempo'));
 
     const reg = {
       alumnoId: alumno.id,
@@ -4619,6 +4654,8 @@ async function autoRegistrar(alumno) {
       showOverlay('tardanza', nombre, grado, '⚠ Tardanza registrada', reg.hora);
     } else if(tipo === 'INGRESO') {
       showOverlay('ok', nombre, grado, '✔ Ingreso registrado', reg.hora);
+    } else if(sinIngresoPrevio) {
+      showOverlay('sinIngreso', nombre, grado, '⚠ Salida sin ingreso previo', reg.hora);
     } else {
       showOverlay('salida', nombre, grado, '🚪 Salida registrada', reg.hora);
     }
@@ -4632,6 +4669,8 @@ async function autoRegistrar(alumno) {
         msg = `✅ *INGRESO REGISTRADO*\n${encabezado}\n\n👤 *Alumno:* ${nombre}\n🏫 *Grado:* ${alumno.grado} ${alumno.seccion} — ${alumno.turno}\n🕐 *Hora:* ${reg.hora}\n📅 *Fecha:* ${reg.fecha}\n\n✔️ Su hijo/a ingresó *puntualmente* al colegio.`;
       } else if(tipo === 'INGRESO' && estado === 'Tardanza') {
         msg = `⚠️ *TARDANZA REGISTRADA*\n${encabezado}\n\n👤 *Alumno:* ${nombre}\n🏫 *Grado:* ${alumno.grado} ${alumno.seccion} — ${alumno.turno}\n🕐 *Hora:* ${reg.hora}\n📅 *Fecha:* ${reg.fecha}\n\n⏰ Su hijo/a ingresó *con tardanza* al colegio.`;
+      } else if(tipo === 'SALIDA' && sinIngresoPrevio) {
+        msg = `⚠️ *SALIDA SIN INGRESO PREVIO*\n${encabezado}\n\n👤 *Alumno:* ${nombre}\n🏫 *Grado:* ${alumno.grado} ${alumno.seccion} — ${alumno.turno}\n🕐 *Hora de salida:* ${reg.hora}\n📅 *Fecha:* ${reg.fecha}\n\n⚠️ Su hijo/a registró salida pero *no tiene ingreso registrado* hoy. Por favor comuníquese con el colegio.`;
       } else if(tipo === 'SALIDA') {
         msg = `🚪 *SALIDA REGISTRADA*\n${encabezado}\n\n👤 *Alumno:* ${nombre}\n🏫 *Grado:* ${alumno.grado} ${alumno.seccion} — ${alumno.turno}\n🕐 *Hora:* ${reg.hora}\n📅 *Fecha:* ${reg.fecha}\n\n🏠 Su hijo/a ha salido del colegio.`;
       }
@@ -7652,9 +7691,9 @@ const CONFIG_DEFAULTS = {
   nombreColegio: 'I.E.P "SANTO DOMINGO DE GUZMAN"',
   anio: '2026',
   niveles: [
-    { nombre: 'Inicial',    horaLimite: '08:00' },
-    { nombre: 'Primaria',   horaLimite: '08:00' },
-    { nombre: 'Secundaria', horaLimite: '07:45' },
+    { nombre: 'Inicial',    horaApertura: '07:00', horaLimite: '08:00', horaCorte: '10:30', horaSalida: '13:00' },
+    { nombre: 'Primaria',   horaApertura: '07:00', horaLimite: '08:00', horaCorte: '10:30', horaSalida: '13:00' },
+    { nombre: 'Secundaria', horaApertura: '06:30', horaLimite: '07:45', horaCorte: '10:00', horaSalida: '13:00' },
   ],
   grados: {
     'Inicial':    ['3 años','4 años','5 años'],
@@ -7692,6 +7731,17 @@ async function getLimiteByNivel(nivel) {
   return n ? n.horaLimite : '08:00';
 }
 
+async function getHorarioByNivel(nivel) {
+  const cfg = await getConfig();
+  const n = (cfg.niveles||[]).find(x => x.nombre === nivel);
+  return {
+    horaApertura: n?.horaApertura || '07:00',
+    horaLimite:   n?.horaLimite   || '08:00',
+    horaCorte:    n?.horaCorte    || '10:30',
+    horaSalida:   n?.horaSalida   || '13:00',
+  };
+}
+
 async function renderConfig() {
   const cfg = await getConfig();
 
@@ -7706,13 +7756,25 @@ async function renderConfig() {
   // Niveles y horarios
   const nivelesEl = document.getElementById('cfg-niveles-list');
   nivelesEl.innerHTML = (cfg.niveles||[]).map((n,i) => `
-    <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;flex-wrap:wrap;">
-      <div style="flex:1;min-width:120px;">
-        <div style="font-weight:600;font-size:0.9rem;">${n.nombre}</div>
-      </div>
-      <div class="form-group" style="flex:1;min-width:140px;margin:0;">
-        <label style="font-size:0.75rem;">Hora límite ingreso</label>
-        <input type="time" id="cfg-hora-${i}" value="${n.horaLimite||'08:00'}">
+    <div style="margin-bottom:16px;padding:12px 14px;background:rgba(255,255,255,0.03);border-radius:10px;border:1px solid rgba(255,255,255,0.07);">
+      <div style="font-weight:700;font-size:0.95rem;margin-bottom:10px;color:var(--accent);">${n.nombre}</div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;">
+        <div class="form-group" style="flex:1;min-width:130px;margin:0;">
+          <label style="font-size:0.72rem;">🟢 Apertura (desde)</label>
+          <input type="time" id="cfg-apertura-${i}" value="${n.horaApertura||'07:00'}">
+        </div>
+        <div class="form-group" style="flex:1;min-width:130px;margin:0;">
+          <label style="font-size:0.72rem;">⚠️ Límite puntualidad</label>
+          <input type="time" id="cfg-hora-${i}" value="${n.horaLimite||'08:00'}">
+        </div>
+        <div class="form-group" style="flex:1;min-width:130px;margin:0;">
+          <label style="font-size:0.72rem;">🔴 Corte ingreso (hasta)</label>
+          <input type="time" id="cfg-corte-${i}" value="${n.horaCorte||'10:30'}">
+        </div>
+        <div class="form-group" style="flex:1;min-width:130px;margin:0;">
+          <label style="font-size:0.72rem;">🚪 Salida (desde)</label>
+          <input type="time" id="cfg-salida-${i}" value="${n.horaSalida||'13:00'}">
+        </div>
       </div>
     </div>
   `).join('');
@@ -7889,10 +7951,18 @@ async function guardarInfoColegio() {
 
 async function guardarHorarios() {
   const cfg = await getConfig();
-  const niveles = (cfg.niveles||[]).map((n,i) => ({
-    nombre: n.nombre,
-    horaLimite: document.getElementById('cfg-hora-'+i)?.value || '08:00'
-  }));
+  const niveles = (cfg.niveles||[]).map((n,i) => {
+    const apertura = document.getElementById('cfg-apertura-'+i)?.value || '07:00';
+    const limite   = document.getElementById('cfg-hora-'+i)?.value    || '08:00';
+    const corte    = document.getElementById('cfg-corte-'+i)?.value   || '10:30';
+    const salida   = document.getElementById('cfg-salida-'+i)?.value  || '13:00';
+    const toMin = s => { const [h,m] = s.split(':').map(Number); return h*60+m; };
+    if(toMin(apertura) >= toMin(limite)) { toast(`${n.nombre}: La apertura debe ser antes del límite de puntualidad`, 'warning'); return null; }
+    if(toMin(limite) >= toMin(corte))    { toast(`${n.nombre}: El límite de puntualidad debe ser antes del corte de ingreso`, 'warning'); return null; }
+    if(toMin(corte) >= toMin(salida))    { toast(`${n.nombre}: El corte de ingreso debe ser antes de la hora de salida`, 'warning'); return null; }
+    return { nombre: n.nombre, horaApertura: apertura, horaLimite: limite, horaCorte: corte, horaSalida: salida };
+  });
+  if(niveles.some(x => x === null)) return;
   try {
     await db.collection('config').doc('general').set({ niveles }, { merge: true });
     invalidateConfig();
