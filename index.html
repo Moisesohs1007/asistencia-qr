@@ -1985,7 +1985,7 @@
     <span id="user-name-display" style="display:none;"></span>
     <span id="user-rol-badge" style="display:none;"></span>
     <span id="btn-logout" style="display:none;"></span>
-    <div id="avatar-btn" onclick="toggleUserMenu()" style="width:34px;height:34px;border-radius:50%;background:#7B1535;border:1.5px solid rgba(255,255,255,0.25);display:none;align-items:center;justify-content:center;cursor:pointer;font-size:11px;font-weight:700;color:#fff;user-select:none;flex-shrink:0;" title="Mi cuenta">
+    <div id="avatar-btn" onclick="toggleUserMenu(event)" style="width:34px;height:34px;border-radius:50%;background:#7B1535;border:1.5px solid rgba(255,255,255,0.25);display:none;align-items:center;justify-content:center;cursor:pointer;font-size:11px;font-weight:700;color:#fff;user-select:none;flex-shrink:0;" title="Mi cuenta">
       <span id="avatar-initials">?</span>
     </div>
     </div>
@@ -1994,7 +1994,7 @@
 <nav class="nav-tabs" id="nav-tabs" style="background:#0D1A3A;position:sticky;top:52px;z-index:599;display:none;">
 
 <!-- DROPDOWN USUARIO (fuera del header, position fixed funciona en desktop y móvil) -->
-<div id="user-dropdown-menu" style="display:none;position:fixed;width:220px;background:var(--surface);border:1px solid var(--border);border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,0.3);z-index:9999;overflow:hidden;">
+<div id="user-dropdown-menu" onclick="event.stopPropagation()" style="display:none;position:fixed;width:220px;background:var(--surface);border:1px solid var(--border);border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,0.3);z-index:9999;overflow:hidden;">
   <div style="background:#7B1535;padding:14px;text-align:center;">
     <div style="width:40px;height:40px;border-radius:50%;background:#9B2045;border:2px solid rgba(255,255,255,0.2);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#fff;margin:0 auto 8px;" id="avatar-initials-menu">?</div>
     <div style="color:#fff;font-size:12px;font-weight:600;" id="menu-user-name"></div>
@@ -3520,7 +3520,8 @@ async function cambiarPassPersonal() {
   }
 }
 
-function toggleUserMenu() {
+function toggleUserMenu(e) {
+  if(e) e.stopPropagation();
   const menu = document.getElementById('user-dropdown-menu');
   if(menu.style.display === 'block') { closeUserMenu(); return; }
 
@@ -8732,7 +8733,7 @@ function msbInit() {
   if(tbRight) {
     tbRight.innerHTML = `
       <span style="color:#C9A84C;font-size:10px;border:0.5px solid rgba(201,168,76,0.4);padding:2px 7px;border-radius:4px;">${new Date().getFullYear()}</span>
-      <div id="msb-avatar" onclick="toggleUserMenu()" style="width:28px;height:28px;border-radius:50%;background:#7B1535;border:1.5px solid rgba(255,255,255,0.2);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff;cursor:pointer;user-select:none;">
+      <div id="msb-avatar" onclick="toggleUserMenu(event)" style="width:28px;height:28px;border-radius:50%;background:#7B1535;border:1.5px solid rgba(255,255,255,0.2);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff;cursor:pointer;user-select:none;">
         <span id="msb-avatar-text">?</span>
       </div>`;
   }
