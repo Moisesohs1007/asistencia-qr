@@ -55,6 +55,187 @@
     .badge-tardanza { background: rgba(245,158,11,0.15);  color: #f59e0b; }
     .badge-ausente  { background: rgba(239,68,68,0.15);   color: #ef4444; }
   </style>
+  <style>
+  /* ═══════════════════════════════════════
+     SIDEBAR MÓVIL APODERADO — max-width:700px
+  ═══════════════════════════════════════ */
+  @media(max-width:700px) {
+    /* Ocultar header y nav tabs originales */
+    #apo-header    { display: none !important; }
+    #apo-nav-tabs  { display: none !important; }
+
+    /* Topbar móvil */
+    #apo-mobile-topbar {
+      display: flex !important;
+      align-items: center;
+      justify-content: space-between;
+      height: 48px;
+      background: #0D1A3A;
+      padding: 0 14px;
+      position: fixed;
+      top: 0; left: 54px; right: 0;
+      z-index: 600;
+    }
+    #apo-mobile-topbar.sidebar-open { left: 230px; }
+    #apo-topbar-title { color: #fff; font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    #apo-topbar-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+
+    /* Contenido principal con offset */
+    #apo-main-content {
+      margin-left: 54px;
+      margin-top: 48px;
+      padding: 14px 12px 16px;
+      width: calc(100% - 54px);
+      min-height: calc(100vh - 48px);
+      transition: margin-left 0.3s cubic-bezier(0.4,0,0.2,1), width 0.3s;
+      max-width: none;
+    }
+    body.apo-sidebar-open #apo-main-content {
+      margin-left: 230px;
+      width: calc(100% - 230px);
+    }
+
+    /* SIDEBAR */
+    #apo-mobile-sidebar {
+      position: fixed;
+      top: 0; left: 0; bottom: 0;
+      width: 54px;
+      background: #0D1A3A;
+      display: flex;
+      flex-direction: column;
+      z-index: 700;
+      overflow: hidden;
+      transition: width 0.3s cubic-bezier(0.4,0,0.2,1);
+    }
+    #apo-mobile-sidebar.open { width: 230px; }
+
+    /* Header del sidebar */
+    .apo-msb-header {
+      background: #091229;
+      padding: 14px 0 12px;
+      display: flex; flex-direction: column; align-items: center;
+      border-bottom: 1px solid rgba(255,255,255,0.07);
+      flex-shrink: 0; cursor: pointer; user-select: none;
+    }
+    .apo-msb-foto {
+      width: 34px; height: 34px; border-radius: 50%;
+      border: 1.5px solid rgba(201,168,76,0.5);
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+      overflow: hidden; background: #185FA5;
+    }
+    .apo-msb-info {
+      opacity: 0; max-height: 0; overflow: hidden;
+      transition: opacity 0.2s 0.08s, max-height 0.3s;
+      text-align: center; padding: 0 8px; white-space: nowrap;
+    }
+    #apo-mobile-sidebar.open .apo-msb-info { opacity: 1; max-height: 80px; margin-top: 8px; }
+    .apo-msb-student-name { color: #fff; font-size: 12px; font-weight: 600; }
+    .apo-msb-student-grade { color: rgba(255,255,255,0.4); font-size: 9px; letter-spacing: 0.06em; text-transform: uppercase; margin-top: 2px; }
+
+    /* Nav items */
+    .apo-msb-nav { flex: 1; overflow-y: auto; overflow-x: hidden; padding: 4px 0; }
+    .apo-msb-nav::-webkit-scrollbar { width: 0; }
+
+    .apo-msb-item {
+      display: flex; align-items: center;
+      height: 50px; width: 100%;
+      background: none; border: none; cursor: pointer;
+      color: rgba(255,255,255,0.65);
+      font-size: 13px; font-weight: 500;
+      white-space: nowrap; overflow: hidden;
+      position: relative;
+      transition: background 0.15s, color 0.15s;
+      text-align: left;
+    }
+    .apo-msb-item:hover { background: rgba(255,255,255,0.05); color: #fff; }
+    .apo-msb-item.active { background: rgba(201,168,76,0.12); color: #C9A84C; }
+    .apo-msb-item.active::before {
+      content: ''; position: absolute; left: 0; top: 8px; bottom: 8px;
+      width: 3px; background: #C9A84C; border-radius: 0 2px 2px 0;
+    }
+    .apo-msb-icon {
+      width: 54px; height: 50px;
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+    .apo-msb-icon svg { width: 20px; height: 20px; opacity: 0.7; }
+    .apo-msb-item.active .apo-msb-icon svg { opacity: 1; }
+
+    .apo-msb-label {
+      flex: 1; opacity: 0; transform: translateX(-6px);
+      transition: opacity 0.18s 0.08s, transform 0.18s 0.08s;
+      pointer-events: none;
+    }
+    #apo-mobile-sidebar.open .apo-msb-label { opacity: 1; transform: translateX(0); }
+
+    /* Flecha submenú */
+    .apo-msb-arrow {
+      width: 24px; margin-right: 8px; opacity: 0; flex-shrink: 0;
+      transition: opacity 0.18s 0.08s, transform 0.3s;
+      color: rgba(255,255,255,0.3); font-size: 10px;
+    }
+    #apo-mobile-sidebar.open .apo-msb-arrow { opacity: 1; }
+    .apo-msb-item.open .apo-msb-arrow { transform: rotate(90deg); color: #C9A84C; }
+
+    /* Submenú */
+    .apo-msb-sub {
+      max-height: 0; overflow: hidden;
+      background: rgba(0,0,0,0.2);
+      transition: max-height 0.3s cubic-bezier(0.4,0,0.2,1);
+    }
+    .apo-msb-sub.open { max-height: 300px; }
+
+    .apo-msb-subitem {
+      display: flex; align-items: center;
+      height: 42px; width: 100%;
+      background: none; border: none; cursor: pointer;
+      color: rgba(255,255,255,0.55);
+      font-size: 12px; font-weight: 400;
+      white-space: nowrap; overflow: hidden;
+      transition: background 0.15s, color 0.15s;
+      text-align: left;
+    }
+    .apo-msb-subitem:hover { background: rgba(255,255,255,0.05); color: #fff; }
+    .apo-msb-subitem.active { color: #C9A84C; background: rgba(201,168,76,0.08); }
+    .apo-msb-dot {
+      width: 54px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+    .apo-msb-dot::after { content: ''; width: 5px; height: 5px; border-radius: 50%; background: rgba(255,255,255,0.25); display: block; }
+    .apo-msb-subitem.active .apo-msb-dot::after { background: #C9A84C; }
+    .apo-msb-sublabel {
+      opacity: 0; transform: translateX(-4px);
+      transition: opacity 0.18s 0.1s, transform 0.18s 0.1s;
+      pointer-events: none;
+    }
+    #apo-mobile-sidebar.open .apo-msb-sublabel { opacity: 1; transform: translateX(0); }
+
+    /* Footer logout */
+    .apo-msb-footer { padding: 6px 0; border-top: 1px solid rgba(255,255,255,0.07); flex-shrink: 0; }
+    .apo-msb-logout {
+      display: flex; align-items: center;
+      height: 44px; width: 100%;
+      background: none; border: none; cursor: pointer;
+      color: rgba(255,107,107,0.8); font-size: 13px;
+      white-space: nowrap; overflow: hidden;
+      transition: background 0.15s;
+      text-align: left;
+    }
+    .apo-msb-logout:hover { background: rgba(255,107,107,0.08); }
+
+    /* Overlay */
+    #apo-msb-overlay {
+      display: none; position: fixed;
+      inset: 0; z-index: 699;
+    }
+    #apo-msb-overlay.show { display: block; }
+  }
+
+  /* Ocultar elementos móviles en desktop */
+  @media(min-width:701px) {
+    #apo-mobile-sidebar  { display: none !important; }
+    #apo-msb-overlay     { display: none !important; }
+    #apo-mobile-topbar   { display: none !important; }
+  }
+  </style>
 </head>
 <body>
 
@@ -589,6 +770,7 @@ function continuarCargaApoderado(user, dni) {
       var tabInicial = lastTab || 'resumen';
       cargarRegistros().then(function() {
         showTab(tabInicial);
+        apoMsbInit();
         // Mostrar app DESPUÉS de posicionar la pestaña correcta — sin flash
         document.getElementById('apo-app').style.display = '';
       }).catch(function(e) {
@@ -820,6 +1002,8 @@ function showTab(tab) {
     var panel = document.getElementById('panel-'+t);
     if(panel) panel.style.display = t === tab ? 'block' : 'none';
   });
+  // Actualizar topbar móvil
+  apoMsbSetActive(tab);
   // Resaltar menú activo
   var _map = {resumen:'inicio',historial:'asistencia',incidentes:'academico',comunicados:'comunicacion',carnet:'cuenta',contacto:'cuenta'};
   setApoTabActive(_map[tab]||'inicio', tab);
@@ -1366,6 +1550,107 @@ function guardarApoMisDatos() {
     errEl.textContent = 'Error al guardar: ' + e.message; errEl.style.display = 'block';
   });
 }
+
+// ─── SIDEBAR MÓVIL APODERADO ───────────────────────────────────────
+function apoMsbIsMobile() { return window.innerWidth <= 700; }
+
+function apoMsbExpand() {
+  if(!apoMsbIsMobile()) return;
+  document.getElementById('apo-mobile-sidebar').classList.add('open');
+  document.getElementById('apo-msb-overlay').classList.add('show');
+  var tb = document.getElementById('apo-mobile-topbar');
+  if(tb) tb.classList.add('sidebar-open');
+  document.body.classList.add('apo-sidebar-open');
+}
+function apoMsbCollapse() {
+  document.getElementById('apo-mobile-sidebar').classList.remove('open');
+  document.getElementById('apo-msb-overlay').classList.remove('show');
+  var tb = document.getElementById('apo-mobile-topbar');
+  if(tb) tb.classList.remove('sidebar-open');
+  document.body.classList.remove('apo-sidebar-open');
+  document.querySelectorAll('.apo-msb-sub').forEach(function(s){ s.classList.remove('open'); });
+  document.querySelectorAll('.apo-msb-item').forEach(function(i){ i.classList.remove('open'); });
+}
+function apoMsbToggleHeader() {
+  document.getElementById('apo-mobile-sidebar').classList.contains('open') ? apoMsbCollapse() : apoMsbExpand();
+}
+function apoMsbToggleSub(id) {
+  if(!document.getElementById('apo-mobile-sidebar').classList.contains('open')){ apoMsbExpand(); return; }
+  var sub = document.getElementById('apo-msb-sub-'+id);
+  var btn = document.getElementById('apo-msb-btn-'+id);
+  var isOpen = sub && sub.classList.contains('open');
+  document.querySelectorAll('.apo-msb-sub').forEach(function(s){ s.classList.remove('open'); });
+  document.querySelectorAll('.apo-msb-item').forEach(function(i){ i.classList.remove('open'); });
+  if(!isOpen && sub && btn){ sub.classList.add('open'); btn.classList.add('open'); }
+}
+function apoMsbPickDirect(el, sectionId, label) {
+  if(!document.getElementById('apo-mobile-sidebar').classList.contains('open')){ apoMsbExpand(); return; }
+  document.querySelectorAll('.apo-msb-item').forEach(function(i){ i.classList.remove('active'); });
+  document.querySelectorAll('.apo-msb-subitem').forEach(function(i){ i.classList.remove('active'); });
+  el.classList.add('active');
+  var tb = document.getElementById('apo-topbar-title');
+  if(tb) tb.textContent = label || sectionId;
+  showTab(sectionId);
+  apoMsbCollapse();
+}
+function apoMsbPickSub(el, sectionId, parentId, label) {
+  document.querySelectorAll('.apo-msb-item').forEach(function(i){ i.classList.remove('active'); });
+  document.querySelectorAll('.apo-msb-subitem').forEach(function(i){ i.classList.remove('active'); });
+  var parentBtn = document.getElementById('apo-msb-btn-'+parentId);
+  if(parentBtn) parentBtn.classList.add('active');
+  el.classList.add('active');
+  var tb = document.getElementById('apo-topbar-title');
+  if(tb) tb.textContent = label || sectionId;
+  showTab(sectionId);
+  apoMsbCollapse();
+}
+function apoMsbSetActive(tab) {
+  if(!apoMsbIsMobile()) return;
+  var labels = {resumen:'🏠 Inicio',historial:'📅 Historial',incidentes:'🚨 Incidencias',comunicados:'💬 Comunicados',carnet:'🪪 Carnet',contacto:'📞 Contacto'};
+  var tb = document.getElementById('apo-topbar-title');
+  if(tb) tb.textContent = labels[tab] || tab;
+  var parentMap = {historial:'asistencia',resumen:'inicio',incidentes:'academico',comunicados:'comunicacion',carnet:'cuenta',contacto:'cuenta'};
+  document.querySelectorAll('.apo-msb-item').forEach(function(i){ i.classList.remove('active'); });
+  document.querySelectorAll('.apo-msb-subitem').forEach(function(i){ i.classList.remove('active'); });
+  var parent = parentMap[tab];
+  if(parent === 'inicio') {
+    var b = document.getElementById('apo-msb-btn-inicio');
+    if(b) b.classList.add('active');
+  } else if(parent) {
+    var b = document.getElementById('apo-msb-btn-'+parent);
+    if(b) b.classList.add('active');
+  }
+}
+function apoMsbInit() {
+  if(!apoMsbIsMobile()) return;
+  // Poblar header del sidebar con datos del alumno
+  if(typeof alumno !== 'undefined' && alumno) {
+    var nombre = ((alumno.nombres||'') + ' ' + (alumno.apellidos||'')).trim();
+    var grado  = ((alumno.grado||'') + ' ' + (alumno.seccion||'')).trim();
+    var nEl = document.getElementById('apo-msb-nombre');
+    var gEl = document.getElementById('apo-msb-grado');
+    if(nEl) nEl.textContent = nombre || '—';
+    if(gEl) gEl.textContent = grado  || '—';
+    // Iniciales
+    var partsN = (alumno.nombres||'').trim().split(' ');
+    var partsA = (alumno.apellidos||'').trim().split(' ');
+    var ini = ((partsN[0]||'')[0]||'') + ((partsA[0]||'')[0]||'');
+    var iniEl = document.getElementById('apo-msb-inicial');
+    if(iniEl) iniEl.textContent = ini.toUpperCase() || '?';
+    // Foto
+    if(alumno.foto) {
+      var fEl = document.getElementById('apo-msb-foto-img');
+      if(fEl){ fEl.src = alumno.foto; fEl.style.display = 'block'; if(iniEl) iniEl.style.display = 'none'; }
+    }
+  }
+  // Topbar derecha: avatar apoderado
+  var tbRight = document.getElementById('apo-topbar-right');
+  if(tbRight) {
+    var ini2 = (document.getElementById('apo-avatar-initials')||{}).textContent || '?';
+    tbRight.innerHTML = '<div onclick="toggleApoMenu(event)" style="width:28px;height:28px;border-radius:50%;background:#C9A84C;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#0D1A3A;cursor:pointer;user-select:none;">' + ini2 + '</div>';
+  }
+}
+// ──────────────────────────────────────────────────────────────────
 
 function cambiarApoPass() {
   var actual = document.getElementById('apo-pass-actual').value;
