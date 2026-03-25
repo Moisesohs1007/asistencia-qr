@@ -632,8 +632,8 @@
     </div>
 
     <button class="btn-login-apo" id="btn-guardar-pass">Guardar y continuar</button>
-    <button id="btn-cancelar-pass" style="width:100%;margin-top:10px;padding:10px;background:none;border:none;color:var(--muted);cursor:pointer;font-size:0.85rem;" onclick="cancelarPrimerIngreso()">
-      Completar después
+    <button id="btn-cancelar-pass" style="width:100%;margin-top:10px;padding:10px;background:none;border:none;color:var(--danger);cursor:pointer;font-size:0.85rem;" onclick="cancelarPrimerIngreso()">
+      Cancelar — Cerrar sesión
     </button>
   </div>
 </div>
@@ -1386,9 +1386,7 @@ function togglePassFieldApo(inputId, btnEl) {
 }
 
 function cancelarPrimerIngreso() {
-  // Cierra el modal y deja al apoderado con su contraseña temporal (el DNI)
-  document.getElementById('modal-cambiar-pass').style.display = 'none';
-  cargarRegistros().then(function() { renderResumen(); });
+  auth.signOut().then(function() { window.location.href = 'index.html'; });
 }
 
 async function sendWhatsAppApo(telefono, mensaje) {
@@ -1475,6 +1473,15 @@ function guardarNuevaPass() {
     alumno.apoderadoApellidos = apellidos;
     btn.disabled = false;
     btn.textContent = 'Guardar y continuar';
+    // Notificar al apoderado por WhatsApp
+    var nombreApo = nombres.split(' ')[0];
+    var msgApo = '✅ *Datos registrados — Portal Apoderado*\n\n'
+      + 'Hola *' + nombreApo + '*,\n\n'
+      + 'Tus datos de contacto han sido guardados exitosamente.\n\n'
+      + '📱 *Usuario:* ' + alumno.id + ' (DNI del alumno)\n'
+      + '🔑 *Contraseña:* DNI del alumno (' + alumno.id + ')\n\n'
+      + '🌐 Acceso: ' + window.location.href;
+    sendWhatsAppApo(telefono, msgApo);
     return cargarRegistros();
   }).then(function() {
     renderResumen();
