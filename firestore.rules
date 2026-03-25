@@ -19,10 +19,11 @@ service cloud.firestore {
         exists(/databases/$(database)/documents/usuarios/$(request.auth.uid));
     }
 
-    function isOwnerApoderado(alumnoId) {
+    // Verifica si el usuario autenticado ES el apoderado de ese alumno
+    // (por email virtual: {dni}@apo.marello.pe)
+    function isApoderado(alumnoId) {
       return isAuthenticated() &&
-        exists(/databases/$(database)/documents/apoderados/$(alumnoId)) &&
-        get(/databases/$(database)/documents/apoderados/$(alumnoId)).data.alumnoId == alumnoId;
+        request.auth.email == alumnoId + '@apo.marello.pe';
     }
 
     // ── Registros de asistencia ───────────────────────────────────────────────
@@ -38,14 +39,13 @@ service cloud.firestore {
     }
 
     // ── Apoderados ────────────────────────────────────────────────────────────
-    // El apoderado solo lee/actualiza su propio documento; el campo passBackup no se permite
+    // El apoderado puede leer/crear/actualizar su propio documento
     match /apoderados/{alumnoId} {
-      allow read: if isStaff() || (isAuthenticated() && isOwnerApoderado(alumnoId));
-      allow create: if isStaff()
+      allow read: if isStaff() || isApoderado(alumnoId);
+      allow create: if (isStaff() || isApoderado(alumnoId))
         && !('passBackup' in request.resource.data);
-      allow update: if (isAuthenticated() && isOwnerApoderado(alumnoId))
-        && !('passBackup' in request.resource.data)
-        || isAdmin();
+      allow update: if (isStaff() || isApoderado(alumnoId))
+        && !('passBackup' in request.resource.data);
       allow delete: if isAdmin();
     }
 
