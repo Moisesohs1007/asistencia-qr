@@ -5026,8 +5026,8 @@ async function showQR(id) {
   if(!a) return;
 
   const cfg = await getConfig();
-  const nombreColegio = cfg?.nombreColegio || 'I.E.P "SANTO DOMINGO DE GUZMAN"';
-  const anio = cfg?.anio || new Date().getFullYear();
+  const nombreColegio = COLEGIO_NOMBRE;
+  const anio = COLEGIO_ANIO || cfg?.anio || new Date().getFullYear();
 
   // Logo y marca de agua
   document.getElementById('carnet-logo').src = getLogo();
@@ -5686,7 +5686,7 @@ async function exportXLSX() {
   }
 
   const cfg = await getConfig();
-  const nombreColegio = cfg?.nombreColegio || 'I.E.P "SANTO DOMINGO DE GUZMAN"';
+  const nombreColegio = COLEGIO_NOMBRE;
   const fechaExport = new Date().toLocaleDateString('es-PE',{day:'2-digit',month:'2-digit',year:'numeric'});
   const diasSemana  = ['Domingo','Lunes','Martes','Miercoles','Jueves','Viernes','Sabado'];
 
@@ -5880,7 +5880,7 @@ async function exportPDFRegistro() {
   if(!window.jspdf){ toast('Error cargando jsPDF','error'); return; }
   const { jsPDF } = window.jspdf;
   const cfg = await getConfig();
-  const nombreColegio = cfg?.nombreColegio || 'I.E.P "SANTO DOMINGO DE GUZMAN"';
+  const nombreColegio = COLEGIO_NOMBRE;
   const fechaExport = new Date().toLocaleDateString('es-PE',{day:'2-digit',month:'2-digit',year:'numeric'});
   const diasSemana = ['Domingo','Lunes','Martes','Miercoles','Jueves','Viernes','Sabado'];
   const NAVY=[13,26,58],GOLD=[201,168,76],WHITE=[255,255,255],GRAY=[240,242,248],MUTED=[100,116,139],TEXT=[30,41,59];
@@ -6519,8 +6519,8 @@ async function imprimirCarnetsMasivo() {
 
   // Cargar config del colegio
   const cfg = await getConfig();
-  const nombreColegio = cfg?.nombreColegio || 'I.E.P "SANTO DOMINGO DE GUZMAN"';
-  const anio = cfg?.anio || new Date().getFullYear();
+  const nombreColegio = COLEGIO_NOMBRE;
+  const anio = COLEGIO_ANIO || cfg?.anio || new Date().getFullYear();
 
   // Cargar alumnos seleccionados
   const todosAlumnos = await DB.getAlumnos();
