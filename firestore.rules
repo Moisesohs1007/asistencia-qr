@@ -1,0 +1,88 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── Funciones auxiliares ──────────────────────────────────────────────────
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        exists(/databases/$(database)/documents/usuarios/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.rol == 'admin';
+    }
+
+    function isStaff() {
+      return isAuthenticated() &&
+        exists(/databases/$(database)/documents/usuarios/$(request.auth.uid));
+    }
+
+    function isOwnerApoderado(alumnoId) {
+      return isAuthenticated() &&
+        exists(/databases/$(database)/documents/apoderados/$(alumnoId)) &&
+        get(/databases/$(database)/documents/apoderados/$(alumnoId)).data.alumnoId == alumnoId;
+    }
+
+    // ── Registros de asistencia ───────────────────────────────────────────────
+    // Solo el personal autenticado puede escribir; apoderados solo leen los suyos
+    match /registros/{docId} {
+      allow read: if isStaff();
+      allow create: if isStaff()
+        && request.resource.data.keys().hasAll(['alumnoId','tipo','fecha','hora'])
+        && request.resource.data.tipo in ['INGRESO', 'SALIDA']
+        // No permitir el campo passBackup en registros
+        && !('passBackup' in request.resource.data);
+      allow update, delete: if isAdmin();
+    }
+
+    // ── Apoderados ────────────────────────────────────────────────────────────
+    // El apoderado solo lee/actualiza su propio documento; el campo passBackup no se permite
+    match /apoderados/{alumnoId} {
+      allow read: if isStaff() || (isAuthenticated() && isOwnerApoderado(alumnoId));
+      allow create: if isStaff()
+        && !('passBackup' in request.resource.data);
+      allow update: if (isAuthenticated() && isOwnerApoderado(alumnoId))
+        && !('passBackup' in request.resource.data)
+        || isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // ── Alumnos ───────────────────────────────────────────────────────────────
+    match /alumnos/{alumnoId} {
+      allow read: if isAuthenticated();
+      allow write: if isStaff();
+    }
+
+    // ── Usuarios (personal del colegio) ───────────────────────────────────────
+    match /usuarios/{userId} {
+      allow read: if isStaff();
+      allow write: if isAdmin();
+    }
+
+    // ── Configuración del colegio ─────────────────────────────────────────────
+    match /config/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    // ── Horarios ──────────────────────────────────────────────────────────────
+    match /horarios/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    // ── Incidentes ────────────────────────────────────────────────────────────
+    match /incidentes/{docId} {
+      allow read: if isStaff();
+      allow create: if isStaff();
+      allow update, delete: if isAdmin();
+    }
+
+    // ── Bloquear todo lo demás ────────────────────────────────────────────────
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

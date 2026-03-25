@@ -9044,9 +9044,7 @@ async function resetPassApoderado(dni) {
     } catch(e) {
       if(e.code === 'auth/email-already-in-use') {
         // Usar REST API para cambiar contraseña
-        const apoDoc = await db.collection('apoderados').doc(dni).get();
-        const passBackup = apoDoc.exists ? apoDoc.data().passBackup : null;
-        const intentos = [passBackup, dni].filter(Boolean);
+        const intentos = [dni];
         for(const pass of intentos) {
           try {
             const loginRes = await fetch(
@@ -9071,7 +9069,8 @@ async function resetPassApoderado(dni) {
     await tmpApp.delete();
     await db.collection('apoderados').doc(dni).set({
       primerIngreso: true, alumnoId: dni,
-      reseteadoEn: firebase.firestore.FieldValue.serverTimestamp()
+      reseteadoEn: firebase.firestore.FieldValue.serverTimestamp(),
+      passBackup: firebase.firestore.FieldValue.delete()
     }, { merge: true });
     if(exito) {
       toast(`✅ Reseteado. El apoderado ingresa con DNI: ${dni}`, 'success');
