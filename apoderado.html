@@ -731,7 +731,10 @@ function continuarCargaApoderado(user, dni) {
     alumno = Object.assign({ id: dni }, snap.data());
     console.log('[APO] Alumno OK — cargando apoderado...');
     llenarDatos();
-    return db.collection('apoderados').doc(dni).get();
+    return db.collection('apoderados').doc(dni).get().catch(function() {
+      // Si no se puede leer el doc de apoderado (permisos o no existe), continuar igual
+      return { exists: false, data: function(){ return {}; } };
+    });
   }).then(function(apoSnap) {
     if(!apoSnap) return;
     apoData = apoSnap.exists ? apoSnap.data() : {};
