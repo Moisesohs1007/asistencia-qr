@@ -27,11 +27,12 @@ service cloud.firestore {
     }
 
     // ── Registros de asistencia ───────────────────────────────────────────────
-    // Personal lee/escribe; apoderado solo lee los registros de su propio alumno
+    // Personal lee/escribe; apoderado solo puede listar (la app filtra por alumnoId)
     match /registros/{docId} {
-      allow read: if isStaff() ||
-        (isAuthenticated() && resource.data.alumnoId != null &&
-         request.auth.email == resource.data.alumnoId + '@apo.marello.pe');
+      allow get:  if isStaff() ||
+        (isAuthenticated() && resource.data.alumnoId + '@apo.marello.pe' == request.auth.email);
+      allow list: if isStaff() ||
+        (isAuthenticated() && request.auth.email.matches('.*@apo\\.marello\\.pe'));
       allow create: if isStaff()
         && request.resource.data.keys().hasAll(['alumnoId','tipo','fecha','hora'])
         && request.resource.data.tipo in ['INGRESO', 'SALIDA']
@@ -77,9 +78,10 @@ service cloud.firestore {
 
     // ── Incidentes ────────────────────────────────────────────────────────────
     match /incidentes/{docId} {
-      allow read: if isStaff() ||
-        (isAuthenticated() && resource.data.alumnoId != null &&
-         request.auth.email == resource.data.alumnoId + '@apo.marello.pe');
+      allow get:  if isStaff() ||
+        (isAuthenticated() && resource.data.alumnoId + '@apo.marello.pe' == request.auth.email);
+      allow list: if isStaff() ||
+        (isAuthenticated() && request.auth.email.matches('.*@apo\\.marello\\.pe'));
       allow create: if isStaff();
       allow update, delete: if isAdmin();
     }
