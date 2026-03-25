@@ -3382,6 +3382,8 @@ window.doLoginApoderado = async function() {
           // Hacer login con app principal (flag bloquea redirección automática)
           _creandoCuentaApoderado = true;
           await auth.signInWithEmailAndPassword(emailVirtual, dni);
+          // Forzar refresco del token para que Firestore lo reconozca antes de consultar
+          await auth.currentUser.getIdToken(true);
           // Ahora autenticado: verificar que el alumno existe
           const alumnoSnap = await db.collection('alumnos').doc(dni).get();
           if(!alumnoSnap.exists) {
