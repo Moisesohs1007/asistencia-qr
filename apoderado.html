@@ -1396,6 +1396,17 @@ async function sendWhatsAppApo(telefono, mensaje) {
     if(!token || !instancia) return;
     var num = '51' + telefono.replace(/\D/g,'');
     if(num.length < 11) return;
+    // Enviar insignia del colegio + mensaje como caption
+    var logoUrl = 'https://moisesohs1007.github.io/asistencia-qr/img/logo-colegio.png';
+    var resImg = await fetch('https://apiwsp.factiliza.com/v1/message/sendimage/' + instancia, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+      body: JSON.stringify({ number: num, url: logoUrl, caption: mensaje })
+    });
+    var dataImg = await resImg.json();
+    var okImg = dataImg.success === true || dataImg.success === 'true' || dataImg.status === 'success' || resImg.ok;
+    if(okImg) return;
+    // Si la imagen falla, enviar solo texto como respaldo
     await fetch('https://apiwsp.factiliza.com/v1/message/sendtext/' + instancia, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },

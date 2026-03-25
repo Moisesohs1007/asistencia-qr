@@ -6411,7 +6411,23 @@ async function sendWhatsApp(telefono, mensaje) {
     return false;
   }
   try {
-    console.log('📱 Enviando a:', `https://apiwsp.factiliza.com/v1/message/sendtext/${instancia}`);
+    // Enviar insignia del colegio + mensaje como caption
+    const logoUrl = 'https://moisesohs1007.github.io/asistencia-qr/img/logo-colegio.png';
+    console.log('📱 Enviando imagen+caption a:', `https://apiwsp.factiliza.com/v1/message/sendimage/${instancia}`);
+    const resImg = await fetch(`https://apiwsp.factiliza.com/v1/message/sendimage/${instancia}`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ number: num, url: logoUrl, caption: mensaje })
+    });
+    const dataImg = await resImg.json();
+    console.log('📱 Respuesta imagen Factiliza:', JSON.stringify(dataImg));
+    const okImg = dataImg.success === true || dataImg.success === 'true' || dataImg.status === 'success' || resImg.ok;
+    if(okImg) return true;
+    // Si el envío de imagen falla, enviar solo texto como respaldo
+    console.warn('📱 Imagen falló, enviando solo texto...');
     const res = await fetch(`https://apiwsp.factiliza.com/v1/message/sendtext/${instancia}`, {
       method: 'POST',
       headers: {
@@ -6421,9 +6437,8 @@ async function sendWhatsApp(telefono, mensaje) {
       body: JSON.stringify({ number: num, text: mensaje })
     });
     const data = await res.json();
-    console.log('📱 Respuesta Factiliza:', JSON.stringify(data));
-    const ok = data.success === true || data.success === 'true' || data.status === 'success' || res.ok;
-    return ok;
+    console.log('📱 Respuesta Factiliza texto:', JSON.stringify(data));
+    return data.success === true || data.success === 'true' || data.status === 'success' || res.ok;
   } catch(e) {
     console.error('❌ Error WhatsApp fetch:', e);
     toast('❌ Error conexión WhatsApp: ' + e.message, 'error');
