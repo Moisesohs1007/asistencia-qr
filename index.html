@@ -3356,38 +3356,50 @@ window.doLoginApoderado = async function() {
       // onAuthStateChanged redirige a apoderado.html
       return;
     } catch(loginErr) {
-      // Si la cuenta no existe — crearla con el DNI como contraseña inicial
-      if(loginErr.code === 'auth/user-not-found') {
-        // Solo permitir crear si la contraseña ingresada ES el DNI (primer acceso)
-        if(pass !== dni) {
-          throw { code: 'auth/wrong-password', message: 'Contraseña incorrecta' };
+      // Firebase 10+ devuelve 'auth/invalid-credential' tanto para contraseña incorrecta
+      // como para usuario inexistente. Si la contraseña es el DNI intentamos crear la cuenta.
+      const puedeSerNuevo = loginErr.code === 'auth/user-not-found' ||
+                            loginErr.code === 'auth/invalid-credential';
+      if(puedeSerNuevo && pass === dni) {
+        // Intentar crear la cuenta — si ya existe lanzará auth/email-already-in-use
+        // (significa que la contraseña es incorrecta)
+        let cuentaCreada = false;
+        try {
+          const tmpApp  = firebase.initializeApp(firebaseConfig, 'new_apo_' + Date.now());
+          const tmpAuth = tmpApp.auth();
+          await tmpAuth.createUserWithEmailAndPassword(emailVirtual, dni);
+          await tmpAuth.signOut();
+          await tmpApp.delete();
+          cuentaCreada = true;
+        } catch(createErr) {
+          if(createErr.code === 'auth/email-already-in-use') {
+            // Cuenta existe pero contraseña incorrecta
+            throw { code: 'auth/wrong-password' };
+          }
+          throw createErr;
         }
-        // Crear cuenta nueva
-        const tmpApp  = firebase.initializeApp(firebaseConfig, 'new_apo_' + Date.now());
-        const tmpAuth = tmpApp.auth();
-        await tmpAuth.createUserWithEmailAndPassword(emailVirtual, dni);
-        await tmpAuth.signOut();
-        await tmpApp.delete();
-        // Hacer login con app principal (flag bloquea redirección automática)
-        _creandoCuentaApoderado = true;
-        await auth.signInWithEmailAndPassword(emailVirtual, dni);
-        // Ahora autenticado: verificar que el alumno existe
-        const alumnoSnap = await db.collection('alumnos').doc(dni).get();
-        if(!alumnoSnap.exists) {
-          await auth.currentUser.delete();
-          await auth.signOut();
+        if(cuentaCreada) {
+          // Hacer login con app principal (flag bloquea redirección automática)
+          _creandoCuentaApoderado = true;
+          await auth.signInWithEmailAndPassword(emailVirtual, dni);
+          // Ahora autenticado: verificar que el alumno existe
+          const alumnoSnap = await db.collection('alumnos').doc(dni).get();
+          if(!alumnoSnap.exists) {
+            await auth.currentUser.delete();
+            await auth.signOut();
+            _creandoCuentaApoderado = false;
+            throw { code: 'alumno-no-encontrado', message: 'No se encontró ningún alumno con ese DNI' };
+          }
+          // Marcar como primer ingreso
+          await db.collection('apoderados').doc(dni).set({
+            alumnoId: dni, email: emailVirtual, primerIngreso: true,
+            creadoEn: firebase.firestore.FieldValue.serverTimestamp()
+          }, { merge: true });
+          _loginIntentos = 0;
           _creandoCuentaApoderado = false;
-          throw { code: 'alumno-no-encontrado', message: 'No se encontró ningún alumno con ese DNI' };
+          window.location.href = 'apoderado.html';
+          return;
         }
-        // Marcar como primer ingreso
-        await db.collection('apoderados').doc(dni).set({
-          alumnoId: dni, email: emailVirtual, primerIngreso: true,
-          creadoEn: firebase.firestore.FieldValue.serverTimestamp()
-        }, { merge: true });
-        _loginIntentos = 0;
-        _creandoCuentaApoderado = false;
-        window.location.href = 'apoderado.html';
-        return;
       }
       throw loginErr;
     }
