@@ -56,6 +56,12 @@ service cloud.firestore {
     match /alumnos/{alumnoId} {
       allow read: if isAuthenticated();
       allow write: if isStaff();
+      // El apoderado puede actualizar solo los campos de contacto de su alumno
+      allow update: if isApoderado(alumnoId) &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'telefono','telefono2','apoderadoNombres','apoderadoApellidos',
+          'apoderado2Nombres','apoderado2Apellidos','correoApoderado'
+        ]);
     }
 
     // ── Usuarios (personal del colegio) ───────────────────────────────────────

@@ -588,49 +588,52 @@
   <div class="modal-box" style="max-height:90vh;overflow-y:auto;">
     <div style="text-align:center;margin-bottom:18px;">
       <div style="font-size:2.2rem;margin-bottom:8px;">👋</div>
-      <div style="font-size:1rem;font-weight:800;" id="modal-pass-titulo">Bienvenido</div>
-      <div style="font-size:0.8rem;color:var(--muted);margin-top:6px;" id="modal-pass-subtitulo">Completa tus datos para activar tu cuenta</div>
+      <div style="font-size:1rem;font-weight:800;">Bienvenido</div>
+      <div style="font-size:0.8rem;color:var(--muted);margin-top:6px;">Completa tus datos de contacto</div>
     </div>
     <div id="err-cambiar-pass" style="display:none;background:rgba(248,113,113,0.12);border:1px solid rgba(248,113,113,0.3);color:var(--danger);border-radius:10px;padding:10px 14px;margin-bottom:12px;font-size:0.82rem;"></div>
-    <!-- Datos del apoderado (solo en primer ingreso) -->
-    <div id="grupo-datos-apo">
-      <div class="form-group">
-        <label>Tus nombres</label>
-        <input type="text" id="inp-apo-nombres" placeholder="Ej: María Rosa">
-      </div>
-      <div class="form-group">
-        <label>Tus apellidos</label>
-        <input type="text" id="inp-apo-apellidos" placeholder="Ej: García López">
-      </div>
-      <div class="form-group">
-        <label>Celular / WhatsApp <span style="color:var(--danger);">*</span></label>
-        <input type="tel" id="inp-telefono" placeholder="Ej: 987654321" inputmode="numeric" maxlength="9">
-        <div style="font-size:0.73rem;color:var(--muted);margin-top:4px;">Para recuperar tu contraseña si la olvidas</div>
-      </div>
-      <div class="form-group">
-        <label>Correo electrónico <span style="color:var(--muted);font-weight:400;">(opcional)</span></label>
-        <input type="email" id="inp-apo-correo" placeholder="tu@correo.com">
-        <div style="font-size:0.73rem;color:var(--muted);margin-top:4px;">Para comunicaciones del colegio</div>
-      </div>
-      <hr style="border:none;border-top:1px solid var(--border);margin:16px 0;">
+
+    <div style="font-size:0.75rem;font-weight:700;color:var(--accent);margin-bottom:10px;text-transform:uppercase;letter-spacing:0.5px;">Apoderado 1</div>
+    <div class="form-group">
+      <label>Nombres <span style="color:var(--danger);">*</span></label>
+      <input type="text" id="inp-apo-nombres" placeholder="Ej: María Rosa">
     </div>
     <div class="form-group">
-      <label>Nueva contraseña <span style="color:var(--danger);">*</span></label>
-      <div style="position:relative;">
-        <input type="password" id="inp-pass1" placeholder="Mínimo 6 caracteres" style="padding-right:44px;width:100%;box-sizing:border-box;">
-        <button type="button" onclick="togglePassFieldApo('inp-pass1',this)" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--muted);font-size:1.1rem;padding:4px;">👁</button>
-      </div>
+      <label>Apellidos <span style="color:var(--danger);">*</span></label>
+      <input type="text" id="inp-apo-apellidos" placeholder="Ej: García López">
+    </div>
+    <div class="form-group">
+      <label>Celular / WhatsApp <span style="color:var(--danger);">*</span></label>
+      <input type="tel" id="inp-telefono" placeholder="Ej: 987654321" inputmode="numeric" maxlength="9">
+    </div>
+    <div class="form-group">
+      <label>Correo electrónico <span style="color:var(--muted);font-weight:400;">(opcional)</span></label>
+      <input type="email" id="inp-apo-correo" placeholder="tu@correo.com">
+    </div>
+
+    <hr style="border:none;border-top:1px solid var(--border);margin:16px 0;">
+
+    <div style="font-size:0.75rem;font-weight:700;color:var(--muted);margin-bottom:10px;text-transform:uppercase;letter-spacing:0.5px;">Apoderado 2 <span style="font-weight:400;">(opcional)</span></div>
+    <div class="form-group">
+      <label>Nombres</label>
+      <input type="text" id="inp-apo2-nombres" placeholder="Ej: Juan Carlos">
+    </div>
+    <div class="form-group">
+      <label>Apellidos</label>
+      <input type="text" id="inp-apo2-apellidos" placeholder="Ej: Pérez Díaz">
+    </div>
+    <div class="form-group">
+      <label>Celular / WhatsApp</label>
+      <input type="tel" id="inp-apo2-telefono" placeholder="Ej: 987654321" inputmode="numeric" maxlength="9">
     </div>
     <div class="form-group" style="margin-bottom:20px;">
-      <label>Confirmar contraseña <span style="color:var(--danger);">*</span></label>
-      <div style="position:relative;">
-        <input type="password" id="inp-pass2" placeholder="Repite la contraseña" style="padding-right:44px;width:100%;box-sizing:border-box;">
-        <button type="button" onclick="togglePassFieldApo('inp-pass2',this)" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--muted);font-size:1.1rem;padding:4px;">👁</button>
-      </div>
+      <label>Correo electrónico <span style="color:var(--muted);font-weight:400;">(opcional)</span></label>
+      <input type="email" id="inp-apo2-correo" placeholder="tu@correo.com">
     </div>
-    <button class="btn-login-apo" id="btn-guardar-pass">🔐 Guardar y continuar</button>
-    <button id="btn-cancelar-pass" style="width:100%;margin-top:10px;padding:10px;background:none;border:none;color:var(--muted);cursor:pointer;font-size:0.85rem;display:none;" onclick="cancelarPrimerIngreso()">
-      Ahora no — continuar con contraseña temporal (DNI)
+
+    <button class="btn-login-apo" id="btn-guardar-pass">Guardar y continuar</button>
+    <button id="btn-cancelar-pass" style="width:100%;margin-top:10px;padding:10px;background:none;border:none;color:var(--muted);cursor:pointer;font-size:0.85rem;" onclick="cancelarPrimerIngreso()">
+      Completar después
     </button>
   </div>
 </div>
@@ -754,19 +757,17 @@ function continuarCargaApoderado(user, dni) {
     console.log('[APO] primerIngreso=', esPrimerIngreso + ' | existe=' + apoSnap.exists);
 
     if(esPrimerIngreso) {
-      // Mostrar formulario de primer ingreso
+      // Mostrar formulario de datos de contacto
       document.getElementById('apo-app').style.display = 'block';
-      var datosApo = apoData;
-      document.getElementById('inp-apo-nombres').value   = datosApo.nombres   || alumno.apoderadoNombres   || '';
-      document.getElementById('inp-apo-apellidos').value = datosApo.apellidos  || alumno.apoderadoApellidos || '';
-      document.getElementById('inp-telefono').value      = datosApo.telefono   || alumno.telefono           || '';
-      document.getElementById('inp-apo-correo').value    = datosApo.emailReal  || '';
-      var tieneDatos = datosApo.nombres && datosApo.apellidos && datosApo.telefono;
-      document.getElementById('grupo-datos-apo').style.display = tieneDatos ? 'none' : 'block';
-      document.getElementById('modal-pass-titulo').textContent   = tieneDatos ? 'Cambia tu contraseña' : 'Bienvenido';
-      document.getElementById('modal-pass-subtitulo').textContent = tieneDatos ? 'Por seguridad crea una nueva contraseña' : 'Completa tus datos para activar tu cuenta';
+      document.getElementById('inp-apo-nombres').value    = apoData.nombres    || alumno.apoderadoNombres    || '';
+      document.getElementById('inp-apo-apellidos').value  = apoData.apellidos  || alumno.apoderadoApellidos  || '';
+      document.getElementById('inp-telefono').value       = apoData.telefono   || alumno.telefono            || '';
+      document.getElementById('inp-apo-correo').value     = apoData.emailReal  || '';
+      document.getElementById('inp-apo2-nombres').value   = apoData.nombres2   || alumno.apoderado2Nombres   || '';
+      document.getElementById('inp-apo2-apellidos').value = apoData.apellidos2 || alumno.apoderado2Apellidos || '';
+      document.getElementById('inp-apo2-telefono').value  = apoData.telefono2  || alumno.telefono2           || '';
+      document.getElementById('inp-apo2-correo').value    = apoData.emailReal2 || '';
       document.getElementById('modal-cambiar-pass').style.display = 'flex';
-      document.getElementById('btn-cancelar-pass').style.display = tieneDatos ? 'none' : 'block';
     } else {
       var lastTab = null;
       try { lastTab = sessionStorage.getItem('asmqr_apo_lastTab'); } catch(e) {}
@@ -1419,81 +1420,61 @@ async function sendWhatsAppApo(telefono, mensaje) {
 }
 
 function guardarNuevaPass() {
-  var pass1    = document.getElementById('inp-pass1').value;
-  var pass2    = document.getElementById('inp-pass2').value;
-  var telefono = document.getElementById('inp-telefono').value.trim();
-  var errEl    = document.getElementById('err-cambiar-pass');
-  var hayGrupoDatos = document.getElementById('grupo-datos-apo').style.display !== 'none';
+  var nombres   = document.getElementById('inp-apo-nombres').value.trim();
+  var apellidos = document.getElementById('inp-apo-apellidos').value.trim();
+  var telefono  = document.getElementById('inp-telefono').value.trim();
+  var correo    = document.getElementById('inp-apo-correo').value.trim();
+  var nombres2   = document.getElementById('inp-apo2-nombres').value.trim();
+  var apellidos2 = document.getElementById('inp-apo2-apellidos').value.trim();
+  var telefono2  = document.getElementById('inp-apo2-telefono').value.trim();
+  var correo2    = document.getElementById('inp-apo2-correo').value.trim();
+  var errEl = document.getElementById('err-cambiar-pass');
   errEl.style.display = 'none';
 
-  // Validaciones
-  if(pass1.length < 6) { errEl.textContent='La contraseña debe tener al menos 6 caracteres'; errEl.style.display='block'; return; }
-  if(pass1 !== pass2)  { errEl.textContent='Las contraseñas no coinciden'; errEl.style.display='block'; return; }
+  if(!nombres)   { errEl.textContent='Ingresa tus nombres'; errEl.style.display='block'; return; }
+  if(!apellidos) { errEl.textContent='Ingresa tus apellidos'; errEl.style.display='block'; return; }
   if(!telefono || !/^\d{9}$/.test(telefono)) { errEl.textContent='Ingresa un celular de 9 dígitos'; errEl.style.display='block'; return; }
-
-  var nombres   = '';
-  var apellidos = '';
-  var correo    = '';
-  if(hayGrupoDatos) {
-    nombres   = document.getElementById('inp-apo-nombres').value.trim();
-    apellidos = document.getElementById('inp-apo-apellidos').value.trim();
-    correo    = document.getElementById('inp-apo-correo').value.trim();
-    if(!nombres)   { errEl.textContent='Ingresa tus nombres'; errEl.style.display='block'; return; }
-    if(!apellidos) { errEl.textContent='Ingresa tus apellidos'; errEl.style.display='block'; return; }
-    if(correo && !/^[^@]+@[^@]+\.[^@]+$/.test(correo)) { errEl.textContent='El correo no es válido'; errEl.style.display='block'; return; }
-  }
+  if(correo && !/^[^@]+@[^@]+\.[^@]+$/.test(correo)) { errEl.textContent='El correo no es válido'; errEl.style.display='block'; return; }
+  if(telefono2 && !/^\d{9}$/.test(telefono2)) { errEl.textContent='El celular del apoderado 2 debe tener 9 dígitos'; errEl.style.display='block'; return; }
 
   var btn = document.getElementById('btn-guardar-pass');
   btn.disabled = true;
   btn.textContent = 'Guardando...';
 
-  auth.currentUser.updatePassword(pass1).then(function() {
-    // Actualizar datos del alumno con teléfono
-    var updateAlumno = {
-      telefono:           telefono,
-      apoderadoNombres:   nombres   || alumno.apoderadoNombres   || '',
-      apoderadoApellidos: apellidos || alumno.apoderadoApellidos || ''
-    };
-    if(correo) updateAlumno.correoApoderado = correo;
-    return db.collection('alumnos').doc(alumno.id).update(updateAlumno);
-  }).then(function() {
-    // Guardar documento apoderado completo
+  var updateAlumno = {
+    telefono:            telefono,
+    apoderadoNombres:    nombres,
+    apoderadoApellidos:  apellidos,
+    apoderado2Nombres:   nombres2,
+    apoderado2Apellidos: apellidos2,
+    telefono2:           telefono2
+  };
+  if(correo) updateAlumno.correoApoderado = correo;
+
+  db.collection('alumnos').doc(alumno.id).update(updateAlumno).then(function() {
     var dataApo = {
-      alumnoId:     alumno.id,
-      telefono:     telefono,
+      alumnoId:      alumno.id,
+      nombres:       nombres,
+      apellidos:     apellidos,
+      telefono:      telefono,
       primerIngreso: false,
-      passReseteada: false,
       actualizadoEn: firebase.firestore.FieldValue.serverTimestamp()
     };
-    if(nombres)   dataApo.nombres   = nombres;
-    if(apellidos) dataApo.apellidos = apellidos;
-    if(correo)    dataApo.emailReal = correo;
+    if(correo)     dataApo.emailReal  = correo;
+    if(nombres2)   dataApo.nombres2   = nombres2;
+    if(apellidos2) dataApo.apellidos2 = apellidos2;
+    if(telefono2)  dataApo.telefono2  = telefono2;
+    if(correo2)    dataApo.emailReal2 = correo2;
     return db.collection('apoderados').doc(alumno.id).set(dataApo, { merge: true });
   }).then(function() {
-    // Si tiene correo real, actualizar también en Firebase Auth (display name)
-    var user = auth.currentUser;
-    var promises = [];
-    if(nombres || apellidos) {
-      promises.push(user.updateProfile({ displayName: (nombres + ' ' + apellidos).trim() }));
-    }
-    return Promise.all(promises);
+    return auth.currentUser.updateProfile({ displayName: (nombres + ' ' + apellidos).trim() });
   }).then(function() {
     document.getElementById('modal-cambiar-pass').style.display = 'none';
     alumno.telefono           = telefono;
-    alumno.apoderadoNombres   = nombres   || alumno.apoderadoNombres;
-    alumno.apoderadoApellidos = apellidos || alumno.apoderadoApellidos;
+    alumno.apoderadoNombres   = nombres;
+    alumno.apoderadoApellidos = apellidos;
     btn.disabled = false;
     btn.textContent = 'Guardar y continuar';
-    // Enviar nueva contraseña por WhatsApp
-    var nombreApo = (nombres || alumno.apoderadoNombres || 'Apoderado').split(' ')[0];
-    var msgPass = '🔐 *Contraseña registrada — Portal Apoderado*\n\n'
-      + 'Hola *' + nombreApo + '*,\n\n'
-      + 'Tu contraseña ha sido guardada exitosamente.\n\n'
-      + '📱 *Usuario:* ' + alumno.id + ' (DNI del alumno)\n'
-      + '🔑 *Contraseña:* ' + pass1 + '\n\n'
-      + '⚠️ Guarda este mensaje, lo necesitarás para ingresar al portal.\n\n'
-      + '🌐 Acceso: ' + window.location.href.replace('apoderado.html','') + 'apoderado.html';
-    sendWhatsAppApo(telefono, msgPass);
     return cargarRegistros();
   }).then(function() {
     renderResumen();
