@@ -1,4 +1,4 @@
-const CACHE_NAME = 'asistencia-marello-v2';
+const CACHE_NAME = 'asistencia-marello-v3';
 const ASSETS = [
   '/asistencia-qr/consulta.html',
   '/asistencia-qr/apoderado.html',
