@@ -27,9 +27,11 @@ service cloud.firestore {
     }
 
     // ── Registros de asistencia ───────────────────────────────────────────────
-    // Solo el personal autenticado puede escribir; apoderados solo leen los suyos
+    // Personal lee/escribe; apoderado solo lee los registros de su propio alumno
     match /registros/{docId} {
-      allow read: if isStaff();
+      allow read: if isStaff() ||
+        (isAuthenticated() && resource.data.alumnoId != null &&
+         request.auth.email == resource.data.alumnoId + '@apo.marello.pe');
       allow create: if isStaff()
         && request.resource.data.keys().hasAll(['alumnoId','tipo','fecha','hora'])
         && request.resource.data.tipo in ['INGRESO', 'SALIDA']
@@ -75,7 +77,9 @@ service cloud.firestore {
 
     // ── Incidentes ────────────────────────────────────────────────────────────
     match /incidentes/{docId} {
-      allow read: if isStaff();
+      allow read: if isStaff() ||
+        (isAuthenticated() && resource.data.alumnoId != null &&
+         request.auth.email == resource.data.alumnoId + '@apo.marello.pe');
       allow create: if isStaff();
       allow update, delete: if isAdmin();
     }
