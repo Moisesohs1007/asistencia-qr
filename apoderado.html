@@ -1440,32 +1440,21 @@ function guardarNuevaPass() {
   btn.disabled = true;
   btn.textContent = 'Guardando...';
 
-  var updateAlumno = {
-    telefono:            telefono,
-    apoderadoNombres:    nombres,
-    apoderadoApellidos:  apellidos,
-    apoderado2Nombres:   nombres2,
-    apoderado2Apellidos: apellidos2,
-    telefono2:           telefono2
+  var dataApo = {
+    alumnoId:      alumno.id,
+    nombres:       nombres,
+    apellidos:     apellidos,
+    telefono:      telefono,
+    primerIngreso: false,
+    actualizadoEn: firebase.firestore.FieldValue.serverTimestamp()
   };
-  if(correo) updateAlumno.correoApoderado = correo;
+  if(correo)     dataApo.emailReal  = correo;
+  if(nombres2)   dataApo.nombres2   = nombres2;
+  if(apellidos2) dataApo.apellidos2 = apellidos2;
+  if(telefono2)  dataApo.telefono2  = telefono2;
+  if(correo2)    dataApo.emailReal2 = correo2;
 
-  db.collection('alumnos').doc(alumno.id).update(updateAlumno).then(function() {
-    var dataApo = {
-      alumnoId:      alumno.id,
-      nombres:       nombres,
-      apellidos:     apellidos,
-      telefono:      telefono,
-      primerIngreso: false,
-      actualizadoEn: firebase.firestore.FieldValue.serverTimestamp()
-    };
-    if(correo)     dataApo.emailReal  = correo;
-    if(nombres2)   dataApo.nombres2   = nombres2;
-    if(apellidos2) dataApo.apellidos2 = apellidos2;
-    if(telefono2)  dataApo.telefono2  = telefono2;
-    if(correo2)    dataApo.emailReal2 = correo2;
-    return db.collection('apoderados').doc(alumno.id).set(dataApo, { merge: true });
-  }).then(function() {
+  db.collection('apoderados').doc(alumno.id).set(dataApo, { merge: true }).then(function() {
     return auth.currentUser.updateProfile({ displayName: (nombres + ' ' + apellidos).trim() });
   }).then(function() {
     document.getElementById('modal-cambiar-pass').style.display = 'none';
