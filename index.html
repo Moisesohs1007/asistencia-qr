@@ -3247,7 +3247,6 @@ let _loginIntentos = 0;
 let _blockTimer = null;
 let _apoderadoUID = null; // UID Firebase del apoderado logueado
 let _apoderadoAlumno = null; // datos del alumno del apoderado
-let _creandoCuentaApoderado = false; // evita redirección prematura al crear cuenta
 
 // Cargar nombre/logo del colegio en login
 function cargarInfoColegioLogin() {
@@ -3379,27 +3378,10 @@ window.doLoginApoderado = async function() {
           throw createErr;
         }
         if(cuentaCreada) {
-          // Hacer login con app principal (flag bloquea redirección automática)
-          _creandoCuentaApoderado = true;
+          // Hacer login — onAuthStateChanged redirige a apoderado.html
+          // apoderado.html ya verifica que el alumno exista y maneja el primer ingreso
           await auth.signInWithEmailAndPassword(emailVirtual, dni);
-          // Forzar refresco del token para que Firestore lo reconozca antes de consultar
-          await auth.currentUser.getIdToken(true);
-          // Ahora autenticado: verificar que el alumno existe
-          const alumnoSnap = await db.collection('alumnos').doc(dni).get();
-          if(!alumnoSnap.exists) {
-            await auth.currentUser.delete();
-            await auth.signOut();
-            _creandoCuentaApoderado = false;
-            throw { code: 'alumno-no-encontrado', message: 'No se encontró ningún alumno con ese DNI' };
-          }
-          // Marcar como primer ingreso
-          await db.collection('apoderados').doc(dni).set({
-            alumnoId: dni, email: emailVirtual, primerIngreso: true,
-            creadoEn: firebase.firestore.FieldValue.serverTimestamp()
-          }, { merge: true });
           _loginIntentos = 0;
-          _creandoCuentaApoderado = false;
-          window.location.href = 'apoderado.html';
           return;
         }
       }
@@ -3598,7 +3580,6 @@ auth.onAuthStateChanged(async user => {
   if(user) {
     // Detectar si es apoderado (email virtual) o personal
     if(user.email && user.email.includes('@apo.marello.pe')) {
-      if(_creandoCuentaApoderado) return; // cuenta en proceso de creación, esperar
       // ── ES APODERADO — redirigir a apoderado.html ──
       window.location.href = 'apoderado.html';
       return;
