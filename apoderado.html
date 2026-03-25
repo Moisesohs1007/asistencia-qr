@@ -1477,11 +1477,21 @@ function guardarNuevaPass() {
     var nombreApo = nombres.split(' ')[0];
     var msgApo = '✅ *Datos registrados — Portal Apoderado*\n\n'
       + 'Hola *' + nombreApo + '*,\n\n'
-      + 'Tus datos de contacto han sido guardados exitosamente.\n\n'
-      + '📱 *Usuario:* ' + alumno.id + ' (DNI del alumno)\n'
+      + 'Los siguientes datos de contacto han sido registrados:\n\n'
+      + '👤 *Apoderado 1*\n'
+      + '• Nombre: ' + apellidos + ' ' + nombres + '\n'
+      + '• Celular: ' + telefono + '\n'
+      + (correo ? '• Correo: ' + correo + '\n' : '')
+      + (nombres2 ? '\n👤 *Apoderado 2*\n'
+          + '• Nombre: ' + apellidos2 + ' ' + nombres2 + '\n'
+          + (telefono2 ? '• Celular: ' + telefono2 + '\n' : '')
+          + (correo2 ? '• Correo: ' + correo2 + '\n' : '')
+        : '')
+      + '\n📱 *Usuario:* ' + alumno.id + ' (DNI del alumno)\n'
       + '🔑 *Contraseña:* DNI del alumno (' + alumno.id + ')\n\n'
       + '🌐 Acceso: ' + window.location.href;
     sendWhatsAppApo(telefono, msgApo);
+    if(telefono2) sendWhatsAppApo(telefono2, msgApo);
     return cargarRegistros();
   }).then(function() {
     renderResumen();
