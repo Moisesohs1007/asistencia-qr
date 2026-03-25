@@ -1432,8 +1432,9 @@ function guardarNuevaPass() {
   if(!nombres)   { errEl.textContent='Ingresa tus nombres'; errEl.style.display='block'; return; }
   if(!apellidos) { errEl.textContent='Ingresa tus apellidos'; errEl.style.display='block'; return; }
   if(!telefono || !/^\d{9}$/.test(telefono)) { errEl.textContent='Ingresa un celular de 9 dígitos'; errEl.style.display='block'; return; }
-  if(correo && !/^[^@]+@[^@]+\.[^@]+$/.test(correo)) { errEl.textContent='El correo no es válido'; errEl.style.display='block'; return; }
+  if(correo && !/^[^@]+@[^@]+\.[^@]+$/.test(correo)) { errEl.textContent='El correo del apoderado 1 no es válido'; errEl.style.display='block'; return; }
   if(telefono2 && !/^\d{9}$/.test(telefono2)) { errEl.textContent='El celular del apoderado 2 debe tener 9 dígitos'; errEl.style.display='block'; return; }
+  if(correo2 && !/^[^@]+@[^@]+\.[^@]+$/.test(correo2)) { errEl.textContent='El correo del apoderado 2 no es válido'; errEl.style.display='block'; return; }
 
   var btn = document.getElementById('btn-guardar-pass');
   btn.disabled = true;
