@@ -1583,10 +1583,14 @@ function guardarNuevaPass() {
     if(telefono2) enviarWA(telefono2, msgApo);
     return cargarRegistros();
   }).then(function() {
+    showTab('resumen');
+    apoMsbInit();
     renderResumen();
-    // Actualizar iniciales DESPUÉS de renderResumen para evitar sobreescritura
-    setTimeout(function() {
-      var _n = (apellidos + ' ' + nombres).trim();
+    // Actualizar iniciales con múltiples intentos para garantizar que se apliquen
+    var _apdNombre = nombres;
+    var _apdApellido = apellidos;
+    function _actualizarIniciales() {
+      var _n = (_apdApellido + ' ' + _apdNombre).trim();
       var _p = _n.split(' ').filter(function(x){ return x.length > 0; });
       var _ini = _p.length >= 2 ? (_p[0][0]+_p[_p.length-1][0]).toUpperCase() : _n.substring(0,2).toUpperCase() || 'AP';
       var _e1 = document.getElementById('apo-avatar-initials');
@@ -1595,7 +1599,10 @@ function guardarNuevaPass() {
       if(_e1) { _e1.textContent = _ini; _e1.style.display = ''; }
       if(_e2) { _e2.textContent = _ini; _e2.style.display = ''; }
       if(_e3) _e3.textContent = _n;
-    }, 300);
+    }
+    _actualizarIniciales();
+    setTimeout(_actualizarIniciales, 500);
+    setTimeout(_actualizarIniciales, 1500);
   }).catch(function(e) {
     btn.disabled = false;
     btn.textContent = 'Guardar y continuar';
