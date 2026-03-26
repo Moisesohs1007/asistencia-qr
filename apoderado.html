@@ -1404,13 +1404,12 @@ function cancelarPrimerIngreso() {
 async function sendWhatsAppApo(telefono, mensaje) {
   try {
     const snap = await db.collection('config').doc('factiliza').get();
-    if(!snap.exists) return;
+    if(!snap.exists) { console.warn('WhatsApp: config factiliza no encontrada'); return false; }
     var token     = snap.data().token;
     var instancia = snap.data().instancia;
-    if(!token || !instancia) return;
+    if(!token || !instancia) { console.warn('WhatsApp: token o instancia vacíos'); return false; }
     var num = '51' + telefono.replace(/\D/g,'');
-    if(num.length < 11) return;
-    // Enviar insignia del colegio + mensaje como caption
+    if(num.length < 11) { console.warn('WhatsApp: número inválido', num); return false; }
     var logoUrl = 'https://moisesohs1007.github.io/asistencia-qr/img/logo-colegio.png';
     var resImg = await fetch('https://apiwsp.factiliza.com/v1/message/sendimage/' + instancia, {
       method: 'POST',
@@ -1418,15 +1417,21 @@ async function sendWhatsAppApo(telefono, mensaje) {
       body: JSON.stringify({ number: num, url: logoUrl, caption: mensaje })
     });
     var dataImg = await resImg.json();
+    console.log('WhatsApp respuesta imagen:', JSON.stringify(dataImg));
     var okImg = dataImg.success === true || dataImg.success === 'true' || dataImg.status === 'success' || resImg.ok;
-    if(okImg) return;
-    // Si la imagen falla, enviar solo texto como respaldo
-    await fetch('https://apiwsp.factiliza.com/v1/message/sendtext/' + instancia, {
+    if(okImg) return true;
+    var resTxt = await fetch('https://apiwsp.factiliza.com/v1/message/sendtext/' + instancia, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
       body: JSON.stringify({ number: num, text: mensaje })
     });
-  } catch(e) { console.warn('WhatsApp apoderado:', e); }
+    var dataTxt = await resTxt.json();
+    console.log('WhatsApp respuesta texto:', JSON.stringify(dataTxt));
+    return dataTxt.success === true || dataTxt.success === 'true' || resTxt.ok;
+  } catch(e) {
+    console.warn('WhatsApp error:', e.message);
+    return false;
+  }
 }
 
 function guardarNuevaPass() {
@@ -1479,6 +1484,12 @@ function guardarNuevaPass() {
   if(telefono2)  dataApo.telefono2  = telefono2;
   if(correo2)    dataApo.emailReal2 = correo2;
 
+  var _factConfig = null;
+  // Cargar config Factiliza ANTES de cambiar contraseña (el token cambia después)
+  db.collection('config').doc('factiliza').get().catch(function(){ return null; }).then(function(cfgSnap) {
+    if(cfgSnap && cfgSnap.exists) _factConfig = cfgSnap.data();
+  });
+
   auth.currentUser.getIdToken(true).then(function() {
     return auth.currentUser.updatePassword(nuevaPass);
   }).then(function() {
@@ -1496,7 +1507,7 @@ function guardarNuevaPass() {
     llenarDatos();
     btn.disabled = false;
     btn.textContent = 'Guardar y continuar';
-    // Notificar por WhatsApp
+    // Enviar WhatsApp con config pre-cargada
     var nombreApo = nombres.split(' ')[0];
     var portal = window.location.href.replace(/apoderado\.html.*$/, '');
     var msgApo = '✅ *Portal Apoderado — Colegio Marello*\n\n'
@@ -1515,8 +1526,26 @@ function guardarNuevaPass() {
       + '🔑 *Contraseña:* la que acabas de registrar\n\n'
       + '🌐 Acceso: ' + portal + '\n\n'
       + '⚠️ _Este número es exclusivo para mensajes automáticos del colegio. Por favor no llame ni responda._';
-    sendWhatsAppApo(telefono, msgApo);
-    if(telefono2) sendWhatsAppApo(telefono2, msgApo);
+    // Enviar usando config pre-cargada o leer de nuevo si no está disponible
+    function enviarWA(tel, msg) {
+      if(_factConfig && _factConfig.token && _factConfig.instancia) {
+        var num = '51' + tel.replace(/\D/g,'');
+        if(num.length >= 11) {
+          var logoUrl = 'https://moisesohs1007.github.io/asistencia-qr/img/logo-colegio.png';
+          fetch('https://apiwsp.factiliza.com/v1/message/sendimage/' + _factConfig.instancia, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + _factConfig.token },
+            body: JSON.stringify({ number: num, url: logoUrl, caption: msg })
+          }).then(function(r){ return r.json(); }).then(function(d){
+            console.log('WhatsApp enviado a ' + tel + ':', JSON.stringify(d));
+          }).catch(function(e){ console.warn('WhatsApp error:', e.message); });
+        }
+      } else {
+        sendWhatsAppApo(tel, msg);
+      }
+    }
+    enviarWA(telefono, msgApo);
+    if(telefono2) enviarWA(telefono2, msgApo);
     return cargarRegistros();
   }).then(function() {
     renderResumen();
