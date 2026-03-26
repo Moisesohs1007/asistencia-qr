@@ -1484,11 +1484,9 @@ function guardarNuevaPass() {
   if(telefono2)  dataApo.telefono2  = telefono2;
   if(correo2)    dataApo.emailReal2 = correo2;
 
-  var _factConfig = null;
-  // Cargar config Factiliza ANTES de cambiar contraseña (el token cambia después)
-  db.collection('config').doc('factiliza').get().catch(function(){ return null; }).then(function(cfgSnap) {
-    if(cfgSnap && cfgSnap.exists) _factConfig = cfgSnap.data();
-  });
+  // Cargar config Factiliza PRIMERO y esperar antes de continuar (evita race condition)
+  db.collection('config').doc('factiliza').get().catch(function(){ return { exists: false }; }).then(function(cfgSnap) {
+    var _factConfig = (cfgSnap && cfgSnap.exists) ? cfgSnap.data() : null;
 
   auth.currentUser.getIdToken(true).then(function() {
     return auth.currentUser.updatePassword(nuevaPass);
@@ -1505,6 +1503,16 @@ function guardarNuevaPass() {
     apoData.apellidos  = apellidos;
     apoData.telefono   = telefono;
     llenarDatos();
+    // Forzar iniciales del apoderado directamente
+    var _n = (apellidos + ' ' + nombres).trim();
+    var _p = _n.split(' ').filter(function(x){ return x.length > 0; });
+    var _ini = _p.length >= 2 ? (_p[0][0]+_p[_p.length-1][0]).toUpperCase() : _n.substring(0,2).toUpperCase();
+    var _e1 = document.getElementById('apo-avatar-initials');
+    var _e2 = document.getElementById('apo-avatar-initials-menu');
+    var _e3 = document.getElementById('apo-menu-nombre');
+    if(_e1) _e1.textContent = _ini;
+    if(_e2) _e2.textContent = _ini;
+    if(_e3) _e3.textContent = _n;
     btn.disabled = false;
     btn.textContent = 'Guardar y continuar';
     // Enviar WhatsApp con config pre-cargada
@@ -1565,6 +1573,8 @@ function guardarNuevaPass() {
     errEl.textContent = 'Error (' + (e.code||'?') + '): ' + e.message;
     errEl.style.display = 'block';
   });
+
+  }); // fin carga config Factiliza
 }
 // ── AVATAR APODERADO ──
 function toggleApoMenu(e) {
