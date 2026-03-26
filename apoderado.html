@@ -1490,6 +1490,10 @@ function guardarNuevaPass() {
     alumno.telefono           = telefono;
     alumno.apoderadoNombres   = nombres;
     alumno.apoderadoApellidos = apellidos;
+    apoData.nombres    = nombres;
+    apoData.apellidos  = apellidos;
+    apoData.telefono   = telefono;
+    llenarDatos();
     btn.disabled = false;
     btn.textContent = 'Guardar y continuar';
     // Notificar por WhatsApp
