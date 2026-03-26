@@ -1557,9 +1557,13 @@ function guardarNuevaPass() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + _factConfig.token },
           body: JSON.stringify({ number: num, url: logoUrl, caption: msg })
-        }).then(function(r){ return r.json(); }).then(function(d){
-          var ok = d.success === true || d.success === 'true' || d.status === 'success';
-          mostrarResultadoWA(tel, ok, JSON.stringify(d).substring(0,80));
+        }).then(function(r) {
+          var httpOk = r.ok;
+          return r.text().then(function(t) {
+            var jsonOk = false;
+            if(t) { try { var d = JSON.parse(t); jsonOk = d.success===true||d.success==='true'||d.status==='success'; } catch(e){} }
+            mostrarResultadoWA(tel, httpOk || jsonOk, httpOk ? '' : (t||'HTTP '+r.status));
+          });
         }).catch(function(e){ mostrarResultadoWA(tel, false, e.message); });
       } else {
         mostrarResultadoWA(tel, false, 'config Factiliza no disponible');
@@ -1570,6 +1574,18 @@ function guardarNuevaPass() {
     return cargarRegistros();
   }).then(function() {
     renderResumen();
+    // Actualizar iniciales DESPUÉS de renderResumen para evitar sobreescritura
+    setTimeout(function() {
+      var _n = (apellidos + ' ' + nombres).trim();
+      var _p = _n.split(' ').filter(function(x){ return x.length > 0; });
+      var _ini = _p.length >= 2 ? (_p[0][0]+_p[_p.length-1][0]).toUpperCase() : _n.substring(0,2).toUpperCase() || 'AP';
+      var _e1 = document.getElementById('apo-avatar-initials');
+      var _e2 = document.getElementById('apo-avatar-initials-menu');
+      var _e3 = document.getElementById('apo-menu-nombre');
+      if(_e1) { _e1.textContent = _ini; _e1.style.display = ''; }
+      if(_e2) { _e2.textContent = _ini; _e2.style.display = ''; }
+      if(_e3) _e3.textContent = _n;
+    }, 300);
   }).catch(function(e) {
     btn.disabled = false;
     btn.textContent = 'Guardar y continuar';
