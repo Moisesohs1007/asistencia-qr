@@ -1542,10 +1542,10 @@ function guardarNuevaPass() {
         + 'color:#fff;padding:12px 16px;border-radius:10px;font-size:0.82rem;max-width:90vw;text-align:center;cursor:pointer;';
       div.innerHTML = (ok
         ? '✅ WhatsApp enviado a ' + tel
-        : '❌ WhatsApp falló (' + tel + '):<br><span style="word-break:break-all;font-size:0.75rem;">' + detalle + '</span>')
-        + '<br><span style="opacity:0.7;font-size:0.72rem;margin-top:4px;display:block;">Toca para cerrar</span>';
+        : '❌ WhatsApp falló (' + tel + '):<br><span style="word-break:break-all;font-size:0.75rem;">' + detalle + '</span>');
       div.addEventListener('click', function(){ div.remove(); });
       document.body.appendChild(div);
+      setTimeout(function(){ if(div.parentNode) div.remove(); }, 3000);
     }
 
     function enviarWA(tel, msg) {
