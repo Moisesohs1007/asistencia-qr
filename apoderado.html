@@ -1552,17 +1552,27 @@ function guardarNuevaPass() {
       if(_factConfig && _factConfig.token && _factConfig.instancia) {
         var num = '51' + tel.replace(/\D/g,'');
         if(num.length < 11) { mostrarResultadoWA(tel, false, 'número inválido'); return; }
+        var token = _factConfig.token;
+        var inst  = _factConfig.instancia;
         var logoUrl = 'https://moisesohs1007.github.io/asistencia-qr/img/logo-colegio.png';
-        fetch('https://apiwsp.factiliza.com/v1/message/sendimage/' + _factConfig.instancia, {
+        // Intentar imagen primero; si falla (404/error) caer a texto
+        fetch('https://apiwsp.factiliza.com/v1/message/sendimage/' + inst, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + _factConfig.token },
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
           body: JSON.stringify({ number: num, url: logoUrl, caption: msg })
         }).then(function(r) {
-          var httpOk = r.ok;
-          return r.text().then(function(t) {
-            var jsonOk = false;
-            if(t) { try { var d = JSON.parse(t); jsonOk = d.success===true||d.success==='true'||d.status==='success'; } catch(e){} }
-            mostrarResultadoWA(tel, httpOk || jsonOk, httpOk ? '' : (t||'HTTP '+r.status));
+          if(r.ok) { mostrarResultadoWA(tel, true, ''); return; }
+          // Imagen falló — intentar texto
+          return fetch('https://apiwsp.factiliza.com/v1/message/sendtext/' + inst, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+            body: JSON.stringify({ number: num, text: msg })
+          }).then(function(r2) {
+            return r2.text().then(function(t) {
+              var ok2 = r2.ok;
+              if(t) { try { var d=JSON.parse(t); ok2=ok2||d.success===true||d.success==='true'||d.status==='success'; } catch(e){} }
+              mostrarResultadoWA(tel, ok2, ok2 ? '' : (t||'HTTP '+r2.status));
+            });
           });
         }).catch(function(e){ mostrarResultadoWA(tel, false, e.message); });
       } else {
