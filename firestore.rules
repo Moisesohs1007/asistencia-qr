@@ -42,14 +42,11 @@ service cloud.firestore {
     }
 
     // ── Apoderados ────────────────────────────────────────────────────────────
-    // El apoderado puede leer/crear/actualizar su propio documento
     match /apoderados/{alumnoId} {
-      allow read: if isStaff() || isApoderado(alumnoId);
-      allow create: if (isStaff() || isApoderado(alumnoId))
-        && !('passBackup' in request.resource.data);
-      allow update: if (isStaff() || isApoderado(alumnoId))
-        && !('passBackup' in request.resource.data);
-      allow delete: if isAdmin();
+      allow read:           if isStaff() || isApoderado(alumnoId);
+      allow create, update: if isApoderado(alumnoId);
+      allow create, update: if isStaff() && !('passBackup' in request.resource.data);
+      allow delete:         if isAdmin();
     }
 
     // ── Alumnos ───────────────────────────────────────────────────────────────
