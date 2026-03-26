@@ -1526,22 +1526,32 @@ function guardarNuevaPass() {
       + '🔑 *Contraseña:* la que acabas de registrar\n\n'
       + '🌐 Acceso: ' + portal + '\n\n'
       + '⚠️ _Este número es exclusivo para mensajes automáticos del colegio. Por favor no llame ni responda._';
-    // Enviar usando config pre-cargada o leer de nuevo si no está disponible
+    // Mostrar resultado WhatsApp en pantalla
+    function mostrarResultadoWA(tel, ok, detalle) {
+      var div = document.createElement('div');
+      div.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:99999;'
+        + 'background:' + (ok ? 'rgba(16,185,129,0.95)' : 'rgba(239,68,68,0.95)') + ';'
+        + 'color:#fff;padding:10px 16px;border-radius:10px;font-size:0.82rem;max-width:90vw;text-align:center;';
+      div.textContent = (ok ? '✅ WhatsApp enviado a ' : '❌ WhatsApp falló (' + tel + '): ') + (ok ? tel : detalle);
+      document.body.appendChild(div);
+      setTimeout(function(){ div.remove(); }, 6000);
+    }
+
     function enviarWA(tel, msg) {
       if(_factConfig && _factConfig.token && _factConfig.instancia) {
         var num = '51' + tel.replace(/\D/g,'');
-        if(num.length >= 11) {
-          var logoUrl = 'https://moisesohs1007.github.io/asistencia-qr/img/logo-colegio.png';
-          fetch('https://apiwsp.factiliza.com/v1/message/sendimage/' + _factConfig.instancia, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + _factConfig.token },
-            body: JSON.stringify({ number: num, url: logoUrl, caption: msg })
-          }).then(function(r){ return r.json(); }).then(function(d){
-            console.log('WhatsApp enviado a ' + tel + ':', JSON.stringify(d));
-          }).catch(function(e){ console.warn('WhatsApp error:', e.message); });
-        }
+        if(num.length < 11) { mostrarResultadoWA(tel, false, 'número inválido'); return; }
+        var logoUrl = 'https://moisesohs1007.github.io/asistencia-qr/img/logo-colegio.png';
+        fetch('https://apiwsp.factiliza.com/v1/message/sendimage/' + _factConfig.instancia, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + _factConfig.token },
+          body: JSON.stringify({ number: num, url: logoUrl, caption: msg })
+        }).then(function(r){ return r.json(); }).then(function(d){
+          var ok = d.success === true || d.success === 'true' || d.status === 'success';
+          mostrarResultadoWA(tel, ok, JSON.stringify(d).substring(0,80));
+        }).catch(function(e){ mostrarResultadoWA(tel, false, e.message); });
       } else {
-        sendWhatsAppApo(tel, msg);
+        mostrarResultadoWA(tel, false, 'config Factiliza no disponible');
       }
     }
     enviarWA(telefono, msgApo);
