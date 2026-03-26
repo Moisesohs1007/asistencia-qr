@@ -589,9 +589,21 @@
     <div style="text-align:center;margin-bottom:18px;">
       <div style="font-size:2.2rem;margin-bottom:8px;">👋</div>
       <div style="font-size:1rem;font-weight:800;">Bienvenido</div>
-      <div style="font-size:0.8rem;color:var(--muted);margin-top:6px;">Completa tus datos de contacto</div>
+      <div style="font-size:0.8rem;color:var(--muted);margin-top:6px;">Crea tu contraseña y completa tus datos</div>
     </div>
     <div id="err-cambiar-pass" style="display:none;background:rgba(248,113,113,0.12);border:1px solid rgba(248,113,113,0.3);color:var(--danger);border-radius:10px;padding:10px 14px;margin-bottom:12px;font-size:0.82rem;"></div>
+
+    <div style="font-size:0.75rem;font-weight:700;color:var(--accent);margin-bottom:10px;text-transform:uppercase;letter-spacing:0.5px;">Nueva contraseña</div>
+    <div class="form-group">
+      <label>Contraseña <span style="color:var(--danger);">*</span></label>
+      <input type="password" id="inp-nueva-pass" placeholder="Mínimo 6 caracteres">
+    </div>
+    <div class="form-group">
+      <label>Confirmar contraseña <span style="color:var(--danger);">*</span></label>
+      <input type="password" id="inp-confirmar-pass" placeholder="Repite la contraseña">
+    </div>
+
+    <hr style="border:none;border-top:1px solid var(--border);margin:16px 0;">
 
     <div style="font-size:0.75rem;font-weight:700;color:var(--accent);margin-bottom:10px;text-transform:uppercase;letter-spacing:0.5px;">Apoderado 1</div>
     <div class="form-group">
@@ -1418,6 +1430,8 @@ async function sendWhatsAppApo(telefono, mensaje) {
 }
 
 function guardarNuevaPass() {
+  var nuevaPass     = document.getElementById('inp-nueva-pass').value;
+  var confirmarPass = document.getElementById('inp-confirmar-pass').value;
   var nombres   = document.getElementById('inp-apo-nombres').value.trim();
   var apellidos = document.getElementById('inp-apo-apellidos').value.trim();
   var telefono  = document.getElementById('inp-telefono').value.trim();
@@ -1429,6 +1443,8 @@ function guardarNuevaPass() {
   var errEl = document.getElementById('err-cambiar-pass');
   errEl.style.display = 'none';
 
+  if(!nuevaPass || nuevaPass.length < 6) { errEl.textContent='La contraseña debe tener mínimo 6 caracteres'; errEl.style.display='block'; return; }
+  if(nuevaPass !== confirmarPass) { errEl.textContent='Las contraseñas no coinciden'; errEl.style.display='block'; return; }
   if(!nombres)   { errEl.textContent='Ingresa tus nombres'; errEl.style.display='block'; return; }
   if(!apellidos) { errEl.textContent='Ingresa tus apellidos'; errEl.style.display='block'; return; }
   if(!telefono || !/^\d{9}$/.test(telefono)) { errEl.textContent='Ingresa un celular de 9 dígitos'; errEl.style.display='block'; return; }
@@ -1439,6 +1455,15 @@ function guardarNuevaPass() {
   var btn = document.getElementById('btn-guardar-pass');
   btn.disabled = true;
   btn.textContent = 'Guardando...';
+
+  if(!auth.currentUser) {
+    errEl.textContent = 'Sesión expirada. Vuelve a iniciar sesión.';
+    errEl.style.display = 'block';
+    btn.disabled = false;
+    btn.textContent = 'Guardar y continuar';
+    setTimeout(function(){ auth.signOut().then(function(){ window.location.href='index.html'; }); }, 2000);
+    return;
+  }
 
   var dataApo = {
     alumnoId:      alumno.id,
@@ -1454,17 +1479,9 @@ function guardarNuevaPass() {
   if(telefono2)  dataApo.telefono2  = telefono2;
   if(correo2)    dataApo.emailReal2 = correo2;
 
-  // Verificar sesión activa y refrescar token antes de escribir
-  if(!auth.currentUser) {
-    errEl.textContent = 'Sesión expirada. Vuelve a iniciar sesión.';
-    errEl.style.display = 'block';
-    btn.disabled = false;
-    btn.textContent = 'Guardar y continuar';
-    setTimeout(function(){ auth.signOut().then(function(){ window.location.href='index.html'; }); }, 2000);
-    return;
-  }
-
   auth.currentUser.getIdToken(true).then(function() {
+    return auth.currentUser.updatePassword(nuevaPass);
+  }).then(function() {
     return db.collection('apoderados').doc(alumno.id).set(dataApo, { merge: true });
   }).then(function() {
     return auth.currentUser.updateProfile({ displayName: (nombres + ' ' + apellidos).trim() });
@@ -1475,11 +1492,12 @@ function guardarNuevaPass() {
     alumno.apoderadoApellidos = apellidos;
     btn.disabled = false;
     btn.textContent = 'Guardar y continuar';
-    // Notificar al apoderado por WhatsApp
+    // Notificar por WhatsApp
     var nombreApo = nombres.split(' ')[0];
-    var msgApo = '✅ *Datos registrados — Portal Apoderado*\n\n'
+    var portal = window.location.href.replace(/apoderado\.html.*$/, '');
+    var msgApo = '✅ *Portal Apoderado — Colegio Marello*\n\n'
       + 'Hola *' + nombreApo + '*,\n\n'
-      + 'Los siguientes datos de contacto han sido registrados:\n\n'
+      + 'Tu cuenta ha sido configurada exitosamente.\n\n'
       + '👤 *Apoderado 1*\n'
       + '• Nombre: ' + apellidos + ' ' + nombres + '\n'
       + '• Celular: ' + telefono + '\n'
@@ -1489,9 +1507,10 @@ function guardarNuevaPass() {
           + (telefono2 ? '• Celular: ' + telefono2 + '\n' : '')
           + (correo2 ? '• Correo: ' + correo2 + '\n' : '')
         : '')
-      + '\n📱 *Usuario:* ' + alumno.id + ' (DNI del alumno)\n'
-      + '🔑 *Contraseña:* DNI del alumno (' + alumno.id + ')\n\n'
-      + '🌐 Acceso: ' + window.location.href;
+      + '\n📱 *Usuario:* ' + alumno.id + '\n'
+      + '🔑 *Contraseña:* la que acabas de registrar\n\n'
+      + '🌐 Acceso: ' + portal + '\n\n'
+      + '⚠️ _Este número es exclusivo para mensajes automáticos del colegio. Por favor no llame ni responda._';
     sendWhatsAppApo(telefono, msgApo);
     if(telefono2) sendWhatsAppApo(telefono2, msgApo);
     return cargarRegistros();
@@ -1500,7 +1519,7 @@ function guardarNuevaPass() {
   }).catch(function(e) {
     btn.disabled = false;
     btn.textContent = 'Guardar y continuar';
-    errEl.textContent = 'Error (' + (e.code||'?') + '): ' + e.message + ' | usuario: ' + (auth.currentUser ? auth.currentUser.email : 'NO SESSION') + ' | doc: apoderados/' + alumno.id;
+    errEl.textContent = 'Error (' + (e.code||'?') + '): ' + e.message;
     errEl.style.display = 'block';
   });
 }

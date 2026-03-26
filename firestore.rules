@@ -21,22 +21,21 @@ service cloud.firestore {
 
     // Verifica si el usuario autenticado ES el apoderado de ese alumno
     // (por email virtual: {dni}@apo.marello.pe)
+    // NOTA: en Firestore Rules el email está en request.auth.token.email
     function isApoderado(alumnoId) {
       return isAuthenticated() &&
-        request.auth.email == alumnoId + '@apo.marello.pe';
+        request.auth.token.email == alumnoId + '@apo.marello.pe';
     }
 
     // ── Registros de asistencia ───────────────────────────────────────────────
-    // Personal lee/escribe; apoderado solo puede listar (la app filtra por alumnoId)
     match /registros/{docId} {
       allow get:  if isStaff() ||
-        (isAuthenticated() && resource.data.alumnoId + '@apo.marello.pe' == request.auth.email);
+        (isAuthenticated() && resource.data.alumnoId + '@apo.marello.pe' == request.auth.token.email);
       allow list: if isStaff() ||
-        (isAuthenticated() && request.auth.email.matches('.*@apo\\.marello\\.pe'));
+        (isAuthenticated() && request.auth.token.email.matches('.*@apo\\.marello\\.pe'));
       allow create: if isStaff()
         && request.resource.data.keys().hasAll(['alumnoId','tipo','fecha','hora'])
         && request.resource.data.tipo in ['INGRESO', 'SALIDA']
-        // No permitir el campo passBackup en registros
         && !('passBackup' in request.resource.data);
       allow update, delete: if isAdmin();
     }
@@ -53,12 +52,6 @@ service cloud.firestore {
     match /alumnos/{alumnoId} {
       allow read: if isAuthenticated();
       allow write: if isStaff();
-      // El apoderado puede actualizar solo los campos de contacto de su alumno
-      allow update: if isApoderado(alumnoId) &&
-        request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-          'telefono','telefono2','apoderadoNombres','apoderadoApellidos',
-          'apoderado2Nombres','apoderado2Apellidos','correoApoderado'
-        ]);
     }
 
     // ── Usuarios (personal del colegio) ───────────────────────────────────────
@@ -82,9 +75,9 @@ service cloud.firestore {
     // ── Incidentes ────────────────────────────────────────────────────────────
     match /incidentes/{docId} {
       allow get:  if isStaff() ||
-        (isAuthenticated() && resource.data.alumnoId + '@apo.marello.pe' == request.auth.email);
+        (isAuthenticated() && resource.data.alumnoId + '@apo.marello.pe' == request.auth.token.email);
       allow list: if isStaff() ||
-        (isAuthenticated() && request.auth.email.matches('.*@apo\\.marello\\.pe'));
+        (isAuthenticated() && request.auth.token.email.matches('.*@apo\\.marello\\.pe'));
       allow create: if isStaff();
       allow update, delete: if isAdmin();
     }
