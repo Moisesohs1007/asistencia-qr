@@ -905,7 +905,7 @@
   .modal-bg {
     position: fixed; inset:0;
     background: rgba(0,0,0,0.7);
-    z-index: 200;
+    z-index: 800;
     display: flex; align-items: center; justify-content: center;
     padding: 20px;
     backdrop-filter: blur(4px);
@@ -1542,11 +1542,55 @@
     }
   }
 
+  /* ══ Modal Alumno: móvil — compacto para caber en pantalla ══ */
+  @media (max-width: 767px) {
+    #modal-alumno {
+      align-items: flex-start !important;
+      padding: 56px 10px 10px !important; /* 56px = topbar 48px + 8px margen */
+    }
+    #modal-alumno .modal {
+      padding: 12px 14px !important;
+      border-radius: 14px !important;
+      gap: 4px !important;
+      max-height: calc(100vh - 66px) !important;
+    }
+    #modal-alumno .modal-title {
+      font-size: 0.92rem !important;
+      margin-bottom: 4px !important;
+    }
+    #modal-alumno fieldset {
+      padding: 6px 10px 8px !important;
+      margin-bottom: 6px !important;
+    }
+    #modal-alumno legend {
+      font-size: 0.68rem !important;
+    }
+    #modal-alumno .form-group {
+      margin-bottom: 4px !important;
+      gap: 2px !important;
+    }
+    #modal-alumno .form-group label {
+      font-size: 0.72rem !important;
+    }
+    #modal-alumno .form-group input,
+    #modal-alumno .form-group select {
+      padding: 6px 9px !important;
+      font-size: 0.82rem !important;
+    }
+    #modal-alumno #foto-preview-wrap {
+      width: 50px !important;
+      height: 50px !important;
+    }
+    #modal-alumno .divider {
+      margin: 6px 0 !important;
+    }
+  }
+
   /* ══ Modal Alumno: solo PC ≥768px — sin scroll, layout compacto ══
        IMPORTANTE: este bloque NO afecta movil (<768px).
        Todos los cambios aqui son exclusivos de escritorio. ══ */
   @media (min-width: 768px) {
-    /* Overlay: padding-top generoso para que el titulo no quede oculto */
+    /* Overlay: padding-top para que el titulo no quede oculto bajo el header */
     #modal-alumno {
       align-items: flex-start !important;
       padding: 60px 20px 16px !important;
