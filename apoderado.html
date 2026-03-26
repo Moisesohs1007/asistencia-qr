@@ -1454,7 +1454,19 @@ function guardarNuevaPass() {
   if(telefono2)  dataApo.telefono2  = telefono2;
   if(correo2)    dataApo.emailReal2 = correo2;
 
-  db.collection('apoderados').doc(alumno.id).set(dataApo, { merge: true }).then(function() {
+  // Verificar sesión activa y refrescar token antes de escribir
+  if(!auth.currentUser) {
+    errEl.textContent = 'Sesión expirada. Vuelve a iniciar sesión.';
+    errEl.style.display = 'block';
+    btn.disabled = false;
+    btn.textContent = 'Guardar y continuar';
+    setTimeout(function(){ auth.signOut().then(function(){ window.location.href='index.html'; }); }, 2000);
+    return;
+  }
+
+  auth.currentUser.getIdToken(true).then(function() {
+    return db.collection('apoderados').doc(alumno.id).set(dataApo, { merge: true });
+  }).then(function() {
     return auth.currentUser.updateProfile({ displayName: (nombres + ' ' + apellidos).trim() });
   }).then(function() {
     document.getElementById('modal-cambiar-pass').style.display = 'none';
@@ -1488,7 +1500,7 @@ function guardarNuevaPass() {
   }).catch(function(e) {
     btn.disabled = false;
     btn.textContent = 'Guardar y continuar';
-    errEl.textContent = 'Error: ' + e.message;
+    errEl.textContent = 'Error (' + (e.code||'?') + '): ' + e.message + ' | usuario: ' + (auth.currentUser ? auth.currentUser.email : 'NO SESSION') + ' | doc: apoderados/' + alumno.id;
     errEl.style.display = 'block';
   });
 }
