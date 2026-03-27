@@ -6896,23 +6896,44 @@ function exportarReportePDF() {
     { label:'Tardanza', val: ctx.tardanzas,  r:239, g:159, b:39  },
     { label:'Ausente',  val: ctx.ausencias,  r:226, g:75,  b:74  },
   ];
-  const barMaxW = contentW - 60;
+
+  // Barra apilada horizontal (visual tipo dona simplificada)
+  const stackX = marginL, stackY = yPos, stackW = contentW, stackH = 8;
+  doc.setFillColor(220, 228, 240);
+  doc.rect(stackX, stackY, stackW, stackH, 'F');
+  let stackOffset = 0;
+  dist.forEach(d => {
+    const segW = stackW * d.val / totalPTA;
+    if(segW > 0) {
+      doc.setFillColor(d.r, d.g, d.b);
+      doc.rect(stackX + stackOffset, stackY, segW, stackH, 'F');
+      stackOffset += segW;
+    }
+  });
+  yPos += stackH + 6;
+
+  // Filas de detalle
+  const barMaxW = contentW - 55;
   dist.forEach(d => {
     const pct = Math.round(d.val / totalPTA * 100);
+    // Cuadro de color (swatch)
     doc.setFillColor(d.r, d.g, d.b);
-    doc.circle(marginL + 2, yPos - 1, 2, 'F');
+    doc.rect(marginL, yPos - 3, 4, 4, 'F');
+    // Etiqueta
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(9);
     doc.setTextColor(50, 65, 85);
     doc.text(d.label, marginL + 7, yPos);
+    // Porcentaje y cantidad
     doc.setFont('helvetica', 'bold');
+    doc.setTextColor(30, 40, 55);
     doc.text(pct + '%  (' + d.val + ')', marginL + 35, yPos);
-    // Barra de progreso
-    doc.setFillColor(220, 228, 240);
-    doc.roundedRect(marginL + 62, yPos - 3.5, barMaxW, 5, 1, 1, 'F');
+    // Barra de progreso (fondos y relleno con rect básico)
+    doc.setFillColor(230, 235, 245);
+    doc.rect(marginL + 55, yPos - 3, barMaxW, 4.5, 'F');
     if(pct > 0) {
       doc.setFillColor(d.r, d.g, d.b);
-      doc.roundedRect(marginL + 62, yPos - 3.5, Math.max(2, barMaxW * pct / 100), 5, 1, 1, 'F');
+      doc.rect(marginL + 55, yPos - 3, Math.max(1.5, barMaxW * pct / 100), 4.5, 'F');
     }
     yPos += 9;
   });
