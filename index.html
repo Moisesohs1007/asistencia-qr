@@ -6939,6 +6939,84 @@ function exportarReportePDF() {
   });
   yPos += 4;
 
+  // ── Dona visual P/T/A ──
+  const donutCX = marginL + 35;
+  const donutCY = yPos + 32;
+  const outerR  = 28;
+  const innerR  = 16;
+
+  // Fondo gris (círculo completo)
+  const bgSteps = 48;
+  const bgLines = [];
+  for(let i = 0; i < bgSteps; i++) {
+    const a  = -Math.PI + 2*Math.PI*i/bgSteps;
+    const an = -Math.PI + 2*Math.PI*(i+1)/bgSteps;
+    bgLines.push([outerR*Math.cos(an)-outerR*Math.cos(a), outerR*Math.sin(an)-outerR*Math.sin(a)]);
+  }
+  doc.setFillColor(220, 228, 240);
+  doc.lines(bgLines, donutCX - outerR, donutCY, [1,1], 'F', true);
+
+  // Segmentos de la dona
+  let donutAngle = -Math.PI / 2;
+  dist.forEach(d => {
+    const sliceAngle = 2 * Math.PI * d.val / totalPTA;
+    if(sliceAngle > 0.01) {
+      const steps = Math.max(8, Math.ceil(sliceAngle / (2*Math.PI) * 60));
+      const sl = [[outerR * Math.cos(donutAngle), outerR * Math.sin(donutAngle)]];
+      for(let i = 1; i <= steps; i++) {
+        const a  = donutAngle + sliceAngle * i / steps;
+        const ap = donutAngle + sliceAngle * (i-1) / steps;
+        sl.push([outerR*(Math.cos(a)-Math.cos(ap)), outerR*(Math.sin(a)-Math.sin(ap))]);
+      }
+      sl.push([-outerR * Math.cos(donutAngle + sliceAngle), -outerR * Math.sin(donutAngle + sliceAngle)]);
+      doc.setFillColor(d.r, d.g, d.b);
+      doc.lines(sl, donutCX, donutCY, [1,1], 'F', true);
+      donutAngle += sliceAngle;
+    }
+  });
+
+  // Agujero central blanco
+  const holeSteps = 48;
+  const holeLines = [];
+  for(let i = 0; i < holeSteps; i++) {
+    const a  = -Math.PI + 2*Math.PI*i/holeSteps;
+    const an = -Math.PI + 2*Math.PI*(i+1)/holeSteps;
+    holeLines.push([innerR*Math.cos(an)-innerR*Math.cos(a), innerR*Math.sin(an)-innerR*Math.sin(a)]);
+  }
+  doc.setFillColor(255, 255, 255);
+  doc.lines(holeLines, donutCX - innerR, donutCY, [1,1], 'F', true);
+
+  // Texto central: % puntual
+  const puntPct = Math.round(ctx.puntuales / totalPTA * 100);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(10);
+  doc.setTextColor(30, 40, 55);
+  doc.text(puntPct + '%', donutCX, donutCY + 1, { align: 'center' });
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(6);
+  doc.setTextColor(100, 116, 139);
+  doc.text('puntual', donutCX, donutCY + 5.5, { align: 'center' });
+
+  // Leyenda a la derecha de la dona
+  const legX = marginL + 72;
+  let legY = yPos + 18;
+  dist.forEach(d => {
+    const pct = Math.round(d.val / totalPTA * 100);
+    doc.setFillColor(d.r, d.g, d.b);
+    doc.rect(legX, legY - 3.5, 5, 5, 'F');
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10);
+    doc.setTextColor(50, 65, 85);
+    doc.text(d.label, legX + 8, legY);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10);
+    doc.setTextColor(30, 40, 55);
+    doc.text(pct + '%  (' + d.val + ')', legX + 38, legY);
+    legY += 16;
+  });
+
+  yPos += outerR * 2 + 14;
+
   // ── Gráfico de barras por día ──
   if(ctx.datosDiarios && ctx.datosDiarios.length > 0) {
     doc.setFont('helvetica', 'bold');
