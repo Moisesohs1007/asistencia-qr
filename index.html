@@ -6926,9 +6926,6 @@ async function renderReportes(anioCompleto=false) {
   // Si hay día seleccionado, filtrar métricas sólo a ese día
   const ingFiltro = diaSel ? ingMes.filter(r=>r.fecha===diaSel) : ingMes;
   const puntFiltro = ingFiltro.filter(r=>r.estado==='A tiempo'||r.estado==='Puntual').length;
-  const pct = ingFiltro.length ? Math.round(puntFiltro/ingFiltro.length*100) : 0;
-  document.getElementById('rep-puntual').textContent  = pct + '%';
-  document.getElementById('rep-tardanzas').textContent = ingFiltro.filter(r=>r.estado==='Tardanza').length;
 
   const diasMes = new Set(ingMes.map(r=>r.fecha));
   let faltas = 0;
@@ -6941,6 +6938,12 @@ async function renderReportes(anioCompleto=false) {
       faltas += alumnos.filter(a=>!pres.has(a.id)).length;
     });
   }
+
+  // Puntualidad sobre total esperado (asistentes + ausentes), igual que la dona
+  const totalEsperado = ingFiltro.length + faltas;
+  const pct = totalEsperado ? Math.round(puntFiltro/totalEsperado*100) : 0;
+  document.getElementById('rep-puntual').textContent  = pct + '%';
+  document.getElementById('rep-tardanzas').textContent = ingFiltro.filter(r=>r.estado==='Tardanza').length;
   document.getElementById('rep-faltas').textContent = faltas;
 
   const fechaPresentes = diaSel || today;
