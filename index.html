@@ -14,6 +14,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <style>
   :root {
     --bg: #0a0e1a;
@@ -2846,6 +2847,7 @@
       <div id="rep-anio-btn-wrap" style="display:none;">
         <button class="btn btn-ghost" onclick="cargarReportesAnio()" style="font-size:0.8rem;padding:6px 14px;">📅 Año completo</button>
       </div>
+      <button class="btn btn-ghost" onclick="exportarReportePDF()" style="font-size:0.78rem;padding:5px 12px;border-color:var(--accent2);color:var(--accent2);">⬇ PDF</button>
     </div>
 
     <!-- KPIs -->
@@ -3177,6 +3179,7 @@ function mostrarAvisoCamara() {
   modal.style.display = 'flex';
 }
 let currentRol = null; // admin | director | profesor | portero
+let _repContextoPDF = {}; // contexto guardado para exportar PDF de reportes
 
 // ── Auto-logout por inactividad (20 minutos) ─────────────────
 const INACTIVIDAD_MS = 20 * 60 * 1000; // 20 minutos
@@ -6801,6 +6804,191 @@ function mostrarBtnAnio() {
   if(wrap) wrap.style.display = (currentRol === 'admin' || currentRol === 'director') ? 'block' : 'none';
 }
 
+function exportarReportePDF() {
+  if(!window.jspdf) { alert('La librería PDF aún está cargando, intenta en un momento.'); return; }
+  const { jsPDF } = window.jspdf;
+  const ctx = _repContextoPDF;
+  if(!ctx || !ctx.total && ctx.total !== 0) { alert('Primero carga el reporte.'); return; }
+
+  const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  const mesStr = ctx.mesSel || new Date().toISOString().slice(0,7);
+  const [anioStr, mesNum] = mesStr.split('-');
+  const periodoLabel = ctx.anioCompleto ? ('Año ' + anioStr) : (MESES[parseInt(mesNum)-1] + ' ' + anioStr);
+
+  // Título dinámico según filtros activos
+  const partes = [];
+  if(ctx.nivel)   partes.push(ctx.nivel);
+  if(ctx.grado)   partes.push(ctx.grado + ' Grado');
+  if(ctx.seccion) partes.push('Sección ' + ctx.seccion);
+  const subtituloFiltros = partes.length ? partes.join(' · ') : 'Todos los niveles y grados';
+  let subtituloExtra = '';
+  if(ctx.diaSel) {
+    const [dy,dm,dd] = ctx.diaSel.split('-');
+    subtituloExtra = 'Día: ' + dd + '/' + dm + '/' + dy;
+  }
+
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  const W = 210, marginL = 14, marginR = 14, contentW = W - marginL - marginR;
+
+  // ── Encabezado ──
+  doc.setFillColor(15, 23, 42);
+  doc.rect(0, 0, W, 38, 'F');
+  doc.setFillColor(56, 189, 248);
+  doc.rect(0, 38, W, 1.2, 'F');
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(16);
+  doc.setTextColor(226, 232, 240);
+  doc.text('Reporte de Asistencia', marginL, 14);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(10);
+  doc.setTextColor(148, 163, 184);
+  doc.text(subtituloFiltros, marginL, 22);
+  if(subtituloExtra) doc.text(subtituloExtra, marginL, 28);
+
+  doc.setFontSize(8);
+  doc.setTextColor(100, 116, 139);
+  const fechaGen = new Date().toLocaleDateString('es-PE', { day:'2-digit', month:'long', year:'numeric' });
+  doc.text('Período: ' + periodoLabel + '   ·   Generado: ' + fechaGen, marginL, 34);
+
+  let yPos = 48;
+
+  // ── KPIs ──
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(9);
+  doc.setTextColor(100, 116, 139);
+  doc.text('ESTADÍSTICAS', marginL, yPos);
+  yPos += 5;
+
+  const kpis = [
+    { label: 'Alumnos',            value: ctx.total,          r:59,  g:130, b:246 },
+    { label: 'Puntuales',          value: ctx.puntuales,      r:29,  g:158, b:117 },
+    { label: 'Tardanzas',          value: ctx.tardanzas,      r:239, g:159, b:39  },
+    { label: 'Ausencias',          value: ctx.ausencias,      r:226, g:75,  b:74  },
+    { label: ctx.presentesLabel,   value: ctx.presentes,      r:99,  g:102, b:241 },
+  ];
+  const bW = (contentW - 4 * 3) / 5;
+  kpis.forEach((k, i) => {
+    const xK = marginL + i * (bW + 3);
+    doc.setFillColor(k.r, k.g, k.b);
+    doc.roundedRect(xK, yPos, bW, 18, 2, 2, 'F');
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(15);
+    doc.setTextColor(255, 255, 255);
+    doc.text(String(k.value), xK + bW/2, yPos + 10, { align: 'center' });
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(6.5);
+    doc.text(k.label, xK + bW/2, yPos + 15.5, { align: 'center' });
+  });
+  yPos += 26;
+
+  // ── Distribución P/T/A ──
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(9);
+  doc.setTextColor(100, 116, 139);
+  doc.text('DISTRIBUCIÓN P / T / A', marginL, yPos);
+  yPos += 6;
+
+  const totalPTA = (ctx.puntuales + ctx.tardanzas + ctx.ausencias) || 1;
+  const dist = [
+    { label:'Puntual',  val: ctx.puntuales, r:29,  g:158, b:117 },
+    { label:'Tardanza', val: ctx.tardanzas,  r:239, g:159, b:39  },
+    { label:'Ausente',  val: ctx.ausencias,  r:226, g:75,  b:74  },
+  ];
+  const barMaxW = contentW - 60;
+  dist.forEach(d => {
+    const pct = Math.round(d.val / totalPTA * 100);
+    doc.setFillColor(d.r, d.g, d.b);
+    doc.circle(marginL + 2, yPos - 1, 2, 'F');
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.setTextColor(50, 65, 85);
+    doc.text(d.label, marginL + 7, yPos);
+    doc.setFont('helvetica', 'bold');
+    doc.text(pct + '%  (' + d.val + ')', marginL + 35, yPos);
+    // Barra de progreso
+    doc.setFillColor(220, 228, 240);
+    doc.roundedRect(marginL + 62, yPos - 3.5, barMaxW, 5, 1, 1, 'F');
+    if(pct > 0) {
+      doc.setFillColor(d.r, d.g, d.b);
+      doc.roundedRect(marginL + 62, yPos - 3.5, Math.max(2, barMaxW * pct / 100), 5, 1, 1, 'F');
+    }
+    yPos += 9;
+  });
+  yPos += 4;
+
+  // ── Gráfico de barras por día ──
+  if(ctx.datosDiarios && ctx.datosDiarios.length > 0) {
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9);
+    doc.setTextColor(100, 116, 139);
+    doc.text('ASISTENCIA POR DÍA DEL MES', marginL, yPos);
+    yPos += 5;
+
+    const chartH = 35;
+    const maxAl  = ctx.total || 1;
+    const datos  = ctx.datosDiarios;
+    const barGap = 1;
+    const bWBar  = Math.max(2, Math.min(7, (contentW - barGap * (datos.length - 1)) / datos.length));
+    const totalBarW = bWBar * datos.length + barGap * (datos.length - 1);
+    const startX = marginL + (contentW - totalBarW) / 2;
+
+    datos.forEach((d, i) => {
+      const x = startX + i * (bWBar + barGap);
+      const hPres = chartH * (d.pres / maxAl);
+      const hTard = chartH * (d.tard / maxAl);
+      const hAus  = chartH * (d.aus  / maxAl);
+      let yBar = yPos + chartH;
+      if(hAus > 0)  { doc.setFillColor(226,75,74);   doc.rect(x, yBar - hAus, bWBar, hAus, 'F'); yBar -= hAus; }
+      if(hTard > 0) { doc.setFillColor(239,159,39);  doc.rect(x, yBar - hTard, bWBar, hTard, 'F'); yBar -= hTard; }
+      if(hPres > 0) { doc.setFillColor(29,158,117);  doc.rect(x, yBar - hPres, bWBar, hPres, 'F'); }
+      // Etiqueta de día (solo si hay espacio)
+      if(bWBar >= 4) {
+        const dd = d.dia.split('-')[2];
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(5);
+        doc.setTextColor(100, 116, 139);
+        doc.text(dd, x + bWBar/2, yPos + chartH + 4, { align: 'center' });
+      }
+    });
+
+    // Leyenda del gráfico
+    yPos += chartH + 9;
+    const leyenda = [
+      { label:'Puntual',  r:29,  g:158, b:117 },
+      { label:'Tardanza', r:239, g:159, b:39  },
+      { label:'Ausente',  r:226, g:75,  b:74  },
+    ];
+    let xLey = marginL;
+    leyenda.forEach(l => {
+      doc.setFillColor(l.r, l.g, l.b);
+      doc.rect(xLey, yPos - 2.5, 4, 4, 'F');
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(7);
+      doc.setTextColor(100, 116, 139);
+      doc.text(l.label, xLey + 6, yPos);
+      xLey += 28;
+    });
+    yPos += 8;
+  }
+
+  // ── Pie de página ──
+  doc.setFillColor(240, 244, 248);
+  doc.rect(0, 285, W, 12, 'F');
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7);
+  doc.setTextColor(148, 163, 184);
+  doc.text('Sistema AsistenciaQR  ·  ' + new Date().toLocaleString('es-PE'), W/2, 291, { align: 'center' });
+
+  // Nombre del archivo
+  const nivelSlug  = ctx.nivel   ? '-' + ctx.nivel.toLowerCase().replace(/\s/g,'-') : '';
+  const gradoSlug  = ctx.grado   ? '-' + ctx.grado.replace(/\s/g,'')               : '';
+  const secSlug    = ctx.seccion ? '-sec' + ctx.seccion                              : '';
+  const diaSlug    = ctx.diaSel  ? '-' + ctx.diaSel                                  : '';
+  doc.save(`reporte-asistencia-${mesStr}${nivelSlug}${gradoSlug}${secSlug}${diaSlug}.pdf`);
+}
+
 function onRepMesChange() {
   const diaEl = document.getElementById('rep-dia-select');
   if(diaEl) diaEl.value = '';
@@ -6963,6 +7151,20 @@ async function renderReportes(anioCompleto=false) {
       diasHabiles.push(d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'));
     }
   }
+  // Guardar contexto para exportar PDF
+  const mesStr2 = mesStr; // alias para usar en _repContextoPDF
+  _repContextoPDF = {
+    mesSel, diaSel, nivel, grado, seccion,
+    total: alumnos.length,
+    puntuales: puntFiltro,
+    tardanzas: ingFiltro.filter(r=>r.estado==='Tardanza').length,
+    ausencias: faltas,
+    presentes: new Set(regs.filter(r=>r.fecha===(diaSel||today)&&r.tipo==='INGRESO').map(r=>r.alumnoId)).size,
+    presentesLabel: diaSel ? 'Presentes ese día' : 'Presentes hoy',
+    datosDiarios: [],
+    anioCompleto,
+  };
+
   const chartBarras = document.getElementById('chart-barras-dia');
   if(chartBarras) {
     const barW = Math.max(6, Math.min(16, Math.floor(260/diasHabiles.length)));
@@ -6972,6 +7174,7 @@ async function renderReportes(anioCompleto=false) {
       const presD = new Set(regs.filter(r=>r.fecha===dia&&r.tipo==='INGRESO'&&r.estado!=='Tardanza').map(r=>r.alumnoId)).size;
       const tardD = new Set(regs.filter(r=>r.fecha===dia&&r.tipo==='INGRESO'&&r.estado==='Tardanza').map(r=>r.alumnoId)).size;
       const ausD  = Math.max(0, alumnos.length - presD - tardD);
+      _repContextoPDF.datosDiarios.push({ dia, pres: presD, tard: tardD, aus: ausD });
       const hP = Math.round(presD/maxAl*62);
       const hT = Math.round(tardD/maxAl*62);
       const hA = Math.round(ausD/maxAl*62);
