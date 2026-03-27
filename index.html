@@ -2813,6 +2813,11 @@
         <label style="font-size:0.78rem;color:var(--muted);white-space:nowrap;">Período:</label>
         <select id="rep-mes-select" onchange="onRepMesChange()"></select>
       </div>
+      <div style="display:flex;align-items:center;gap:6px;">
+        <label style="font-size:0.78rem;color:var(--muted);white-space:nowrap;">Día:</label>
+        <input type="date" id="rep-dia-select" onchange="renderReportes()"
+          style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:4px 8px;font-family:var(--font-body);font-size:0.82rem;">
+      </div>
       <div style="width:1px;height:20px;background:var(--border);flex-shrink:0;"></div>
       <div style="display:flex;align-items:center;gap:6px;">
         <label style="font-size:0.78rem;color:var(--muted);">Nivel:</label>
@@ -2849,7 +2854,7 @@
       <div class="stat-card green"><div class="stat-num" id="rep-puntual">0%</div><div class="stat-label">Puntualidad</div></div>
       <div class="stat-card yellow"><div class="stat-num" id="rep-tardanzas">0</div><div class="stat-label">Tardanzas</div></div>
       <div class="stat-card red"><div class="stat-num" id="rep-faltas">0</div><div class="stat-label">Ausencias</div></div>
-      <div class="stat-card"><div class="stat-num" id="rep-hoy">0</div><div class="stat-label">Presentes hoy</div></div>
+      <div class="stat-card"><div class="stat-num" id="rep-hoy">0</div><div class="stat-label" id="rep-hoy-label">Presentes hoy</div></div>
     </div>
 
     <!-- Gráficos -->
@@ -6796,7 +6801,11 @@ function mostrarBtnAnio() {
   if(wrap) wrap.style.display = (currentRol === 'admin' || currentRol === 'director') ? 'block' : 'none';
 }
 
-function onRepMesChange() { renderReportes(); }
+function onRepMesChange() {
+  const diaEl = document.getElementById('rep-dia-select');
+  if(diaEl) diaEl.value = '';
+  renderReportes();
+}
 
 async function onRepNivelChange() {
   const nivel = document.getElementById('rep-nivel').value;
@@ -6848,6 +6857,8 @@ async function limpiarFiltrosReportes() {
   document.getElementById('rep-grado').value   = '';
   document.getElementById('rep-seccion').value = '';
   document.getElementById('rep-search').value  = '';
+  const diaEl = document.getElementById('rep-dia-select');
+  if(diaEl) diaEl.value = '';
   const gradoEl = document.getElementById('rep-grado');
   const secEl   = document.getElementById('rep-seccion');
   gradoEl.disabled = true; gradoEl.style.opacity = '0.45';
@@ -6868,6 +6879,17 @@ async function renderReportes(anioCompleto=false) {
   const today   = hoy();
   const anio    = today.slice(0,4);
   const mesSel  = document.getElementById('rep-mes-select')?.value || mesActual();
+  // Limitar el selector de día al mes activo
+  const diaInputEl = document.getElementById('rep-dia-select');
+  if(diaInputEl) {
+    const [my,mm] = (mesSel||today.slice(0,7)).split('-').map(Number);
+    const ultimoDiaMes = new Date(my,mm,0).getDate();
+    diaInputEl.min = `${mesSel||today.slice(0,7)}-01`;
+    diaInputEl.max = `${mesSel||today.slice(0,7)}-${String(ultimoDiaMes).padStart(2,'0')}`;
+    // Si el día guardado no pertenece al mes, limpiarlo
+    if(diaInputEl.value && !diaInputEl.value.startsWith(mesSel||today.slice(0,7))) diaInputEl.value = '';
+  }
+  const diaSel  = diaInputEl?.value || '';
   const nivel   = document.getElementById('rep-nivel')?.value   || '';
   const grado   = document.getElementById('rep-grado')?.value   || '';
   const seccion = document.getElementById('rep-seccion')?.value || '';
@@ -6900,21 +6922,32 @@ async function renderReportes(anioCompleto=false) {
   document.getElementById('rep-total').textContent = alumnos.length;
   const mesStr = mesSel || today.slice(0,7);
   const ingMes = regs.filter(r=>r.fecha.startsWith(mesStr)&&r.tipo==='INGRESO');
-  const puntMes = ingMes.filter(r=>r.estado==='A tiempo'||r.estado==='Puntual').length;
-  const pct = ingMes.length ? Math.round(puntMes/ingMes.length*100) : 0;
-  document.getElementById('rep-puntual').textContent  = pct + '%';
-  document.getElementById('rep-tardanzas').textContent = ingMes.filter(r=>r.estado==='Tardanza').length;
 
-  const diasMes = new Set(regs.filter(r=>r.fecha.startsWith(mesStr)&&r.tipo==='INGRESO').map(r=>r.fecha));
+  // Si hay día seleccionado, filtrar métricas sólo a ese día
+  const ingFiltro = diaSel ? ingMes.filter(r=>r.fecha===diaSel) : ingMes;
+  const puntFiltro = ingFiltro.filter(r=>r.estado==='A tiempo'||r.estado==='Puntual').length;
+  const pct = ingFiltro.length ? Math.round(puntFiltro/ingFiltro.length*100) : 0;
+  document.getElementById('rep-puntual').textContent  = pct + '%';
+  document.getElementById('rep-tardanzas').textContent = ingFiltro.filter(r=>r.estado==='Tardanza').length;
+
+  const diasMes = new Set(ingMes.map(r=>r.fecha));
   let faltas = 0;
-  diasMes.forEach(dia => {
-    const pres = new Set(regs.filter(r=>r.fecha===dia&&r.tipo==='INGRESO').map(r=>r.alumnoId));
-    faltas += alumnos.filter(a=>!pres.has(a.id)).length;
-  });
+  if(diaSel) {
+    const presD = new Set(ingMes.filter(r=>r.fecha===diaSel).map(r=>r.alumnoId));
+    faltas = alumnos.filter(a=>!presD.has(a.id)).length;
+  } else {
+    diasMes.forEach(dia => {
+      const pres = new Set(regs.filter(r=>r.fecha===dia&&r.tipo==='INGRESO').map(r=>r.alumnoId));
+      faltas += alumnos.filter(a=>!pres.has(a.id)).length;
+    });
+  }
   document.getElementById('rep-faltas').textContent = faltas;
 
-  const presHoy = new Set(regs.filter(r=>r.fecha===today&&r.tipo==='INGRESO').map(r=>r.alumnoId)).size;
+  const fechaPresentes = diaSel || today;
+  const presHoy = new Set(regs.filter(r=>r.fecha===fechaPresentes&&r.tipo==='INGRESO').map(r=>r.alumnoId)).size;
   document.getElementById('rep-hoy').textContent = presHoy;
+  const labelHoy = document.getElementById('rep-hoy-label');
+  if(labelHoy) labelHoy.textContent = diaSel ? 'Presentes ese día' : 'Presentes hoy';
 
   // ── GRÁFICO 1: Barras apiladas por día ──
   const diasHabiles = [];
@@ -6940,14 +6973,16 @@ async function renderReportes(anioCompleto=false) {
       const hT = Math.round(tardD/maxAl*62);
       const hA = Math.round(ausD/maxAl*62);
       const isToday = dia===today;
+      const isSelected = diaSel ? dia===diaSel : false;
+      const dimBar = diaSel && !isSelected;
       const fp=dia.split('-'); const dLabel=fp[2];
-      barsHtml += `<div style="flex:1;display:flex;flex-direction:column;align-items:center;min-width:${barW}px;position:relative;">
+      barsHtml += `<div style="flex:1;display:flex;flex-direction:column;align-items:center;min-width:${barW}px;position:relative;opacity:${dimBar?0.25:1};">
         <div style="width:100%;display:flex;flex-direction:column;justify-content:flex-end;height:62px;">
           ${hA>0?`<div style="width:100%;height:${hA}px;background:#E24B4A;border-radius:2px 2px 0 0;"></div>`:''}
           ${hT>0?`<div style="width:100%;height:${hT}px;background:#EF9F27;"></div>`:''}
-          ${hP>0?`<div style="width:100%;height:${hP}px;background:${isToday?'#185FA5':'#1D9E75'};border-radius:${hA===0&&hT===0?'2px 2px':''} 0 0;"></div>`:''}
+          ${hP>0?`<div style="width:100%;height:${hP}px;background:${isToday||isSelected?'#185FA5':'#1D9E75'};border-radius:${hA===0&&hT===0?'2px 2px':''} 0 0;"></div>`:''}
         </div>
-        <span style="font-size:7px;color:${isToday?'var(--accent)':'var(--muted)'};margin-top:2px;font-weight:${isToday?'700':'400'}">${dLabel}</span>
+        <span style="font-size:7px;color:${isToday||isSelected?'var(--accent)':'var(--muted)'};margin-top:2px;font-weight:${isToday||isSelected?'700':'400'}">${dLabel}</span>
       </div>`;
     });
     barsHtml += `</div>`;
@@ -6962,10 +6997,10 @@ async function renderReportes(anioCompleto=false) {
   // ── GRÁFICO 2: Dona distribución ──
   const chartDona = document.getElementById('chart-dona');
   if(chartDona) {
-    const totalIng = ingMes.length;
-    const nPunt = ingMes.filter(r=>r.estado==='A tiempo'||r.estado==='Puntual').length;
-    const nTard = ingMes.filter(r=>r.estado==='Tardanza').length;
-    const nAus  = Math.max(0, alumnos.length * diasHabiles.filter(d=>d<=today).length - totalIng);
+    const totalIng = ingFiltro.length;
+    const nPunt = ingFiltro.filter(r=>r.estado==='A tiempo'||r.estado==='Puntual').length;
+    const nTard = ingFiltro.filter(r=>r.estado==='Tardanza').length;
+    const nAus  = faltas;
     const tot   = nPunt + nTard + nAus || 1;
     const pPunt = Math.round(nPunt/tot*100);
     const pTard = Math.round(nTard/tot*100);
