@@ -6905,7 +6905,7 @@ async function renderReportes(anioCompleto=false) {
   document.getElementById('rep-puntual').textContent  = pct + '%';
   document.getElementById('rep-tardanzas').textContent = ingMes.filter(r=>r.estado==='Tardanza').length;
 
-  const diasMes = new Set(regs.filter(r=>r.fecha.startsWith(mesStr)).map(r=>r.fecha));
+  const diasMes = new Set(regs.filter(r=>r.fecha.startsWith(mesStr)&&r.tipo==='INGRESO').map(r=>r.fecha));
   let faltas = 0;
   diasMes.forEach(dia => {
     const pres = new Set(regs.filter(r=>r.fecha===dia&&r.tipo==='INGRESO').map(r=>r.alumnoId));
