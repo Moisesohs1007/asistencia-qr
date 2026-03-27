@@ -2851,7 +2851,7 @@
     <!-- KPIs -->
     <div class="stats-row" style="grid-template-columns:repeat(auto-fit,minmax(160px,1fr));margin-bottom:14px;">
       <div class="stat-card blue"><div class="stat-num" id="rep-total">0</div><div class="stat-label">Alumnos</div></div>
-      <div class="stat-card green"><div class="stat-num" id="rep-puntual">0%</div><div class="stat-label">Puntualidad</div></div>
+      <div class="stat-card green"><div class="stat-num" id="rep-puntual">0</div><div class="stat-label">Puntuales</div></div>
       <div class="stat-card yellow"><div class="stat-num" id="rep-tardanzas">0</div><div class="stat-label">Tardanzas</div></div>
       <div class="stat-card red"><div class="stat-num" id="rep-faltas">0</div><div class="stat-label">Ausencias</div></div>
       <div class="stat-card"><div class="stat-num" id="rep-hoy">0</div><div class="stat-label" id="rep-hoy-label">Presentes hoy</div></div>
@@ -6942,7 +6942,7 @@ async function renderReportes(anioCompleto=false) {
   // Puntualidad sobre total esperado (asistentes + ausentes), igual que la dona
   const totalEsperado = ingFiltro.length + faltas;
   const pct = totalEsperado ? Math.round(puntFiltro/totalEsperado*100) : 0;
-  document.getElementById('rep-puntual').textContent  = pct + '%';
+  document.getElementById('rep-puntual').textContent  = puntFiltro;
   document.getElementById('rep-tardanzas').textContent = ingFiltro.filter(r=>r.estado==='Tardanza').length;
   document.getElementById('rep-faltas').textContent = faltas;
 
