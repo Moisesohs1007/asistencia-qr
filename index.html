@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
   <link rel="icon" type="image/png" href="img/logo-colegio.png">
-  <link rel="apple-touch-icon" href="img/apple-icon.png">
+  <link rel="apple-touch-icon" href="img/logo-colegio.png">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta http-equiv="Permissions-Policy" content="camera=*, microphone=*">
 <title>AsistenciaQR — Sistema Escolar</title>
@@ -3087,13 +3087,18 @@ const LOGO_B64 = 'img/logo-colegio.png';
 
 // Logo activo: usa el subido en config si existe, si no el hardcodeado
 // ═══════════════════════════════════════════════════════
-// DATOS DEL COLEGIO — editar aquí para actualizar
-// ═══════════════════════════════════════════════════════
+// ╔══════════════════════════════════════════════════════════════╗
+// ║  CONFIGURACIÓN DEL COLEGIO — editar solo aquí               ║
+// ║  Para cambiar de colegio:                                   ║
+// ║  1. Cambia COLEGIO_NOMBRE y COLEGIO_ESLOGAN                 ║
+// ║  2. Reemplaza img/logo-colegio.png con el nuevo logo        ║
+// ║     (ese archivo también se usa como ícono del sistema)     ║
+// ║  3. Actualiza el mismo COLEGIO_NOMBRE en apoderado.html     ║
+// ╚══════════════════════════════════════════════════════════════╝
 const COLEGIO_NOMBRE  = 'Institución Educativa "SANTO DOMINGO DE GUZMAN"';
 const COLEGIO_ANIO    = '2026';
 const COLEGIO_ESLOGAN = '"SER SANTO DOMINGUINO ES, SER EL MEJOR"';
 const COLEGIO_LOGO    = 'img/logo-colegio.png';
-// ═══════════════════════════════════════════════════════
 
 function getLogo() {
   return COLEGIO_LOGO;
