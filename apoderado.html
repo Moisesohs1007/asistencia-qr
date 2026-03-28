@@ -679,7 +679,9 @@ var _configCache   = null; // config/general cacheada
 var _incidentesCache = null; // incidentes del alumno cacheados
 var _registrosPorMes = {}; // cache en memoria: { '03': [...], '04': [...] }
 var _resumenMensualCache = {}; // { 'YYYY-MM': {puntual, tardanza} | null }
-var _registrosRecientes  = null; // últimos 5 días procesados (para pestaña Resumen)
+var _registrosRecientes     = null; // últimos 5 días procesados (para pestaña Resumen)
+var _registrosRecientesTime = 0;    // timestamp de última carga
+var _RECIENTES_TTL = 5 * 60 * 1000; // 5 minutos
 
 // Cargar config una sola vez
 function getConfigCache() {
@@ -994,23 +996,29 @@ function cargarRegistros(mes) {
 
 // ── Resumen mensual pre-agregado — 1 lectura para KPIs ──
 function cargarResumenMensual(mesNum) {
-  var anio     = new Date().getFullYear();
-  var mesClave = anio + '-' + mesNum; // 'YYYY-MM'
-  if(_resumenMensualCache[mesClave] !== undefined) return Promise.resolve(_resumenMensualCache[mesClave]);
+  var anio      = new Date().getFullYear();
+  var mesClave  = anio + '-' + mesNum; // 'YYYY-MM'
+  var mesActual = String(new Date().getMonth()+1).padStart(2,'0');
+  // El mes actual NO se cachea — sus datos cambian durante el día al escanear QR
+  if(mesNum !== mesActual && _resumenMensualCache[mesClave] !== undefined) {
+    return Promise.resolve(_resumenMensualCache[mesClave]);
+  }
   return db.collection('resumen_mensual').doc(mesClave + '_' + alumno.id).get()
     .then(function(snap) {
-      _resumenMensualCache[mesClave] = snap.exists ? snap.data() : null;
-      return _resumenMensualCache[mesClave];
+      var data = snap.exists ? snap.data() : null;
+      if(mesNum !== mesActual) _resumenMensualCache[mesClave] = data; // cachear solo meses pasados
+      return data;
     }).catch(function(e) {
       console.warn('[APO] resumen_mensual read error:', e.message);
-      _resumenMensualCache[mesClave] = null;
       return null;
     });
 }
 
 // Trae los últimos 7 días de registros (≤ 14 docs) para la sección "Últimas asistencias"
 function cargarRegistrosRecientes() {
-  if(_registrosRecientes !== null) return Promise.resolve(_registrosRecientes);
+  if(_registrosRecientes !== null && (Date.now() - _registrosRecientesTime) < _RECIENTES_TTL) {
+    return Promise.resolve(_registrosRecientes);
+  }
   var hoy   = new Date();
   var hace7 = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate() - 6);
   var desde = hace7.getFullYear() + '-'
@@ -1042,9 +1050,10 @@ function cargarRegistrosRecientes() {
         if(!g.horaIngreso) g.estado = 'Ausente';
         else if(!g.estado) g.estado = 'Puntual';
       });
-      _registrosRecientes = Object.values(grupos)
+      _registrosRecientes     = Object.values(grupos)
         .sort(function(a,b){ return b.fecha.localeCompare(a.fecha); })
         .slice(0,5);
+      _registrosRecientesTime = Date.now();
     }).catch(function(e) {
       console.warn('[APO] cargarRegistrosRecientes error:', e.message);
       _registrosRecientes = _registrosRecientes || [];
@@ -1123,8 +1132,9 @@ function showTab(tab) {
     var mesActual = String(new Date().getMonth()+1).padStart(2,'0');
     var anio      = new Date().getFullYear();
     var mesClave  = anio + '-' + mesActual;
-    var p1 = (_resumenMensualCache[mesClave] !== undefined) ? Promise.resolve() : cargarResumenMensual(mesActual);
-    var p2 = (_registrosRecientes !== null) ? Promise.resolve() : cargarRegistrosRecientes();
+    var p1 = cargarResumenMensual(mesActual); // siempre refresca mes actual
+    var p2 = (_registrosRecientes !== null && (Date.now() - _registrosRecientesTime) < _RECIENTES_TTL)
+      ? Promise.resolve() : cargarRegistrosRecientes();
     Promise.all([p1, p2]).then(function() { renderResumen(); });
     return;
   }
