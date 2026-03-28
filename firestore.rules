@@ -65,11 +65,12 @@ service cloud.firestore {
 
     // ── Alumnos ───────────────────────────────────────────────────────────────
     match /alumnos/{alumnoId} {
-      // Staff: acceso total
+      // Solo admins crean/editan/eliminan alumnos
+      // Staff puede listar/leer (para registrar asistencia)
       // Apoderado: solo puede leer el doc de su propio alumno (no listar todos)
       allow get:   if isStaff() || isApoderado(alumnoId);
       allow list:  if isStaff();
-      allow write: if isStaff();
+      allow write: if isAdmin();
     }
 
     // ── Usuarios (personal del colegio) ───────────────────────────────────────
