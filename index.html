@@ -7032,9 +7032,13 @@ async function iniciarFiltrosReportes() {
   (cfg.niveles||[]).forEach(n => { nivEl.innerHTML += `<option value="${n.nombre}">${n.nombre}</option>`; });
 }
 
+// Meses ya reconciliados en esta sesión — evita escribir repetidamente si la diferencia persiste
+const _resumenReconciliado = new Set();
+
 // Reconcilia resumen_mensual contra registros reales en background (sin lecturas extra)
 // ingRegs = array de registros INGRESO ya cargados; resumenActual = array del resumen cargado
 async function _reconciliarResumenBackground(mes, ingRegs, resumenActual) {
+  if(_resumenReconciliado.has(mes)) return; // ya revisado esta sesión
   // Construir conteo real desde registros
   const actual = {};
   ingRegs.forEach(r => {
@@ -7055,7 +7059,7 @@ async function _reconciliarResumenBackground(mes, ingRegs, resumenActual) {
       aCorregir.push({alumnoId, puntual: act.puntual, tardanza: act.tardanza});
     }
   });
-  if(!aCorregir.length) return;
+  if(!aCorregir.length) { _resumenReconciliado.add(mes); return; }
   console.log(`[resumen] Reconciliando ${aCorregir.length} alumnos en ${mes}`);
   // Escribir correcciones en lotes de 500 (límite de Firestore batch)
   const LOTE = 500;
@@ -7072,6 +7076,7 @@ async function _reconciliarResumenBackground(mes, ingRegs, resumenActual) {
   // Invalidar cache para que la próxima apertura del reporte use datos correctos
   if(DB._resumenMesCache)     delete DB._resumenMesCache[mes];
   if(DB._resumenMesCacheTime) delete DB._resumenMesCacheTime[mes];
+  _resumenReconciliado.add(mes); // no volver a reconciliar este mes en la sesión
   console.log(`[resumen] ${aCorregir.length} correcciones aplicadas en ${mes}`);
 }
 
