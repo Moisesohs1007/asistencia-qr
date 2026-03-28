@@ -2,6 +2,13 @@
 // DB — Firebase Firestore (reemplaza localStorage)
 // Depende de: db (Firestore), LSC — definidos en index.html antes de este script
 // ============================================================
+
+// Fecha local YYYY-MM-DD sin conversión UTC (evita bug en UTC-5 a medianoche)
+function _mesLocalActual() {
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+}
+
 const DB = {
   // ALUMNOS
   _alumnosCache: null,
@@ -61,7 +68,7 @@ const DB = {
     const t = this._registrosCacheTime[key];
     if(!t) return false;
     // Meses y años ya cerrados no cambian → TTL extendido de 1 hora
-    const mesActual = new Date().toISOString().slice(0, 7); // 'YYYY-MM'
+    const mesActual  = _mesLocalActual(); // 'YYYY-MM' en hora local
     const anioActual = new Date().getFullYear();
     const esMesPasado  = key.startsWith('mes:')  && key.slice(4) < mesActual;
     const esAnioPasado = key.startsWith('anio:') && parseInt(key.slice(5)) < anioActual;
@@ -132,7 +139,7 @@ const DB = {
       this._registrosCacheTime[key] = Date.now();
       // Guardar en localStorage (no guardar año completo — muy pesado)
       if(key === 'todos' || key.startsWith('fecha:') || key.startsWith('mes:')) {
-        const mesActual = new Date().toISOString().slice(0, 7);
+        const mesActual = _mesLocalActual();
         const esMesPasado = key.startsWith('mes:') && key.slice(4) < mesActual;
         const ttlLS = esMesPasado ? LSC.TTL_REGISTROS_MES_PASADO : LSC.TTL_REGISTROS;
         LSC.set('reg_' + key, resultado, ttlLS);
@@ -215,7 +222,7 @@ const DB = {
   _resumenMesCacheTime: {},
 
   async getResumenMes(mes) {
-    const mesActual = new Date().toISOString().slice(0, 7);
+    const mesActual = _mesLocalActual();
     const esPasado  = mes < mesActual;
     const ttl = esPasado ? (30 * 24 * 60 * 60 * 1000) : (5 * 60 * 1000);
     const cached = this._resumenMesCache[mes];
