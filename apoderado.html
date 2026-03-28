@@ -674,6 +674,9 @@ auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
 // ── Datos del colegio (fuente única de verdad) ──
 var COLEGIO_NOMBRE  = 'Institución Educativa "SANTO DOMINGO DE GUZMAN"';
 var COLEGIO_ESLOGAN = '"SER SANTO DOMINGUINO ES, SER EL MEJOR"';
+// Dominio virtual de apoderados — cambiar aquí si se despliega en otro colegio
+// IMPORTANTE: también actualizar firestore.rules (función esEmailApoderado e isApoderado)
+var APO_DOMAIN      = '@apo.marello.pe';
 
 var alumno    = null;
 var apoData   = {};
@@ -727,8 +730,8 @@ auth.onAuthStateChanged(function(user) {
     return; 
   }
   var dni = null;
-  if(user.email.indexOf('@apo.marello.pe') !== -1) {
-    dni = user.email.replace('@apo.marello.pe', '');
+  if(user.email.indexOf(APO_DOMAIN) !== -1) {
+    dni = user.email.replace(APO_DOMAIN, '');
     console.log('[APO] email virtual, dni:', dni);
   } else {
     console.log('[APO] correo real, buscando emailReal:', user.email);
@@ -1428,7 +1431,9 @@ function renderCarnet() {
   document.getElementById('carnet-year').textContent   = new Date().getFullYear();
   var qrEl = document.getElementById('carnet-qr');
   qrEl.crossOrigin = 'anonymous';
-  qrEl.src = 'https://api.qrserver.com/v1/create-qr-code/?size=260x260&ecc=H&color=000000&data='+alumno.id;
+  // Token diario: "DNI|YYYY-MM-DD" — expira al día siguiente para evitar reutilización de capturas
+  var qrToken = alumno.id + '|' + new Date().toISOString().slice(0,10);
+  qrEl.src = 'https://api.qrserver.com/v1/create-qr-code/?size=260x260&ecc=H&color=000000&data='+encodeURIComponent(qrToken);
 }
 
 function renderContacto() {
