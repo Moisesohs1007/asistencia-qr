@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
   <link rel="icon" type="image/png" href="img/logo-colegio.png">
-  <link rel="apple-touch-icon" href="img/apple-icon.png">
+  <link rel="apple-touch-icon" href="img/logo-colegio.png">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta http-equiv="Permissions-Policy" content="camera=*, microphone=*">
 <title>AsistenciaQR — Sistema Escolar</title>
@@ -1648,7 +1648,7 @@
       <img src="" id="msb-logo-img" alt="">
     </div>
     <div class="msb-info">
-      <div class="msb-school" id="msb-school-name">I.E.P. "SANTO DOMINGO DE GUZMÁN"</div>
+      <div class="msb-school" id="msb-school-name">Institución Educativa "SANTO DOMINGO DE GUZMAN"</div>
       <div class="msb-user" id="msb-user-name">—</div>
       <div class="msb-role" id="msb-user-role">—</div>
     </div>
@@ -1780,9 +1780,9 @@
     <img id="splash-img" src="img/logo-colegio.png" class="splash-logo-img" style="display:block;" onerror="this.style.display='none';document.getElementById('splash-initials').style.display='flex'">
     <div id="splash-initials" class="splash-logo-initials" style="display:none;">QR</div>
   </div>
-  <div class="splash-colegio" id="splash-nombre">I.E.P "SANTO DOMINGO DE GUZMAN"</div>
+  <div class="splash-colegio" id="splash-nombre">Institución Educativa "SANTO DOMINGO DE GUZMAN"</div>
   <div class="splash-sub">Sistema de Asistencia Escolar</div>
-  <div class="splash-frase" id="splash-frase">"Ser Santo Dominguino es ser el mejor"</div>
+  <div class="splash-frase" id="splash-frase">"SER SANTO DOMINGUINO ES, SER EL MEJOR"</div>
   <div class="splash-progress-wrap">
     <div class="splash-progress-track">
       <div class="splash-progress-bar" id="splash-bar"></div>
@@ -3087,13 +3087,18 @@ const LOGO_B64 = 'img/logo-colegio.png';
 
 // Logo activo: usa el subido en config si existe, si no el hardcodeado
 // ═══════════════════════════════════════════════════════
-// DATOS DEL COLEGIO — editar aquí para actualizar
-// ═══════════════════════════════════════════════════════
-const COLEGIO_NOMBRE  = 'I.E.P "SANTO DOMINGO DE GUZMAN"';
+// ╔══════════════════════════════════════════════════════════════╗
+// ║  CONFIGURACIÓN DEL COLEGIO — editar solo aquí               ║
+// ║  Para cambiar de colegio:                                   ║
+// ║  1. Cambia COLEGIO_NOMBRE y COLEGIO_ESLOGAN                 ║
+// ║  2. Reemplaza img/logo-colegio.png con el nuevo logo        ║
+// ║     (ese archivo también se usa como ícono del sistema)     ║
+// ║  3. Actualiza el mismo COLEGIO_NOMBRE en apoderado.html     ║
+// ╚══════════════════════════════════════════════════════════════╝
+const COLEGIO_NOMBRE  = 'Institución Educativa "SANTO DOMINGO DE GUZMAN"';
 const COLEGIO_ANIO    = '2026';
-const COLEGIO_ESLOGAN = "Ser Santo Dominguino es ser el mejor";
+const COLEGIO_ESLOGAN = '"SER SANTO DOMINGUINO ES, SER EL MEJOR"';
 const COLEGIO_LOGO    = 'img/logo-colegio.png';
-// ═══════════════════════════════════════════════════════
 
 function getLogo() {
   return COLEGIO_LOGO;
@@ -5913,7 +5918,7 @@ async function exportPDFAlumnos() {
   if(!window.jspdf) { toast('Error cargando jsPDF','error'); return; }
   const { jsPDF } = window.jspdf;
   const cfgp = await getConfig();
-  const nombreColegio = cfgp?.nombreColegio || 'I.E.P "SANTO DOMINGO DE GUZMAN"';
+  const nombreColegio = COLEGIO_NOMBRE;
   const fechaExport = new Date().toLocaleDateString('es-PE',{day:'2-digit',month:'2-digit',year:'numeric'});
 
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
@@ -6197,7 +6202,7 @@ async function probarFactiliza() {
   localStorage.setItem('factiliza_instancia', instancia);
   toast('Enviando mensaje de prueba...','info');
   const cfg = await getConfig();
-  const msg = `✅ *Conexión exitosa*\nLa integración WhatsApp de ${cfg?.nombreColegio||'AsistenciaQR'} está funcionando correctamente. 🎉`;
+  const msg = `✅ *Conexión exitosa*\nLa integración WhatsApp de ${COLEGIO_NOMBRE} está funcionando correctamente. 🎉`;
   const ok = await sendWhatsApp('51972898389', msg);
   if(ok) toast('✅ Mensaje de prueba enviado correctamente','success');
   else toast('❌ Error al enviar. Verifica token e instancia','error');
@@ -7870,7 +7875,7 @@ async function inicializarFiltros() {
 
 // Config defaults
 const CONFIG_DEFAULTS = {
-  nombreColegio: 'I.E.P "SANTO DOMINGO DE GUZMAN"',
+  nombreColegio: COLEGIO_NOMBRE,
   anio: '2026',
   niveles: [
     { nombre: 'Inicial',    horaApertura: '07:00', horaLimite: '08:00', horaCorte: '10:30', horaSalida: '13:00' },
@@ -8680,7 +8685,7 @@ async function generarPDFIncidente(inc) {
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({ unit: 'mm', format: 'a4' });
   const cfg = await getConfig();
-  const nombreColegio = cfg.nombreColegio || 'I.E.P "SANTO DOMINGO DE GUZMAN"';
+  const nombreColegio = COLEGIO_NOMBRE;
   const anio = cfg.anio || '2026';
   const W = 210, margin = 20;
 
