@@ -186,12 +186,71 @@ const DB = {
     await db.collection('registros').add(reg);
     // Invalidar cache del día correspondiente
     this.invalidarRegistros(reg.fecha);
+    // Actualizar resumen_mensual solo en INGRESO — falla silenciosa (registro ya guardado)
+    if(reg.tipo === 'INGRESO') {
+      try {
+        const mes      = reg.fecha.substring(0, 7); // 'YYYY-MM'
+        const docId    = mes + '_' + reg.alumnoId;
+        const esTardanza = (reg.estado||'').trim() === 'Tardanza';
+        await db.collection('resumen_mensual').doc(docId).set({
+          mes,
+          alumnoId:  reg.alumnoId,
+          puntual:   firebase.firestore.FieldValue.increment(esTardanza ? 0 : 1),
+          tardanza:  firebase.firestore.FieldValue.increment(esTardanza ? 1 : 0),
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        }, { merge: true });
+      } catch(e) {
+        console.warn('[DB] resumen_mensual update failed (non-critical):', e.message);
+      }
+    }
   },
+
   async deleteRegistrosByFecha(fecha) {
     const snap = await db.collection('registros').where('fecha','==',fecha).get();
+    // Guardar alumnoIds afectados antes de borrar (para recalcular resumen)
+    const alumnoIds = [...new Set(
+      snap.docs.filter(d => d.data().tipo === 'INGRESO').map(d => d.data().alumnoId)
+    )];
     const batch = db.batch();
     snap.docs.forEach(d => batch.delete(d.ref));
     await batch.commit();
-    this.invalidarRegistros(fecha); // Invalidar cache
+    this.invalidarRegistros(fecha);
+    // Recalcular resumen_mensual para los alumnos afectados
+    if(alumnoIds.length) {
+      const mes = fecha.substring(0, 7);
+      this._recalcularResumenMes(mes, alumnoIds).catch(e =>
+        console.warn('[DB] recalcular resumen tras borrado:', e.message)
+      );
+    }
+  },
+
+  // Recalcula resumen_mensual desde registros reales para alumnoIds específicos
+  // Usado tras borrado de registros o para corregir desincronización
+  async _recalcularResumenMes(mes, alumnoIds) {
+    const [y, m]  = mes.split('-').map(Number);
+    const desde   = mes + '-01';
+    const hasta   = mes + '-' + String(new Date(y, m, 0).getDate()).padStart(2, '0');
+    for(const alumnoId of alumnoIds) {
+      try {
+        const snap = await db.collection('registros')
+          .where('alumnoId', '==', alumnoId)
+          .where('fecha',    '>=', desde)
+          .where('fecha',    '<=', hasta)
+          .get();
+        let puntual = 0, tardanza = 0;
+        snap.docs.forEach(d => {
+          const r = d.data();
+          if(r.tipo !== 'INGRESO') return;
+          if((r.estado||'').trim() === 'Tardanza') tardanza++;
+          else puntual++;
+        });
+        await db.collection('resumen_mensual').doc(mes + '_' + alumnoId).set({
+          mes, alumnoId, puntual, tardanza,
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+      } catch(e) {
+        console.warn('[DB] _recalcularResumenMes error:', alumnoId, e.message);
+      }
+    }
   },
 };
