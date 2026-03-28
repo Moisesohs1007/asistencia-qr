@@ -1780,9 +1780,10 @@
     <img id="splash-img" src="img/logo-colegio.png" class="splash-logo-img" style="display:block;" onerror="this.style.display='none';document.getElementById('splash-initials').style.display='flex'">
     <div id="splash-initials" class="splash-logo-initials" style="display:none;">QR</div>
   </div>
-  <div class="splash-colegio" id="splash-nombre">Institución Educativa "SANTO DOMINGO DE GUZMAN"</div>
+  <div id="splash-prefijo" class="splash-sub" style="margin-bottom:2px;font-size:0.75rem;letter-spacing:0.05em;text-transform:none;opacity:0.8;"></div>
+  <div class="splash-colegio" id="splash-nombre"></div>
+  <div class="splash-frase" id="splash-frase" style="margin-bottom:16px;"></div>
   <div class="splash-sub">Sistema de Asistencia Escolar</div>
-  <div class="splash-frase" id="splash-frase">"SER SANTO DOMINGUINO ES, SER EL MEJOR"</div>
   <div class="splash-progress-wrap">
     <div class="splash-progress-track">
       <div class="splash-progress-bar" id="splash-bar"></div>
@@ -1800,9 +1801,9 @@
         <img id="login-img-colegio" src="img/logo-colegio.png" style="height:80px;object-fit:contain;" onerror="this.style.display='none';var c=document.getElementById('login-logo-circle');if(c)c.style.display='flex';">
       </div>
       <div style="width:64px;height:64px;border-radius:50%;background:#C9A84C;display:none;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:#0D1A3A;margin-bottom:12px;flex-shrink:0;" id="login-logo-circle">SJM</div>
-      <div style="color:#fff;font-size:0.95rem;font-weight:500;text-align:center;line-height:1.3;margin-bottom:3px;word-break:break-word;max-width:240px;" id="login-titulo-colegio"></div>
-      <div style="color:#B0C4E8;font-size:0.68rem;text-align:center;margin-bottom:3px;" id="login-sub-colegio">Sistema de Gestión Escolar</div>
-      <div id="login-eslogan-colegio" style="color:rgba(255,255,255,0.25);font-size:0.63rem;font-style:italic;text-align:center;margin-bottom:20px;"></div>
+      <div style="color:#fff;font-size:0.95rem;font-weight:500;text-align:center;line-height:1.3;margin-bottom:4px;word-break:break-word;max-width:240px;" id="login-titulo-colegio"></div>
+      <div id="login-eslogan-colegio" style="color:rgba(255,255,255,0.25);font-size:0.63rem;font-style:italic;text-align:center;margin-bottom:6px;min-height:0;"></div>
+      <div style="color:#B0C4E8;font-size:0.68rem;text-align:center;margin-bottom:16px;" id="login-sub-colegio">Sistema de Gestión Escolar</div>
       <div style="width:36px;height:1px;background:rgba(201,168,76,0.4);margin-bottom:18px;"></div>
 
       <!-- Tabs -->
@@ -3822,26 +3823,29 @@ function iniciarSplash() {
   const yearEl = document.getElementById('splash-year');
   if(yearEl) yearEl.textContent = 'Año Escolar ' + new Date().getFullYear();
 
-  // Frase aleatoria
+  // Eslogan del colegio (si está vacío, frase aleatoria de respaldo)
   const fraseEl = document.getElementById('splash-frase');
   if(fraseEl) {
-    const idx = Math.floor(Math.random() * FRASES_SPLASH.length);
-    fraseEl.textContent = FRASES_SPLASH[idx];
+    if(COLEGIO_ESLOGAN && COLEGIO_ESLOGAN.trim()) {
+      fraseEl.textContent = COLEGIO_ESLOGAN;
+    } else {
+      const idx = Math.floor(Math.random() * FRASES_SPLASH.length);
+      fraseEl.textContent = FRASES_SPLASH[idx];
+    }
   }
 
-  // Cargar config del colegio (ya cacheada después)
-  getConfig().then(function(cfg) {
-    // Nombre hardcodeado — no sobreescribir desde Firestore
-    const nomEl = document.getElementById('splash-nombre');
-    if(nomEl) nomEl.textContent = COLEGIO_NOMBRE;
-    if(false && cfg && cfg.logo) { // logo hardcodeado — no sobreescribir desde Firestore
-      window._logoB64Override = cfg.logo;
-      const img = document.getElementById('splash-img');
-      const ini = document.getElementById('splash-initials');
-      if(img) { img.src = cfg.logo; img.style.display = 'block'; }
-      if(ini) ini.style.display = 'none';
-    }
-  }).catch(function(){});
+  // Nombre dividido en dos líneas
+  const nomEl  = document.getElementById('splash-nombre');
+  const preEl  = document.getElementById('splash-prefijo');
+  const partes = COLEGIO_NOMBRE.match(/^(Institución Educativa|I\.E\.P\.?|I\.E\.)\s+(.+)$/i);
+  if(nomEl && preEl && partes) {
+    preEl.textContent = partes[1];
+    nomEl.textContent = partes[2];
+  } else if(nomEl) {
+    nomEl.textContent = COLEGIO_NOMBRE;
+  }
+
+  getConfig().catch(function(){});
 
   // Iniciar barra de progreso
   setTimeout(function() {
