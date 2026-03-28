@@ -1802,7 +1802,7 @@
       <div style="width:64px;height:64px;border-radius:50%;background:#C9A84C;display:none;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:#0D1A3A;margin-bottom:12px;flex-shrink:0;" id="login-logo-circle">SJM</div>
       <div style="color:#fff;font-size:0.95rem;font-weight:500;text-align:center;line-height:1.3;margin-bottom:3px;word-break:break-word;max-width:240px;" id="login-titulo-colegio"></div>
       <div style="color:#B0C4E8;font-size:0.68rem;text-align:center;margin-bottom:3px;" id="login-sub-colegio">Sistema de Gestión Escolar</div>
-      <div style="color:rgba(255,255,255,0.25);font-size:0.63rem;font-style:italic;text-align:center;margin-bottom:20px;">"Educando la mente y el corazón"</div>
+      <div id="login-eslogan-colegio" style="color:rgba(255,255,255,0.25);font-size:0.63rem;font-style:italic;text-align:center;margin-bottom:20px;"></div>
       <div style="width:36px;height:1px;background:rgba(201,168,76,0.4);margin-bottom:18px;"></div>
 
       <!-- Tabs -->
@@ -3263,14 +3263,25 @@ let _apoderadoAlumno = null; // datos del alumno del apoderado
 
 // Cargar nombre/logo del colegio en login
 function cargarInfoColegioLogin() {
-  // Nombre e insignia hardcodeados — no se lee de Firestore
+  // Nombre dividido en dos líneas: "Institución Educativa" + nombre propio
   const tituloEl = document.getElementById('login-titulo-colegio');
   if(tituloEl) {
-    tituloEl.textContent = COLEGIO_NOMBRE;
-    const n = COLEGIO_NOMBRE.length;
-    tituloEl.style.fontSize = n > 35 ? '0.72rem' : n > 25 ? '0.82rem' : '0.95rem';
+    const partes = COLEGIO_NOMBRE.match(/^(Institución Educativa|I\.E\.P\.?|I\.E\.)\s+(.+)$/i);
+    if(partes) {
+      const n2 = partes[2].length;
+      const fs = n2 > 30 ? '0.72rem' : n2 > 20 ? '0.82rem' : '0.92rem';
+      tituloEl.innerHTML =
+        '<div style="font-size:0.7rem;font-weight:400;opacity:0.8;">' + partes[1] + '</div>'
+        + '<div style="font-size:' + fs + ';font-weight:700;">' + partes[2] + '</div>';
+    } else {
+      const n = COLEGIO_NOMBRE.length;
+      tituloEl.style.fontSize = n > 35 ? '0.72rem' : n > 25 ? '0.82rem' : '0.95rem';
+      tituloEl.textContent = COLEGIO_NOMBRE;
+    }
   }
-  // La img ya tiene el logo directo en src desde el HTML
+  // Eslogan desde constante
+  const esloganEl = document.getElementById('login-eslogan-colegio');
+  if(esloganEl) esloganEl.textContent = COLEGIO_ESLOGAN;
 }
 cargarInfoColegioLogin();
 
