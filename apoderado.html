@@ -678,6 +678,8 @@ var _registrosCargados = false; // true una vez que cargarRegistros termina
 var _configCache   = null; // config/general cacheada
 var _incidentesCache = null; // incidentes del alumno cacheados
 var _registrosPorMes = {}; // cache en memoria: { '03': [...], '04': [...] }
+var _resumenMensualCache = {}; // { 'YYYY-MM': {puntual, tardanza} | null }
+var _registrosRecientes  = null; // últimos 5 días procesados (para pestaña Resumen)
 
 // Cargar config una sola vez
 function getConfigCache() {
@@ -990,6 +992,83 @@ function cargarRegistros(mes) {
     });
 }
 
+// ── Resumen mensual pre-agregado — 1 lectura para KPIs ──
+function cargarResumenMensual(mesNum) {
+  var anio     = new Date().getFullYear();
+  var mesClave = anio + '-' + mesNum; // 'YYYY-MM'
+  if(_resumenMensualCache[mesClave] !== undefined) return Promise.resolve(_resumenMensualCache[mesClave]);
+  return db.collection('resumen_mensual').doc(mesClave + '_' + alumno.id).get()
+    .then(function(snap) {
+      _resumenMensualCache[mesClave] = snap.exists ? snap.data() : null;
+      return _resumenMensualCache[mesClave];
+    }).catch(function(e) {
+      console.warn('[APO] resumen_mensual read error:', e.message);
+      _resumenMensualCache[mesClave] = null;
+      return null;
+    });
+}
+
+// Trae los últimos 7 días de registros (≤ 14 docs) para la sección "Últimas asistencias"
+function cargarRegistrosRecientes() {
+  if(_registrosRecientes !== null) return Promise.resolve(_registrosRecientes);
+  var hoy   = new Date();
+  var hace7 = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate() - 6);
+  var desde = hace7.getFullYear() + '-'
+    + String(hace7.getMonth()+1).padStart(2,'0') + '-'
+    + String(hace7.getDate()).padStart(2,'0');
+  return db.collection('registros')
+    .where('alumnoId','==',alumno.id)
+    .where('fecha','>=',desde)
+    .get().then(function(snap) {
+      var grupos = {};
+      snap.docs.forEach(function(d) {
+        var r = d.data();
+        if(!r.fecha) return;
+        var key = r.fecha;
+        if(!grupos[key]) grupos[key] = { fecha: r.fecha, estado: '', horaIngreso: null, horaSalida: null };
+        var esIngreso = !r.tipo || r.tipo.toUpperCase() === 'INGRESO';
+        if(esIngreso) {
+          if(!grupos[key].horaIngreso) grupos[key].horaIngreso = r.hora;
+          var est = (r.estado || '').trim();
+          if(est === 'A tiempo') est = 'Puntual';
+          if(est === 'Tardanza')       grupos[key].estado = 'Tardanza';
+          else if(est === 'Puntual' && grupos[key].estado !== 'Tardanza') grupos[key].estado = 'Puntual';
+          else if(est && !grupos[key].estado) grupos[key].estado = est;
+        } else {
+          grupos[key].horaSalida = r.hora;
+        }
+      });
+      Object.values(grupos).forEach(function(g) {
+        if(!g.horaIngreso) g.estado = 'Ausente';
+        else if(!g.estado) g.estado = 'Puntual';
+      });
+      _registrosRecientes = Object.values(grupos)
+        .sort(function(a,b){ return b.fecha.localeCompare(a.fecha); })
+        .slice(0,5);
+    }).catch(function(e) {
+      console.warn('[APO] cargarRegistrosRecientes error:', e.message);
+      _registrosRecientes = _registrosRecientes || [];
+    });
+}
+
+// Días hábiles (lun-vie) transcurridos en el mes hasta hoy
+function calcularDiasHabilesHasta(mesClave) {
+  var anio  = parseInt(mesClave.substring(0,4));
+  var mes   = parseInt(mesClave.substring(5,7));
+  var hoy   = new Date();
+  var inicio = new Date(anio, mes-1, 1);
+  var finMes = new Date(anio, mes, 0);
+  var tope   = hoy < finMes ? hoy : finMes;
+  var count  = 0;
+  var d = new Date(inicio);
+  while(d <= tope) {
+    var dow = d.getDay();
+    if(dow !== 0 && dow !== 6) count++;
+    d.setDate(d.getDate()+1);
+  }
+  return count;
+}
+
 // ── Menú apoderado — igual lógica que index.html ──
 function openApoDropdown(id, btn) {
   closeApoDropdowns();
@@ -1039,17 +1118,25 @@ function showTab(tab) {
   var _map = {resumen:'inicio',historial:'asistencia',incidentes:'academico',comunicados:'comunicacion',carnet:'cuenta',contacto:'cuenta'};
   setApoTabActive(_map[tab]||'inicio', tab);
   try { sessionStorage.setItem('asmqr_apo_lastTab', tab); } catch(e) {}
-  // Si registros aun no cargaron, esperar antes de renderizar
-  if((tab === 'resumen' || tab === 'historial') && !_registrosCargados) {
+  if(tab === 'resumen') {
+    // Resumen: 1 lectura resumen_mensual + ≤14 docs recientes (NO carga mes completo)
     var mesActual = String(new Date().getMonth()+1).padStart(2,'0');
-    cargarRegistros(mesActual).then(function() {
-      if(tab === 'resumen')   renderResumen();
-      if(tab === 'historial') renderHistorial();
-    });
+    var anio      = new Date().getFullYear();
+    var mesClave  = anio + '-' + mesActual;
+    var p1 = (_resumenMensualCache[mesClave] !== undefined) ? Promise.resolve() : cargarResumenMensual(mesActual);
+    var p2 = (_registrosRecientes !== null) ? Promise.resolve() : cargarRegistrosRecientes();
+    Promise.all([p1, p2]).then(function() { renderResumen(); });
     return;
   }
-  if(tab === 'resumen')    renderResumen();
-  if(tab === 'historial')  renderHistorial();
+  if(tab === 'historial') {
+    if(!_registrosCargados) {
+      var mesActual = String(new Date().getMonth()+1).padStart(2,'0');
+      cargarRegistros(mesActual).then(function() { renderHistorial(); });
+      return;
+    }
+    renderHistorial();
+    return;
+  }
   if(tab === 'incidentes') renderIncidentes();
   if(tab === 'carnet')     renderCarnet();
   if(tab === 'contacto')   renderContacto();
@@ -1074,18 +1161,37 @@ function ico(estado) {
 
 function renderResumen() {
   // Resumen siempre muestra el mes actual — sin selector
-  var mesNum = String(new Date().getMonth()+1).padStart(2,'0');
-  var list   = filtrarMes(registros || [], mesNum);
-  // Mostrar nombre del mes en el label
+  var mesNum   = String(new Date().getMonth()+1).padStart(2,'0');
+  var anio     = new Date().getFullYear();
+  var mesClave = anio + '-' + mesNum;
   var nombreMes = new Date().toLocaleDateString('es-PE', { month: 'long', year: 'numeric' });
   nombreMes = nombreMes.charAt(0).toUpperCase() + nombreMes.slice(1);
   var lbl = document.getElementById('lbl-mes-resumen');
   if(lbl) lbl.textContent = nombreMes;
-  document.getElementById('kpi-puntual').textContent  = list.filter(function(r){return r.estado==='Puntual';}).length;
-  document.getElementById('kpi-tardanza').textContent = list.filter(function(r){return r.estado==='Tardanza';}).length;
-  document.getElementById('kpi-ausente').textContent  = list.filter(function(r){return r.estado==='Ausente';}).length;
+
+  var resumen = _resumenMensualCache[mesClave];
+  if(resumen) {
+    // Datos pre-agregados: 0 lecturas extra para KPIs
+    var diasHabiles = calcularDiasHabilesHasta(mesClave);
+    var puntual  = resumen.puntual  || 0;
+    var tardanza = resumen.tardanza || 0;
+    var ausentes = Math.max(0, diasHabiles - (puntual + tardanza));
+    document.getElementById('kpi-puntual').textContent  = puntual;
+    document.getElementById('kpi-tardanza').textContent = tardanza;
+    document.getElementById('kpi-ausente').textContent  = ausentes;
+  } else {
+    // Fallback: calcular desde registros del mes completo (si ya estaban cargados)
+    var list = filtrarMes(registros || [], mesNum);
+    document.getElementById('kpi-puntual').textContent  = list.filter(function(r){return r.estado==='Puntual';}).length;
+    document.getElementById('kpi-tardanza').textContent = list.filter(function(r){return r.estado==='Tardanza';}).length;
+    document.getElementById('kpi-ausente').textContent  = list.filter(function(r){return r.estado==='Ausente';}).length;
+  }
+
+  // Últimas asistencias: usar _registrosRecientes (carga ligera) o fallback a registros
+  var ult = (_registrosRecientes !== null
+    ? _registrosRecientes
+    : filtrarMes(registros || [], mesNum).slice(0,5));
   var cont = document.getElementById('lista-ultimos');
-  var ult  = list.slice(0,5);
   if(!ult.length) { cont.innerHTML='<div style="padding:16px;text-align:center;color:var(--muted);font-size:0.83rem;">Sin registros en este periodo</div>'; return; }
   cont.innerHTML = ult.map(function(r) {
     return '<div class="registro-row"><div style="display:flex;align-items:center;gap:10px;"><span>'+ico(r.estado)+'</span><div><div style="font-size:0.83rem;font-weight:600;">'+fStr(r.fecha)+'</div><div style="font-size:0.74rem;color:var(--muted);">'+(r.horaIngreso?'Ingreso: '+r.horaIngreso:'')+' '+(r.horaSalida?'- Salida: '+r.horaSalida:'')+'</div></div></div>'+badge(r.estado)+'</div>';
