@@ -25,6 +25,7 @@ service cloud.firestore {
     }
 
     // Verifica que el email sea de apoderado (dominio virtual)
+    // ⚠ Si cambias APO_DOMAIN en index.html/apoderado.html, actualiza también aquí:
     function esEmailApoderado() {
       return isAuthenticated() &&
         request.auth.token.email.matches('.*@apo\\.marello\\.pe');

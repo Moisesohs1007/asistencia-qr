@@ -3099,6 +3099,9 @@ const COLEGIO_NOMBRE  = 'Institución Educativa "SANTO DOMINGO DE GUZMAN"';
 const COLEGIO_ANIO    = '2026';
 const COLEGIO_ESLOGAN = '"SER SANTO DOMINGUINO ES, SER EL MEJOR"';
 const COLEGIO_LOGO    = 'img/logo-colegio.png';
+// Dominio virtual de apoderados — cambiar aquí si se despliega en otro colegio
+// IMPORTANTE: también actualizar firestore.rules (función esEmailApoderado e isApoderado)
+const APO_DOMAIN      = '@apo.marello.pe';
 
 function getLogo() {
   return COLEGIO_LOGO;
@@ -3370,7 +3373,7 @@ window.doLoginApoderado = async function() {
   document.getElementById('login-loading').style.display  = 'block';
 
   try {
-    const emailVirtual = `${dni}@apo.marello.pe`;
+    const emailVirtual = `${dni}${APO_DOMAIN}`;
 
     // Intentar login normal primero
     try {
@@ -3603,7 +3606,7 @@ function doLogout() {
 auth.onAuthStateChanged(async user => {
   if(user) {
     // Detectar si es apoderado (email virtual) o personal
-    if(user.email && user.email.includes('@apo.marello.pe')) {
+    if(user.email && user.email.includes(APO_DOMAIN)) {
       // ── ES APODERADO — redirigir a apoderado.html ──
       window.location.href = 'apoderado.html';
       return;
@@ -4388,8 +4391,19 @@ function hideOverlay() {
 }
 
 async function processQR(rawId) {
-  const id = (rawId||'').trim().replace(/\s+/g, '');
+  let id = (rawId||'').trim().replace(/\s+/g, '');
   if(!id) return;
+  // Soporte para token diario: "DNI|YYYY-MM-DD"
+  // Los carnets digitales incluyen la fecha; carnets impresos (solo DNI) siguen funcionando
+  if(id.includes('|')) {
+    const partes = id.split('|');
+    const tokenFecha = partes[1];
+    if(tokenFecha !== hoy()) {
+      showOverlay('noqr', '', '', 'QR expirado', `QR del ${tokenFecha} — muestra el QR de hoy`);
+      return;
+    }
+    id = partes[0];
+  }
   flashGreenFrame();
   // Mostrar spinner mientras busca
   showOverlay('loading', '', '', 'Buscando alumno...', '');
@@ -4669,7 +4683,7 @@ async function verificarCuentasHuerfanas() {
       el.innerHTML = '<span style="color:var(--success);">✅ No hay cuentas huérfanas en Firestore.</span>';
     } else {
       el.innerHTML = '<div style="color:#f59e0b;margin-bottom:8px;">⚠️ Se encontraron <strong>' + huerfanos.length + '</strong> documentos de apoderados huérfanos en Firestore:</div>' +
-        huerfanos.map(d => '<div style="font-family:monospace;font-size:0.78rem;color:var(--muted);padding:2px 0;">• DNI: ' + d.id + ' → <code>' + d.id + '@apo.marello.pe</code></div>').join('') +
+        huerfanos.map(d => '<div style="font-family:monospace;font-size:0.78rem;color:var(--muted);padding:2px 0;">• DNI: ' + d.id + ' → <code>' + d.id + APO_DOMAIN + '</code></div>').join('') +
         '<button class="btn" style="margin-top:10px;background:rgba(239,68,68,0.15);color:#f87171;border:1px solid rgba(239,68,68,0.3);font-size:0.8rem;" onclick="limpiarApoderadosHuerfanos()">🗑 Limpiar documentos huérfanos de Firestore</button>';
     }
   } catch(e) {
@@ -7018,6 +7032,49 @@ async function iniciarFiltrosReportes() {
   (cfg.niveles||[]).forEach(n => { nivEl.innerHTML += `<option value="${n.nombre}">${n.nombre}</option>`; });
 }
 
+// Reconcilia resumen_mensual contra registros reales en background (sin lecturas extra)
+// ingRegs = array de registros INGRESO ya cargados; resumenActual = array del resumen cargado
+async function _reconciliarResumenBackground(mes, ingRegs, resumenActual) {
+  // Construir conteo real desde registros
+  const actual = {};
+  ingRegs.forEach(r => {
+    if(!actual[r.alumnoId]) actual[r.alumnoId] = {puntual: 0, tardanza: 0};
+    if((r.estado||'').trim() === 'Tardanza') actual[r.alumnoId].tardanza++;
+    else actual[r.alumnoId].puntual++;
+  });
+  // Construir mapa del resumen actual
+  const resumenMap = {};
+  resumenActual.forEach(r => { resumenMap[r.alumnoId] = r; });
+  // Detectar diferencias
+  const todosIds = new Set([...Object.keys(actual), ...resumenActual.map(r => r.alumnoId)]);
+  const aCorregir = [];
+  todosIds.forEach(alumnoId => {
+    const act = actual[alumnoId]    || {puntual: 0, tardanza: 0};
+    const res = resumenMap[alumnoId] || {puntual: -1, tardanza: -1}; // -1 fuerza escritura si falta
+    if(act.puntual !== res.puntual || act.tardanza !== res.tardanza) {
+      aCorregir.push({alumnoId, puntual: act.puntual, tardanza: act.tardanza});
+    }
+  });
+  if(!aCorregir.length) return;
+  console.log(`[resumen] Reconciliando ${aCorregir.length} alumnos en ${mes}`);
+  // Escribir correcciones en lotes de 500 (límite de Firestore batch)
+  const LOTE = 500;
+  for(let i = 0; i < aCorregir.length; i += LOTE) {
+    const batch = db.batch();
+    aCorregir.slice(i, i + LOTE).forEach(({alumnoId, puntual, tardanza}) => {
+      batch.set(db.collection('resumen_mensual').doc(mes + '_' + alumnoId), {
+        mes, alumnoId, puntual, tardanza,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+    });
+    await batch.commit();
+  }
+  // Invalidar cache para que la próxima apertura del reporte use datos correctos
+  if(DB._resumenMesCache)     delete DB._resumenMesCache[mes];
+  if(DB._resumenMesCacheTime) delete DB._resumenMesCacheTime[mes];
+  console.log(`[resumen] ${aCorregir.length} correcciones aplicadas en ${mes}`);
+}
+
 // Días hábiles (lun–vie) desde el primer día del mes hasta hoy (o fin de mes si ya cerró)
 function _calcDiasHabilesHasta(mesClave) {
   const hoyStr = hoy();
@@ -7068,8 +7125,10 @@ async function renderReportes(anioCompleto=false) {
 
   // ── Fase 1: KPIs rápidos desde resumen_mensual (~433 lecturas vs miles) ──────
   // Solo para vista mensual sin filtro de día específico
+  let _resumenFase1 = null; // guardado para reconciliación automática tras cargar registros
   if(!diaSel && !anioCompleto) {
     const resumen = await DB.getResumenMes(mesSel);
+    _resumenFase1 = resumen;
     const resFilt = resumen.filter(r => alumnosIds.has(r.alumnoId));
     const kpiP = resFilt.reduce((s,r) => s + (r.puntual||0), 0);
     const kpiT = resFilt.reduce((s,r) => s + (r.tardanza||0), 0);
@@ -7095,6 +7154,15 @@ async function renderReportes(anioCompleto=false) {
   const regs = registros.filter(r => alumnosIds.has(r.alumnoId));
   const mesStr = mesSel || today.slice(0,7);
   const ingMes = regs.filter(r=>r.fecha.startsWith(mesStr)&&r.tipo==='INGRESO');
+
+  // ── Reconciliación automática en background ──────────────────────────────────
+  // Compara resumen_mensual con registros reales y corrige diferencias sin bloquear la UI
+  // Usa datos ya cargados → 0 lecturas extra de Firestore
+  if(!diaSel && !anioCompleto && _resumenFase1) {
+    _reconciliarResumenBackground(mesSel, ingMes, _resumenFase1).catch(e =>
+      console.warn('[resumen] reconciliación:', e.message)
+    );
+  }
 
   // Si hay día seleccionado, filtrar métricas sólo a ese día
   const ingFiltro = diaSel ? ingMes.filter(r=>r.fecha===diaSel) : ingMes;
@@ -9114,7 +9182,7 @@ function updateBottomNavActive(id) {
 // Portal apoderado → apoderado.html
 
 async function crearCuentaApoderado(alumno) {
-  const email = `${alumno.id}@apo.marello.pe`;
+  const email = `${alumno.id}${APO_DOMAIN}`;
 
   const pass  = alumno.id;
   let intentos = 0;
@@ -9208,7 +9276,7 @@ async function crearCuentasApoderadosMasivo() {
       const a = alumnos[i];
       const pct = Math.round(((i+1)/alumnos.length)*100);
       statusEl.textContent = `Procesando ${i+1}/${alumnos.length} (${pct}%): ${a.apellidos} ${a.nombres}...`;
-      const email = `${a.id}@apo.marello.pe`;
+      const email = `${a.id}${APO_DOMAIN}`;
       try {
         const appName = 'bulk_' + a.id + '_' + Date.now();
         const tmpApp  = firebase.initializeApp(firebaseConfig, appName);
@@ -9260,7 +9328,7 @@ async function crearCuentasApoderadosMasivo() {
 
 async function resetPassApoderado(dni) {
   if(!confirm(`¿Resetear la contraseña del apoderado DNI ${dni}?\n\nLa nueva contraseña será el DNI: ${dni}`)) return;
-  const email = `${dni}@apo.marello.pe`;
+  const email = `${dni}${APO_DOMAIN}`;
   toast('Procesando...', 'info');
   try {
     const tmpApp  = firebase.initializeApp(firebaseConfig, 'reset_' + Date.now());
@@ -9306,6 +9374,38 @@ async function resetPassApoderado(dni) {
       toast(`⚠️ No se pudo resetear. Borra la cuenta manualmente en Firebase Console.`, 'warning');
     }
   } catch(e) { toast('Error: ' + e.message, 'error'); }
+}
+
+async function recalcularResumenMensual() {
+  const mes = mesActual();
+  const statusEl = document.getElementById('recalc-status');
+  statusEl.style.display = 'block';
+  statusEl.style.background = 'rgba(59,130,246,0.1)';
+  statusEl.style.color = 'var(--accent)';
+  statusEl.textContent = 'Obteniendo alumnos...';
+  try {
+    const alumnos = await DB.getAlumnos();
+    statusEl.textContent = `Recalculando ${alumnos.length} alumnos para ${mes}...`;
+    const ids = alumnos.map(a => a.id);
+    // Procesar en lotes de 20 para no saturar Firestore
+    const LOTE = 20;
+    for(let i = 0; i < ids.length; i += LOTE) {
+      await DB._recalcularResumenMes(mes, ids.slice(i, i + LOTE));
+      const pct = Math.min(100, Math.round((i + LOTE) / ids.length * 100));
+      statusEl.textContent = `Recalculando... ${pct}%`;
+    }
+    // Invalidar cache del resumen mensual
+    if(DB._resumenMesCache) delete DB._resumenMesCache[mes];
+    if(DB._resumenMesCacheTime) delete DB._resumenMesCacheTime[mes];
+    statusEl.style.background = 'rgba(29,158,117,0.1)';
+    statusEl.style.color = 'var(--success)';
+    statusEl.textContent = `✅ Resumen de ${mes} recalculado para ${alumnos.length} alumnos.`;
+    toast('Resumen mensual recalculado', 'success');
+  } catch(e) {
+    statusEl.style.background = 'rgba(239,68,68,0.1)';
+    statusEl.style.color = 'var(--danger)';
+    statusEl.textContent = 'Error: ' + e.message;
+  }
 }
 
 async function resetearTodoElSistema() {

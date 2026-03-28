@@ -182,6 +182,11 @@ const DB = {
   },
 
   async saveRegistro(reg) {
+    // Auditoría: registrar quién escaneó (usuario del staff autenticado)
+    if(!reg.registradoPor) {
+      const cu = firebase.auth().currentUser;
+      if(cu) reg.registradoPor = cu.email || cu.uid;
+    }
     reg.timestamp = firebase.firestore.FieldValue.serverTimestamp();
     await db.collection('registros').add(reg);
     // Invalidar cache del día correspondiente
