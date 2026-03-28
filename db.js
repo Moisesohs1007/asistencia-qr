@@ -59,7 +59,14 @@ const DB = {
 
   _cacheValido(key) {
     const t = this._registrosCacheTime[key];
-    return t && (Date.now() - t) < this._CACHE_TTL;
+    if(!t) return false;
+    // Meses y años ya cerrados no cambian → TTL extendido de 1 hora
+    const mesActual = new Date().toISOString().slice(0, 7); // 'YYYY-MM'
+    const anioActual = new Date().getFullYear();
+    const esMesPasado  = key.startsWith('mes:')  && key.slice(4) < mesActual;
+    const esAnioPasado = key.startsWith('anio:') && parseInt(key.slice(5)) < anioActual;
+    const ttl = (esMesPasado || esAnioPasado) ? LSC.TTL_REGISTROS_MES_PASADO : this._CACHE_TTL;
+    return (Date.now() - t) < ttl;
   },
 
   async getRegistros(filtros={}) {
@@ -125,7 +132,10 @@ const DB = {
       this._registrosCacheTime[key] = Date.now();
       // Guardar en localStorage (no guardar año completo — muy pesado)
       if(key === 'todos' || key.startsWith('fecha:') || key.startsWith('mes:')) {
-        LSC.set('reg_' + key, resultado, LSC.TTL_REGISTROS);
+        const mesActual = new Date().toISOString().slice(0, 7);
+        const esMesPasado = key.startsWith('mes:') && key.slice(4) < mesActual;
+        const ttlLS = esMesPasado ? LSC.TTL_REGISTROS_MES_PASADO : LSC.TTL_REGISTROS;
+        LSC.set('reg_' + key, resultado, ttlLS);
       }
 
       // Si cargamos 'todos', también llenar cache por fecha
