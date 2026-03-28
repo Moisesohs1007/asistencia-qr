@@ -52,7 +52,10 @@ service cloud.firestore {
       allow create: if isStaff()
         && request.resource.data.keys().hasAll(['alumnoId','tipo','fecha','hora'])
         && request.resource.data.tipo in ['INGRESO', 'SALIDA']
-        && !('passBackup' in request.resource.data);
+        && !('passBackup' in request.resource.data)
+        // registradoPor debe coincidir con el usuario autenticado (si se envía)
+        && (!('registradoPor' in request.resource.data) ||
+            request.resource.data.registradoPor == request.auth.token.email);
       allow update, delete: if isAdmin();
     }
 

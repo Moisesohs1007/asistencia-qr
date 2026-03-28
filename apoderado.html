@@ -1431,8 +1431,10 @@ function renderCarnet() {
   document.getElementById('carnet-year').textContent   = new Date().getFullYear();
   var qrEl = document.getElementById('carnet-qr');
   qrEl.crossOrigin = 'anonymous';
-  // Token diario: "DNI|YYYY-MM-DD" — expira al día siguiente para evitar reutilización de capturas
-  var qrToken = alumno.id + '|' + new Date().toISOString().slice(0,10);
+  // Token diario: "DNI|YYYY-MM-DD" — usa fecha local (no UTC) igual que el scanner
+  var _hoy = new Date();
+  var _qrFecha = _hoy.getFullYear() + '-' + String(_hoy.getMonth()+1).padStart(2,'0') + '-' + String(_hoy.getDate()).padStart(2,'0');
+  var qrToken = alumno.id + '|' + _qrFecha;
   qrEl.src = 'https://api.qrserver.com/v1/create-qr-code/?size=260x260&ecc=H&color=000000&data='+encodeURIComponent(qrToken);
 }
 
