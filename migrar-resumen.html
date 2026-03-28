@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Migración resumen_mensual</title>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<style>
+  body { background:#0a0e1a; color:#e2e8f0; font-family:monospace; padding:32px; max-width:760px; margin:auto; }
+  h1   { color:#38bdf8; margin-bottom:8px; }
+  p    { color:#94a3b8; margin-bottom:24px; font-size:0.9rem; }
+  button { background:#38bdf8; color:#0a0e1a; border:none; padding:12px 28px;
+           border-radius:8px; font-size:1rem; font-weight:700; cursor:pointer; }
+  button:disabled { background:#334155; color:#64748b; cursor:not-allowed; }
+  #log { margin-top:24px; background:#111827; border:1px solid #1f2d45; border-radius:8px;
+         padding:16px; max-height:480px; overflow-y:auto; font-size:0.82rem; line-height:1.7; }
+  .ok   { color:#34d399; }
+  .warn { color:#fbbf24; }
+  .err  { color:#f87171; }
+  .info { color:#94a3b8; }
+  .head { color:#818cf8; font-weight:bold; }
+  #stats { margin-top:16px; background:#111827; border:1px solid #1f2d45; border-radius:8px;
+           padding:14px 16px; font-size:0.85rem; display:none; }
+  #stats span { color:#38bdf8; font-weight:bold; }
+</style>
+</head>
+<body>
+
+<h1>Migración: resumen_mensual</h1>
+<p>
+  Herramienta de uso único (solo admin). Lee todos los registros de asistencia por mes y recalcula
+  los contadores pre-agregados en <code>resumen_mensual</code>. Ejecutar UNA sola vez.
+</p>
+
+<div id="login-area">
+  <input id="inp-email" type="email" placeholder="Email admin" style="padding:10px;background:#1a2236;border:1px solid #1f2d45;color:#e2e8f0;border-radius:6px;margin-right:8px;width:220px;">
+  <input id="inp-pass"  type="password" placeholder="Contraseña" style="padding:10px;background:#1a2236;border:1px solid #1f2d45;color:#e2e8f0;border-radius:6px;margin-right:8px;width:180px;">
+  <button onclick="loginYMigrar()">Iniciar sesión y migrar</button>
+</div>
+
+<div id="log"></div>
+<div id="stats"></div>
+
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyBLI0I41vWjMK2q1ZjH1c1BK4SAFno7sfY",
+  authDomain: "asistencia-qr-a3346.firebaseapp.com",
+  projectId: "asistencia-qr-a3346",
+  storageBucket: "asistencia-qr-a3346.firebasestorage.app",
+  messagingSenderId: "617000910031",
+  appId: "1:617000910031:web:ccc2454260d8b4e7704bba"
+};
+firebase.initializeApp(firebaseConfig);
+const db   = firebase.firestore();
+const auth = firebase.auth();
+
+var totalLecturas = 0;
+var totalEscritos = 0;
+
+function log(msg, cls) {
+  var d = document.getElementById('log');
+  d.innerHTML += '<div class="'+(cls||'info')+'">'+msg+'</div>';
+  d.scrollTop = d.scrollHeight;
+}
+
+async function loginYMigrar() {
+  var email = document.getElementById('inp-email').value.trim();
+  var pass  = document.getElementById('inp-pass').value;
+  if(!email || !pass) { log('Ingresa email y contraseña.','err'); return; }
+  document.querySelector('button').disabled = true;
+  log('Autenticando...','info');
+  try {
+    await auth.signInWithEmailAndPassword(email, pass);
+    // Verificar que sea admin
+    var uid  = auth.currentUser.uid;
+    var uSnap = await db.collection('usuarios').doc(uid).get();
+    if(!uSnap.exists || uSnap.data().rol !== 'admin') {
+      log('Solo admins pueden ejecutar esta migración.','err');
+      await auth.signOut();
+      document.querySelector('button').disabled = false;
+      return;
+    }
+    log('Login OK — iniciando migración...','ok');
+    await migrar();
+  } catch(e) {
+    log('Error login: ' + e.message, 'err');
+    document.querySelector('button').disabled = false;
+  }
+}
+
+async function migrar() {
+  // Meses a migrar: desde marzo del año actual hasta el mes actual
+  var hoy      = new Date();
+  var anio     = hoy.getFullYear();
+  var mesActual = hoy.getMonth() + 1; // 1-indexed
+
+  // El año lectivo comienza en marzo (mes 3)
+  var meses = [];
+  for(var m = 3; m <= mesActual; m++) {
+    meses.push(anio + '-' + String(m).padStart(2,'0'));
+  }
+
+  log('<br><span class="head">Meses a procesar: ' + meses.join(', ') + '</span>');
+  log('Estrategia: 1 query paginada por mes → agrupar en memoria → batch write<br>','info');
+
+  for(var i = 0; i < meses.length; i++) {
+    await procesarMes(meses[i]);
+  }
+
+  var statsEl = document.getElementById('stats');
+  statsEl.style.display = 'block';
+  statsEl.innerHTML = 'Migración completa — Lecturas Firestore: <span>'
+    + totalLecturas + '</span> &nbsp;|&nbsp; Documentos escritos: <span>'
+    + totalEscritos + '</span>';
+  log('<br><span class="ok">✓ Migración finalizada.</span>');
+}
+
+async function procesarMes(mes) {
+  log('<span class="head">── Mes ' + mes + ' ──</span>');
+  var [y, m]  = mes.split('-').map(Number);
+  var desde   = mes + '-01';
+  var hasta   = mes + '-' + String(new Date(y, m, 0).getDate()).padStart(2,'0');
+
+  // Leer todos los registros del mes (paginado, 1000 por página)
+  var docs     = [];
+  var lastDoc  = null;
+  var paginas  = 0;
+  var q = db.collection('registros')
+    .where('fecha','>=',desde)
+    .where('fecha','<=',hasta)
+    .orderBy('fecha');
+
+  while(true) {
+    var paged = lastDoc ? q.startAfter(lastDoc).limit(1000) : q.limit(1000);
+    var snap  = await paged.get();
+    totalLecturas += snap.docs.length;
+    snap.docs.forEach(function(d){ docs.push(d.data()); });
+    paginas++;
+    if(snap.docs.length < 1000) break;
+    lastDoc = snap.docs[snap.docs.length - 1];
+  }
+  log('  Docs leídos: ' + docs.length + ' (' + paginas + ' página/s)', 'info');
+
+  if(!docs.length) {
+    log('  Sin registros — omitiendo.','warn');
+    return;
+  }
+
+  // Agrupar en memoria por alumnoId
+  var resumen = {}; // { alumnoId: { puntual: N, tardanza: N } }
+  docs.forEach(function(r) {
+    if(r.tipo !== 'INGRESO') return;
+    if(!r.alumnoId) return;
+    if(!resumen[r.alumnoId]) resumen[r.alumnoId] = { puntual: 0, tardanza: 0 };
+    var esTardanza = (r.estado || '').trim() === 'Tardanza';
+    if(esTardanza) resumen[r.alumnoId].tardanza++;
+    else           resumen[r.alumnoId].puntual++;
+  });
+
+  var alumnoIds = Object.keys(resumen);
+  log('  Alumnos con INGRESO: ' + alumnoIds.length, 'info');
+
+  if(!alumnoIds.length) {
+    log('  Sin ingresos — omitiendo.','warn');
+    return;
+  }
+
+  // Escribir en batches de 500 (límite Firestore)
+  var BATCH_SIZE = 500;
+  var escritos = 0;
+  for(var i = 0; i < alumnoIds.length; i += BATCH_SIZE) {
+    var lote = alumnoIds.slice(i, i + BATCH_SIZE);
+    var batch = db.batch();
+    lote.forEach(function(alumnoId) {
+      var docId = mes + '_' + alumnoId;
+      batch.set(db.collection('resumen_mensual').doc(docId), {
+        mes:       mes,
+        alumnoId:  alumnoId,
+        puntual:   resumen[alumnoId].puntual,
+        tardanza:  resumen[alumnoId].tardanza,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+    });
+    await batch.commit();
+    escritos += lote.length;
+    totalEscritos += lote.length;
+  }
+  log('  Documentos escritos en resumen_mensual: ' + escritos, 'ok');
+}
+</script>
+</body>
+</html>

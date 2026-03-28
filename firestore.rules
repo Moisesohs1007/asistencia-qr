@@ -82,6 +82,17 @@ service cloud.firestore {
       allow update, delete: if isAdmin();
     }
 
+    // ── Resumen mensual (pre-agregado por alumno/mes) ────────────────────────
+    match /resumen_mensual/{docId} {
+      // Staff puede leer y escribir (actualiza al escanear QR)
+      allow read, write: if isStaff();
+      // Apoderado puede leer solo el resumen de su alumno
+      // docId tiene formato: "YYYY-MM_alumnoId"
+      allow read: if isAuthenticated() &&
+        request.auth.token.email.matches('.*@apo\\.marello\\.pe') &&
+        docId.split('_')[1] + '@apo.marello.pe' == request.auth.token.email;
+    }
+
     // ── Bloquear todo lo demás ────────────────────────────────────────────────
     match /{document=**} {
       allow read, write: if false;
