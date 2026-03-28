@@ -671,6 +671,10 @@ var auth = firebase.auth();
 var db   = firebase.firestore();
 auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
 
+// ── Datos del colegio (fuente única de verdad) ──
+var COLEGIO_NOMBRE  = 'Institución Educativa "SANTO DOMINGO DE GUZMAN"';
+var COLEGIO_ESLOGAN = '"SER SANTO DOMINGUINO ES, SER EL MEJOR"';
+
 var alumno    = null;
 var apoData   = {};
 var registros = [];
@@ -1406,8 +1410,8 @@ function descargarIncidente(idx) {
 
 function renderCarnet() {
   getConfigCache().then(function(cfg) {
-    document.getElementById('carnet-colegio').textContent = cfg.nombreColegio || 'I.E.P. "SANTO DOMINGO DE GUZMAN"';
-  }).catch(function(){ document.getElementById('carnet-colegio').textContent='I.E.P. "SANTO DOMINGO DE GUZMAN"'; });
+    document.getElementById('carnet-colegio').textContent = COLEGIO_NOMBRE;
+  }).catch(function(){ document.getElementById('carnet-colegio').textContent = COLEGIO_NOMBRE; });
   if(alumno.foto) { var cf = document.getElementById('carnet-foto'); if(cf) cf.src = alumno.foto; }
   document.getElementById('carnet-nombre').textContent = alumno.nombres+' '+alumno.apellidos;
   document.getElementById('carnet-grado').textContent  = alumno.grado+' '+alumno.seccion+' - '+alumno.turno;

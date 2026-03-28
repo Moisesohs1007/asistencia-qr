@@ -135,7 +135,7 @@
     <img id="logo-img" src="" alt="🏫" onerror="this.style.display='none';this.parentElement.innerHTML='🏫';">
   </div>
   <div class="gold-line"></div>
-  <h1 id="nombre-colegio">I.E.P. San José Marello</h1>
+  <h1 id="nombre-colegio">Institución Educativa "SANTO DOMINGO DE GUZMAN"</h1>
   <p>Consulta de Asistencia — Apoderados</p>
 </div>
 
@@ -233,7 +233,7 @@ async function cargarConfig() {
     const snap = await db.collection('config').doc('general').get();
     if(snap.exists) {
       const cfg = snap.data();
-      if(cfg.nombreColegio) document.getElementById('nombre-colegio').textContent = cfg.nombreColegio;
+      // nombre-colegio fijo en código — no se sobreescribe desde Firestore
       if(cfg.logo) {
         document.getElementById('logo-img').src = cfg.logo;
       }
