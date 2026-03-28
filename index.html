@@ -4006,6 +4006,7 @@ const DB = {
     if(filtros.alumnoId) return 'alumno:' + filtros.alumnoId;
     if(filtros.mes)      return 'mes:' + filtros.mes;
     if(filtros.anio)     return 'anio:' + filtros.anio;
+    if(filtros.desde && filtros.hasta) return 'rango:' + filtros.desde + '_' + filtros.hasta;
     return 'todos';
   },
 
@@ -4046,6 +4047,10 @@ const DB = {
       // Filtro por año completo — solo admin/director
       if(filtros.anio) {
         q = q.where('fecha','>=',filtros.anio+'-01-01').where('fecha','<=',filtros.anio+'-12-31').orderBy('fecha');
+      }
+      // Filtro por rango de fechas arbitrario (desde/hasta)
+      if(filtros.desde && filtros.hasta) {
+        q = q.where('fecha','>=',filtros.desde).where('fecha','<=',filtros.hasta).orderBy('fecha');
       }
       // Paginación completa: evita perder registros con límites fijos
       // Para consultas diarias (fecha exacta) 5000 es suficiente (max ~2×alumnos)
@@ -5535,9 +5540,14 @@ async function getRegistrosFiltrados() {
   const nivel   = document.getElementById('filter-nivel').value;
   const q       = (document.getElementById('filter-search').value||'').toLowerCase();
 
-  let regs = await DB.getRegistros({});
+  // Construir filtro DB: si hay rango de fechas usarlo, si no, mes actual como default
+  let filtroDb;
+  if(desde && hasta)   filtroDb = { desde, hasta };
+  else if(desde)       filtroDb = { desde, hasta: hoy() };
+  else                 filtroDb = { mes: hoy().substring(0, 7) };
+  let regs = await DB.getRegistros(filtroDb);
 
-  // Aplicar filtros
+  // Aplicar filtros adicionales en cliente (nivel, grado, sección, búsqueda)
   if(desde || hasta) {
     regs = regs.filter(r => {
       if(!r.fecha) return false;
