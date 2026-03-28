@@ -2486,14 +2486,6 @@
       <div style="margin-top:10px;font-size:0.78rem;color:var(--muted);">⚠️ Si ya existe una cuenta no se modifica. Solo crea las que faltan.</div>
     </div>
 
-    <!-- Mantenimiento: recalcular resumen mensual -->
-    <div class="card" style="margin-bottom:20px;padding:20px 24px;">
-      <div style="font-family:var(--font-display);font-size:1rem;font-weight:700;margin-bottom:4px;color:var(--accent);">🔄 Resumen Mensual</div>
-      <div style="color:var(--muted);font-size:0.82rem;margin-bottom:16px;">Recalcula los contadores de puntualidad y tardanzas desde los registros reales. Úsalo si los KPIs del panel muestran datos inconsistentes.</div>
-      <div id="recalc-status" style="display:none;margin-bottom:12px;padding:10px 14px;border-radius:10px;font-size:0.83rem;"></div>
-      <button class="btn btn-primary" onclick="recalcularResumenMensual()">🔄 Recalcular resumen del mes actual</button>
-    </div>
-
     <!-- Zona de peligro -->
     <div class="card" style="margin-bottom:20px;padding:20px 24px;border:2px solid rgba(239,68,68,0.5);">
       <div style="font-family:var(--font-display);font-size:1rem;font-weight:700;margin-bottom:6px;color:#ef4444;">&#9888;&#65039; Zona de Peligro &mdash; Resetear Sistema</div>
@@ -7040,6 +7032,49 @@ async function iniciarFiltrosReportes() {
   (cfg.niveles||[]).forEach(n => { nivEl.innerHTML += `<option value="${n.nombre}">${n.nombre}</option>`; });
 }
 
+// Reconcilia resumen_mensual contra registros reales en background (sin lecturas extra)
+// ingRegs = array de registros INGRESO ya cargados; resumenActual = array del resumen cargado
+async function _reconciliarResumenBackground(mes, ingRegs, resumenActual) {
+  // Construir conteo real desde registros
+  const actual = {};
+  ingRegs.forEach(r => {
+    if(!actual[r.alumnoId]) actual[r.alumnoId] = {puntual: 0, tardanza: 0};
+    if((r.estado||'').trim() === 'Tardanza') actual[r.alumnoId].tardanza++;
+    else actual[r.alumnoId].puntual++;
+  });
+  // Construir mapa del resumen actual
+  const resumenMap = {};
+  resumenActual.forEach(r => { resumenMap[r.alumnoId] = r; });
+  // Detectar diferencias
+  const todosIds = new Set([...Object.keys(actual), ...resumenActual.map(r => r.alumnoId)]);
+  const aCorregir = [];
+  todosIds.forEach(alumnoId => {
+    const act = actual[alumnoId]    || {puntual: 0, tardanza: 0};
+    const res = resumenMap[alumnoId] || {puntual: -1, tardanza: -1}; // -1 fuerza escritura si falta
+    if(act.puntual !== res.puntual || act.tardanza !== res.tardanza) {
+      aCorregir.push({alumnoId, puntual: act.puntual, tardanza: act.tardanza});
+    }
+  });
+  if(!aCorregir.length) return;
+  console.log(`[resumen] Reconciliando ${aCorregir.length} alumnos en ${mes}`);
+  // Escribir correcciones en lotes de 500 (límite de Firestore batch)
+  const LOTE = 500;
+  for(let i = 0; i < aCorregir.length; i += LOTE) {
+    const batch = db.batch();
+    aCorregir.slice(i, i + LOTE).forEach(({alumnoId, puntual, tardanza}) => {
+      batch.set(db.collection('resumen_mensual').doc(mes + '_' + alumnoId), {
+        mes, alumnoId, puntual, tardanza,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+    });
+    await batch.commit();
+  }
+  // Invalidar cache para que la próxima apertura del reporte use datos correctos
+  if(DB._resumenMesCache)     delete DB._resumenMesCache[mes];
+  if(DB._resumenMesCacheTime) delete DB._resumenMesCacheTime[mes];
+  console.log(`[resumen] ${aCorregir.length} correcciones aplicadas en ${mes}`);
+}
+
 // Días hábiles (lun–vie) desde el primer día del mes hasta hoy (o fin de mes si ya cerró)
 function _calcDiasHabilesHasta(mesClave) {
   const hoyStr = hoy();
@@ -7090,8 +7125,10 @@ async function renderReportes(anioCompleto=false) {
 
   // ── Fase 1: KPIs rápidos desde resumen_mensual (~433 lecturas vs miles) ──────
   // Solo para vista mensual sin filtro de día específico
+  let _resumenFase1 = null; // guardado para reconciliación automática tras cargar registros
   if(!diaSel && !anioCompleto) {
     const resumen = await DB.getResumenMes(mesSel);
+    _resumenFase1 = resumen;
     const resFilt = resumen.filter(r => alumnosIds.has(r.alumnoId));
     const kpiP = resFilt.reduce((s,r) => s + (r.puntual||0), 0);
     const kpiT = resFilt.reduce((s,r) => s + (r.tardanza||0), 0);
@@ -7117,6 +7154,15 @@ async function renderReportes(anioCompleto=false) {
   const regs = registros.filter(r => alumnosIds.has(r.alumnoId));
   const mesStr = mesSel || today.slice(0,7);
   const ingMes = regs.filter(r=>r.fecha.startsWith(mesStr)&&r.tipo==='INGRESO');
+
+  // ── Reconciliación automática en background ──────────────────────────────────
+  // Compara resumen_mensual con registros reales y corrige diferencias sin bloquear la UI
+  // Usa datos ya cargados → 0 lecturas extra de Firestore
+  if(!diaSel && !anioCompleto && _resumenFase1) {
+    _reconciliarResumenBackground(mesSel, ingMes, _resumenFase1).catch(e =>
+      console.warn('[resumen] reconciliación:', e.message)
+    );
+  }
 
   // Si hay día seleccionado, filtrar métricas sólo a ese día
   const ingFiltro = diaSel ? ingMes.filter(r=>r.fecha===diaSel) : ingMes;
