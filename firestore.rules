@@ -19,20 +19,35 @@ service cloud.firestore {
         exists(/databases/$(database)/documents/usuarios/$(request.auth.uid));
     }
 
-    // Verifica si el usuario autenticado ES el apoderado de ese alumno
-    // (por email virtual: {dni}@apo.marello.pe)
-    // NOTA: en Firestore Rules el email está en request.auth.token.email
     function isApoderado(alumnoId) {
       return isAuthenticated() &&
         request.auth.token.email == alumnoId + '@apo.marello.pe';
     }
 
+    // Verifica que el email sea de apoderado (dominio virtual)
+    function esEmailApoderado() {
+      return isAuthenticated() &&
+        request.auth.token.email.matches('.*@apo\\.marello\\.pe');
+    }
+
+    // Extrae el DNI del alumno desde el email del apoderado
+    function dniDesdeEmail() {
+      return request.auth.token.email.replace('@apo.marello.pe', '');
+    }
+
     // ── Registros de asistencia ───────────────────────────────────────────────
     match /registros/{docId} {
-      allow get:  if isStaff() ||
-        (isAuthenticated() && resource.data.alumnoId + '@apo.marello.pe' == request.auth.token.email);
+      // get: staff o el apoderado dueño del registro
+      allow get: if isStaff() ||
+        (esEmailApoderado() && resource.data.alumnoId + '@apo.marello.pe' == request.auth.token.email);
+
+      // list: staff sin restricción / apoderado solo con límite razonable
+      // Nota: Firestore no permite filtrar por query.where en reglas;
+      // la app siempre consulta con where('alumnoId','==',dni).
+      // El límite de 500 evita lecturas masivas accidentales o maliciosas.
       allow list: if isStaff() ||
-        (isAuthenticated() && request.auth.token.email.matches('.*@apo\\.marello\\.pe'));
+        (esEmailApoderado() && request.query.limit <= 500);
+
       allow create: if isStaff()
         && request.resource.data.keys().hasAll(['alumnoId','tipo','fecha','hora'])
         && request.resource.data.tipo in ['INGRESO', 'SALIDA']
@@ -50,7 +65,10 @@ service cloud.firestore {
 
     // ── Alumnos ───────────────────────────────────────────────────────────────
     match /alumnos/{alumnoId} {
-      allow read: if isAuthenticated();
+      // Staff: acceso total
+      // Apoderado: solo puede leer el doc de su propio alumno (no listar todos)
+      allow get:   if isStaff() || isApoderado(alumnoId);
+      allow list:  if isStaff();
       allow write: if isStaff();
     }
 
@@ -62,34 +80,40 @@ service cloud.firestore {
 
     // ── Configuración del colegio ─────────────────────────────────────────────
     match /config/{docId} {
-      allow read: if isAuthenticated();
+      // Staff: todo
+      // Apoderado: solo config/general (nombre, logo, contacto)
+      // Otros docs de config (factiliza, etc.) solo staff
+      allow read: if isStaff() ||
+        (esEmailApoderado() && docId == 'general');
       allow write: if isAdmin();
     }
 
     // ── Horarios ──────────────────────────────────────────────────────────────
+    // Solo staff — los apoderados no necesitan leer horarios directamente
     match /horarios/{docId} {
-      allow read: if isAuthenticated();
+      allow read:  if isStaff();
       allow write: if isAdmin();
     }
 
     // ── Incidentes ────────────────────────────────────────────────────────────
     match /incidentes/{docId} {
-      allow get:  if isStaff() ||
-        (isAuthenticated() && resource.data.alumnoId + '@apo.marello.pe' == request.auth.token.email);
+      // get: staff o el apoderado dueño del incidente
+      allow get: if isStaff() ||
+        (esEmailApoderado() && resource.data.alumnoId + '@apo.marello.pe' == request.auth.token.email);
+
+      // list: igual que registros — apoderado con límite
       allow list: if isStaff() ||
-        (isAuthenticated() && request.auth.token.email.matches('.*@apo\\.marello\\.pe'));
+        (esEmailApoderado() && request.query.limit <= 200);
+
       allow create: if isStaff();
       allow update, delete: if isAdmin();
     }
 
     // ── Resumen mensual (pre-agregado por alumno/mes) ────────────────────────
     match /resumen_mensual/{docId} {
-      // Staff puede leer y escribir (actualiza al escanear QR)
       allow read, write: if isStaff();
-      // Apoderado puede leer solo el resumen de su alumno
-      // docId tiene formato: "YYYY-MM_alumnoId"
-      allow read: if isAuthenticated() &&
-        request.auth.token.email.matches('.*@apo\\.marello\\.pe') &&
+      // docId formato: "YYYY-MM_alumnoId"
+      allow read: if esEmailApoderado() &&
         docId.split('_')[1] + '@apo.marello.pe' == request.auth.token.email;
     }
 
