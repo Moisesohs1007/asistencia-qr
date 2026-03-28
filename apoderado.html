@@ -677,6 +677,7 @@ var registros = [];
 var _registrosCargados = false; // true una vez que cargarRegistros termina
 var _configCache   = null; // config/general cacheada
 var _incidentesCache = null; // incidentes del alumno cacheados
+var _registrosPorMes = {}; // cache en memoria: { '03': [...], '04': [...] }
 
 // Cargar config una sola vez
 function getConfigCache() {
@@ -886,8 +887,19 @@ function onMesChange(origen) {
 
 function cargarRegistros(mes) {
   // mes = '03' formato. Por defecto mes actual
-  _registrosCargados = false;
   var mesNum = mes || String(new Date().getMonth()+1).padStart(2,'0');
+  var mesActual = String(new Date().getMonth()+1).padStart(2,'0');
+
+  // Cache en memoria: meses anteriores se cachean para evitar releer Firestore.
+  // El mes actual NO se cachea porque sus datos cambian durante el día.
+  if(mesNum !== mesActual && _registrosPorMes[mesNum]) {
+    console.log('[APO] Registros del mes', mesNum, 'desde cache');
+    registros = _registrosPorMes[mesNum];
+    _registrosCargados = true;
+    return Promise.resolve();
+  }
+
+  _registrosCargados = false;
   var anio   = new Date().getFullYear();
   var desde  = anio + '-' + mesNum + '-01';
   var ultimo = new Date(anio, parseInt(mesNum), 0).getDate();
@@ -966,6 +978,10 @@ function cargarRegistros(mes) {
         return b.fecha.localeCompare(a.fecha);
       });
       _registrosCargados = true;
+      // Guardar en cache solo si es mes anterior (el mes actual cambia durante el día)
+      if(mesNum !== mesActual) {
+        _registrosPorMes[mesNum] = registros;
+      }
       console.log('[APO] Procesados:', registros.length, 'dias (incl. ausentes habiles)');
     }).catch(function(e) {
       console.error('cargarRegistros error:', e);
