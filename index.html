@@ -7018,6 +7018,21 @@ async function iniciarFiltrosReportes() {
   (cfg.niveles||[]).forEach(n => { nivEl.innerHTML += `<option value="${n.nombre}">${n.nombre}</option>`; });
 }
 
+// Días hábiles (lun–vie) desde el primer día del mes hasta hoy (o fin de mes si ya cerró)
+function _calcDiasHabilesHasta(mesClave) {
+  const hoyStr = hoy();
+  const [y, m] = mesClave.split('-').map(Number);
+  const mesActualStr = hoyStr.slice(0, 7);
+  const primerDia = new Date(y, m - 1, 1);
+  const ultimoDia = mesClave === mesActualStr ? new Date(hoyStr) : new Date(y, m, 0);
+  let count = 0;
+  for(let d = new Date(primerDia); d <= ultimoDia; d.setDate(d.getDate() + 1)) {
+    const dow = d.getDay();
+    if(dow !== 0 && dow !== 6) count++;
+  }
+  return count;
+}
+
 async function renderReportes(anioCompleto=false) {
   try {
   const today   = hoy();
@@ -7040,6 +7055,33 @@ async function renderReportes(anioCompleto=false) {
   const q       = (document.getElementById('rep-search')?.value || '').toLowerCase().trim();
   const label   = document.getElementById('rep-periodo-label');
 
+  // Cargar alumnos y aplicar filtros de cascada
+  let alumnos = await DB.getAlumnos();
+  if(nivel)   alumnos = alumnos.filter(a => a.turno   === nivel);
+  if(grado)   alumnos = alumnos.filter(a => a.grado   === grado);
+  if(seccion) alumnos = alumnos.filter(a => a.seccion === seccion);
+  if(q)       alumnos = alumnos.filter(a =>
+    (a.nombres+' '+a.apellidos).toLowerCase().includes(q) || (a.id||'').includes(q)
+  );
+  const alumnosIds = new Set(alumnos.map(a=>a.id));
+  document.getElementById('rep-total').textContent = alumnos.length;
+
+  // ── Fase 1: KPIs rápidos desde resumen_mensual (~433 lecturas vs miles) ──────
+  // Solo para vista mensual sin filtro de día específico
+  if(!diaSel && !anioCompleto) {
+    const resumen = await DB.getResumenMes(mesSel);
+    const resFilt = resumen.filter(r => alumnosIds.has(r.alumnoId));
+    const kpiP = resFilt.reduce((s,r) => s + (r.puntual||0), 0);
+    const kpiT = resFilt.reduce((s,r) => s + (r.tardanza||0), 0);
+    const diasHab = _calcDiasHabilesHasta(mesSel);
+    const kpiF = Math.max(0, diasHab * alumnos.length - kpiP - kpiT);
+    document.getElementById('rep-puntual').textContent   = kpiP;
+    document.getElementById('rep-tardanzas').textContent = kpiT;
+    document.getElementById('rep-faltas').textContent    = kpiF;
+    if(label) label.textContent = 'KPIs del período (detalle cargando...)';
+  }
+
+  // ── Fase 2: Registros completos para gráficos ────────────────────────────────
   let registros;
   if(anioCompleto && (currentRol==='admin'||currentRol==='director')) {
     registros = await DB.getRegistros({anio});
@@ -7049,21 +7091,8 @@ async function renderReportes(anioCompleto=false) {
     if(label) label.textContent = registros.length + ' registros del período';
   }
 
-  // Filtrar alumnos según cascada
-  let alumnos = await DB.getAlumnos();
-  if(nivel)   alumnos = alumnos.filter(a => a.turno   === nivel);
-  if(grado)   alumnos = alumnos.filter(a => a.grado   === grado);
-  if(seccion) alumnos = alumnos.filter(a => a.seccion === seccion);
-  if(q)       alumnos = alumnos.filter(a =>
-    (a.nombres+' '+a.apellidos).toLowerCase().includes(q) || (a.id||'').includes(q)
-  );
-  const alumnosIds = new Set(alumnos.map(a=>a.id));
-
   // Filtrar registros al universo de alumnos seleccionados
   const regs = registros.filter(r => alumnosIds.has(r.alumnoId));
-
-  // KPIs
-  document.getElementById('rep-total').textContent = alumnos.length;
   const mesStr = mesSel || today.slice(0,7);
   const ingMes = regs.filter(r=>r.fecha.startsWith(mesStr)&&r.tipo==='INGRESO');
 
@@ -7083,13 +7112,16 @@ async function renderReportes(anioCompleto=false) {
     });
   }
 
-  // Puntualidad sobre total esperado (asistentes + ausentes), igual que la dona
+  // Actualizar KPIs exactos desde registros cuando hay filtro de día o vista anual
+  // (en vista mensual sin día, los KPIs rápidos ya fueron mostrados en Fase 1)
+  if(diaSel || anioCompleto) {
+    document.getElementById('rep-puntual').textContent   = puntFiltro;
+    document.getElementById('rep-tardanzas').textContent = ingFiltro.filter(r=>r.estado==='Tardanza').length;
+    document.getElementById('rep-faltas').textContent    = faltas;
+  }
+
   const totalEsperado = ingFiltro.length + faltas;
   const pct = totalEsperado ? Math.round(puntFiltro/totalEsperado*100) : 0;
-  document.getElementById('rep-puntual').textContent  = puntFiltro;
-  document.getElementById('rep-tardanzas').textContent = ingFiltro.filter(r=>r.estado==='Tardanza').length;
-  document.getElementById('rep-faltas').textContent = faltas;
-
   const fechaPresentes = diaSel || today;
   const presHoy = new Set(regs.filter(r=>r.fecha===fechaPresentes&&r.tipo==='INGRESO').map(r=>r.alumnoId)).size;
   document.getElementById('rep-hoy').textContent = presHoy;

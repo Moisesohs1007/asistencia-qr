@@ -205,6 +205,33 @@ const DB = {
     }
   },
 
+  // RESUMEN MENSUAL
+  _resumenMesCache: {},
+  _resumenMesCacheTime: {},
+
+  async getResumenMes(mes) {
+    const mesActual = new Date().toISOString().slice(0, 7);
+    const esPasado  = mes < mesActual;
+    const ttl = esPasado ? (30 * 24 * 60 * 60 * 1000) : (5 * 60 * 1000);
+    const cached = this._resumenMesCache[mes];
+    const t      = this._resumenMesCacheTime[mes];
+    if(cached && t && (Date.now() - t) < ttl) return cached;
+    try {
+      const snap = await db.collection('resumen_mensual').where('mes','==',mes).get();
+      const result = snap.docs.map(d => ({
+        alumnoId: d.data().alumnoId,
+        puntual:  d.data().puntual  || 0,
+        tardanza: d.data().tardanza || 0,
+      }));
+      this._resumenMesCache[mes] = result;
+      this._resumenMesCacheTime[mes] = Date.now();
+      return result;
+    } catch(e) {
+      console.warn('[DB] getResumenMes error:', e.message);
+      return [];
+    }
+  },
+
   async deleteRegistrosByFecha(fecha) {
     const snap = await db.collection('registros').where('fecha','==',fecha).get();
     // Guardar alumnoIds afectados antes de borrar (para recalcular resumen)
