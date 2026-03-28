@@ -893,16 +893,15 @@ function cargarRegistros(mes) {
   var ultimo = new Date(anio, parseInt(mesNum), 0).getDate();
   var hasta  = anio + '-' + mesNum + '-' + String(ultimo).padStart(2,'0');
   console.log('[APO] Cargando registros de:', alumno.id, 'mes:', mesNum);
-  // Solo filtrar por alumnoId — evita índice compuesto en Firestore.
-  // Filtro de mes se aplica en cliente.
+  // Filtrar en Firestore por alumnoId y rango de fechas del mes.
+  // Requiere índice compuesto (alumnoId ASC, fecha ASC) — ver firestore.indexes.json.
   return db.collection('registros')
     .where('alumnoId','==',alumno.id)
+    .where('fecha','>=',desde)
+    .where('fecha','<=',hasta)
     .get().then(function(snap) {
-      console.log('[APO] Registros recibidos total:', snap.docs.length);
-      var docsDelMes = snap.docs.filter(function(d) {
-        var f = (d.data().fecha || '');
-        return f >= desde && f <= hasta;
-      });
+      console.log('[APO] Registros del mes recibidos:', snap.docs.length);
+      var docsDelMes = snap.docs;
       console.log('[APO] Registros del mes:', docsDelMes.length);
       var grupos = {};
       docsDelMes.forEach(function(d) {
