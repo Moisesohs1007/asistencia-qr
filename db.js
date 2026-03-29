@@ -170,15 +170,26 @@ const DB = {
 
   invalidarRegistros(fecha=null) {
     if(fecha) {
+      // Claves exactas por fecha
       delete this._registrosCache['fecha:' + fecha];
       delete this._registrosCacheTime['fecha:' + fecha];
       delete this._registrosCache['todos'];
       delete this._registrosCacheTime['todos'];
       LSC.del('reg_fecha:' + fecha);
       LSC.del('reg_todos');
+      // Claves compuestas fecha_alumno: para ese día
+      Object.keys(this._registrosCache)
+        .filter(k => k.startsWith('fecha_alumno:' + fecha))
+        .forEach(k => { delete this._registrosCache[k]; delete this._registrosCacheTime[k]; });
+      // Resumen mensual del mes correspondiente
+      const mes = fecha.substring(0, 7);
+      delete this._resumenMesCache[mes];
+      delete this._resumenMesCacheTime[mes];
     } else {
       this._registrosCache = {};
       this._registrosCacheTime = {};
+      this._resumenMesCache = {};
+      this._resumenMesCacheTime = {};
       // Limpiar todos los registros de localStorage
       try {
         Object.keys(localStorage)

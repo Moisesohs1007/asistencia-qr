@@ -296,8 +296,8 @@ async function buscar() {
     }
 
     // KPIs
-    const puntual  = todosRegistros.filter(r => r.tipo === 'entrada' && r.estado === 'puntual').length;
-    const tardanza = todosRegistros.filter(r => r.tipo === 'entrada' && r.estado === 'tardanza').length;
+    const puntual  = todosRegistros.filter(r => r.tipo === 'INGRESO' && r.estado === 'A tiempo').length;
+    const tardanza = todosRegistros.filter(r => r.tipo === 'INGRESO' && r.estado === 'Tardanza').length;
     const ausente  = todosRegistros.filter(r => r.estado === 'ausente').length;
     document.getElementById('kpi-puntual').textContent  = puntual;
     document.getElementById('kpi-tardanza').textContent = tardanza;
@@ -351,11 +351,11 @@ function renderRegistros() {
   let registros = [...todosRegistros];
 
   // Filtrar por estado
-  if(filtroEstado === 'puntual')  registros = registros.filter(r => r.tipo === 'entrada' && r.estado === 'puntual');
-  if(filtroEstado === 'tardanza') registros = registros.filter(r => r.tipo === 'entrada' && r.estado === 'tardanza');
+  if(filtroEstado === 'puntual')  registros = registros.filter(r => r.tipo === 'INGRESO' && r.estado === 'A tiempo');
+  if(filtroEstado === 'tardanza') registros = registros.filter(r => r.tipo === 'INGRESO' && r.estado === 'Tardanza');
   if(filtroEstado === 'ausente')  registros = registros.filter(r => r.estado === 'ausente');
   // Solo mostrar entradas y ausentes (no duplicar con salidas)
-  if(filtroEstado === 'todos') registros = registros.filter(r => r.tipo === 'entrada' || r.estado === 'ausente');
+  if(filtroEstado === 'todos') registros = registros.filter(r => r.tipo === 'INGRESO' || r.estado === 'ausente');
 
   // Filtrar por mes
   if(mesFiltro) registros = registros.filter(r => (r.fecha||'').startsWith(mesFiltro));
@@ -372,8 +372,8 @@ function renderRegistros() {
   todosRegistros.forEach(r => {
     const f = r.fecha || 'sin-fecha';
     if(!porFecha[f]) porFecha[f] = {};
-    if(r.tipo === 'entrada' || r.estado === 'ausente') porFecha[f].entrada = r;
-    if(r.tipo === 'salida') porFecha[f].salida = r;
+    if(r.tipo === 'INGRESO' || r.estado === 'ausente') porFecha[f].entrada = r;
+    if(r.tipo === 'SALIDA') porFecha[f].salida = r;
   });
 
   lista.innerHTML = registros.map(r => {
@@ -385,7 +385,7 @@ function renderRegistros() {
     let dotClass, estadoClass, estadoText;
     if(r.estado === 'ausente') {
       dotClass = 'dot-ausente'; estadoClass = 'estado-ausente'; estadoText = '❌ Ausente';
-    } else if(r.estado === 'tardanza') {
+    } else if(r.estado === 'Tardanza') {
       dotClass = 'dot-tardanza'; estadoClass = 'estado-tardanza'; estadoText = '⚠️ Tardanza';
     } else {
       dotClass = 'dot-puntual'; estadoClass = 'estado-puntual'; estadoText = '✅ Puntual';
