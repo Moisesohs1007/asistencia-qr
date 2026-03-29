@@ -4390,37 +4390,44 @@ function hideOverlay() {
   pendingStudent = null;
 }
 
+let _procesandoQR = false;
 async function processQR(rawId) {
-  let id = (rawId||'').trim().replace(/\s+/g, '');
-  if(!id) return;
-  // Soporte para token diario: "DNI|YYYY-MM-DD"
-  // Los carnets digitales incluyen la fecha; carnets impresos (solo DNI) siguen funcionando
-  if(id.includes('|')) {
-    const partes = id.split('|');
-    const tokenFecha = partes[1];
-    if(tokenFecha !== hoy()) {
-      showOverlay('noqr', '', '', 'QR expirado', `QR del ${tokenFecha} — muestra el QR de hoy`);
-      return;
-    }
-    id = partes[0];
-  }
-  flashGreenFrame();
-  // Mostrar spinner mientras busca
-  showOverlay('loading', '', '', 'Buscando alumno...', '');
+  if(_procesandoQR) return;
+  _procesandoQR = true;
   try {
-    const alumnos = await DB.getAlumnos();
-    const alumno = alumnos.find(a => a.id === id) ||
-                   alumnos.find(a => a.id.trim() === id) ||
-                   alumnos.find(a => a.id.toLowerCase() === id.toLowerCase());
-    if(!alumno) {
-      showOverlay('noqr', '', '', 'QR no válido', `ID "${id}" no encontrado`);
-      return;
+    let id = (rawId||'').trim().replace(/\s+/g, '');
+    if(!id) return;
+    // Soporte para token diario: "DNI|YYYY-MM-DD"
+    // Los carnets digitales incluyen la fecha; carnets impresos (solo DNI) siguen funcionando
+    if(id.includes('|')) {
+      const partes = id.split('|');
+      const tokenFecha = partes[1];
+      if(tokenFecha !== hoy()) {
+        showOverlay('noqr', '', '', 'QR expirado', `QR del ${tokenFecha} — muestra el QR de hoy`);
+        return;
+      }
+      id = partes[0];
     }
-    // Registrar automáticamente
-    await autoRegistrar(alumno);
-  } catch(e) {
-    showOverlay('nored', '', '', 'Error de conexión', 'Intenta de nuevo');
-    console.error(e);
+    flashGreenFrame();
+    // Mostrar spinner mientras busca
+    showOverlay('loading', '', '', 'Buscando alumno...', '');
+    try {
+      const alumnos = await DB.getAlumnos();
+      const alumno = alumnos.find(a => a.id === id) ||
+                     alumnos.find(a => a.id.trim() === id) ||
+                     alumnos.find(a => a.id.toLowerCase() === id.toLowerCase());
+      if(!alumno) {
+        showOverlay('noqr', '', '', 'QR no válido', `ID "${id}" no encontrado`);
+        return;
+      }
+      // Registrar automáticamente
+      await autoRegistrar(alumno);
+    } catch(e) {
+      showOverlay('nored', '', '', 'Error de conexión', 'Intenta de nuevo');
+      console.error(e);
+    }
+  } finally {
+    _procesandoQR = false;
   }
 }
 
@@ -8272,7 +8279,7 @@ async function guardarHorarios() {
     const limite   = document.getElementById('cfg-hora-'+i)?.value    || '08:00';
     const corte    = document.getElementById('cfg-corte-'+i)?.value   || '10:30';
     const salida   = document.getElementById('cfg-salida-'+i)?.value  || '13:00';
-    const toMin = s => { const [h,m] = s.split(':').map(Number); return h*60+m; };
+    const toMin = s => { const [h,m] = (s||'00:00').split(':').map(Number); return h*60+m; };
     if(toMin(apertura) >= toMin(limite)) { toast(`${n.nombre}: La apertura debe ser antes del límite de puntualidad`, 'warning'); return null; }
     if(toMin(limite) >= toMin(corte))    { toast(`${n.nombre}: El límite de puntualidad debe ser antes del corte de ingreso`, 'warning'); return null; }
     if(toMin(corte) >= toMin(salida))    { toast(`${n.nombre}: El corte de ingreso debe ser antes de la hora de salida`, 'warning'); return null; }
