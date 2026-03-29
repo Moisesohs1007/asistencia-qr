@@ -5423,11 +5423,12 @@ async function getRegistrosFiltrados() {
   const nivel   = document.getElementById('filter-nivel').value;
   const q       = (document.getElementById('filter-search').value||'').toLowerCase();
 
-  // Construir filtro DB: si hay rango de fechas usarlo, si no, mes actual como default
+  // Construir filtro DB: si hay rango de fechas usarlo, si no, solo hoy como default
+  // (evita cargar ~52k docs del mes entero cuando el usuario no ha especificado rango)
   let filtroDb;
   if(desde && hasta)   filtroDb = { desde, hasta };
   else if(desde)       filtroDb = { desde, hasta: hoy() };
-  else                 filtroDb = { mes: hoy().substring(0, 7) };
+  else                 filtroDb = { fecha: hoy() };
   let regs = await DB.getRegistros(filtroDb);
 
   // Aplicar filtros adicionales en cliente (nivel, grado, sección, búsqueda)
@@ -7173,10 +7174,14 @@ async function renderReportes(anioCompleto=false) {
   }
 
   // ── Fase 2: Registros completos para gráficos ────────────────────────────────
+  // Optimización de lecturas: día específico → solo ese día (~2.6k docs vs ~52k del mes)
   let registros;
   if(anioCompleto && (currentRol==='admin'||currentRol==='director')) {
     registros = await DB.getRegistros({anio});
     if(label) label.textContent = 'Año ' + anio + ' (' + registros.length + ' registros)';
+  } else if(diaSel) {
+    registros = await DB.getRegistros({fecha: diaSel});
+    if(label) label.textContent = registros.length + ' registros del ' + diaSel;
   } else {
     registros = await DB.getRegistros({mes: mesSel});
     if(label) label.textContent = registros.length + ' registros del período';
