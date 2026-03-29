@@ -67,12 +67,15 @@ const DB = {
   _cacheValido(key) {
     const t = this._registrosCacheTime[key];
     if(!t) return false;
-    // Meses y años ya cerrados no cambian → TTL extendido de 1 hora
-    const mesActual  = _mesLocalActual(); // 'YYYY-MM' en hora local
+    const mesActual  = _mesLocalActual();
     const anioActual = new Date().getFullYear();
     const esMesPasado  = key.startsWith('mes:')  && key.slice(4) < mesActual;
     const esAnioPasado = key.startsWith('anio:') && parseInt(key.slice(5)) < anioActual;
-    const ttl = (esMesPasado || esAnioPasado) ? LSC.TTL_REGISTROS_MES_PASADO : this._CACHE_TTL;
+    const esMesActual  = key === 'mes:' + mesActual;
+    // Meses/años cerrados: 1 hora. Mes actual para Reportes: 30 min. Resto (día): 5 min.
+    const ttl = (esMesPasado || esAnioPasado) ? LSC.TTL_REGISTROS_MES_PASADO
+              : esMesActual                   ? 30 * 60 * 1000
+              :                                 this._CACHE_TTL;
     return (Date.now() - t) < ttl;
   },
 
@@ -139,9 +142,12 @@ const DB = {
       this._registrosCacheTime[key] = Date.now();
       // Guardar en localStorage (no guardar año completo — muy pesado)
       if(key === 'todos' || key.startsWith('fecha:') || key.startsWith('mes:')) {
-        const mesActual = _mesLocalActual();
+        const mesActual   = _mesLocalActual();
         const esMesPasado = key.startsWith('mes:') && key.slice(4) < mesActual;
-        const ttlLS = esMesPasado ? LSC.TTL_REGISTROS_MES_PASADO : LSC.TTL_REGISTROS;
+        const esMesActual = key === 'mes:' + mesActual;
+        const ttlLS = esMesPasado ? LSC.TTL_REGISTROS_MES_PASADO
+                    : esMesActual ? 30 * 60 * 1000
+                    :               LSC.TTL_REGISTROS;
         LSC.set('reg_' + key, resultado, ttlLS);
       }
 

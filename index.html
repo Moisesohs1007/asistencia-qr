@@ -4114,25 +4114,38 @@ let currentSection = 'scan';
 // Estructura: { alumnoId: { ingreso: bool, salida: bool } }
 let _hoyRegs = {};
 let _hoyRegsLoaded = false;
-let _hoyRegsTimer = null;
+let _hoyRegsUnsubscribe = null; // handle del listener onSnapshot
 
-async function precargarRegistrosHoy() {
-  try {
-    const regs = await DB.getRegistros({ fecha: hoy() });
-    _hoyRegs = {};
-    regs.forEach(r => {
-      if(!_hoyRegs[r.alumnoId]) _hoyRegs[r.alumnoId] = { ingreso: false, salida: false, tardanza: false };
-      if(r.tipo === 'INGRESO') {
-        _hoyRegs[r.alumnoId].ingreso = true;
-        if(r.estado === 'Tardanza') _hoyRegs[r.alumnoId].tardanza = true;
-      }
-      if(r.tipo === 'SALIDA') _hoyRegs[r.alumnoId].salida = true;
+// Suscribe un listener en tiempo real sobre los registros de hoy.
+// Ventajas vs polling: 0 lecturas periódicas, sincronización inmediata entre dispositivos,
+// Firestore solo cobra 1 read por documento que cambia (no releer todo el día cada 10 min).
+function iniciarHoyRegsListener() {
+  if(_hoyRegsUnsubscribe) _hoyRegsUnsubscribe(); // limpiar listener previo si existe
+  const hoyStr = hoy();
+  _hoyRegsUnsubscribe = db.collection('registros')
+    .where('fecha', '==', hoyStr)
+    .onSnapshot(snap => {
+      _hoyRegs = {};
+      snap.docs.forEach(d => {
+        const r = d.data();
+        if(!_hoyRegs[r.alumnoId]) _hoyRegs[r.alumnoId] = { ingreso: false, salida: false, tardanza: false };
+        if(r.tipo === 'INGRESO') {
+          _hoyRegs[r.alumnoId].ingreso = true;
+          if(r.estado === 'Tardanza') _hoyRegs[r.alumnoId].tardanza = true;
+        }
+        if(r.tipo === 'SALIDA') _hoyRegs[r.alumnoId].salida = true;
+      });
+      _hoyRegsLoaded = true;
+      updateStats(); // actualiza contadores en tiempo real para todos los operadores
+    }, err => {
+      console.warn('[Scanner] listener registros error:', err);
+      _hoyRegsLoaded = false;
     });
-    _hoyRegsLoaded = true;
-  } catch(e) {
-    console.warn('precargarRegistrosHoy error:', e);
-    _hoyRegsLoaded = false;
-  }
+}
+
+function detenerHoyRegsListener() {
+  if(_hoyRegsUnsubscribe) { _hoyRegsUnsubscribe(); _hoyRegsUnsubscribe = null; }
+  _hoyRegsLoaded = false;
 }
 
 function actualizarHoyRegs(alumnoId, tipo, esTardanza=false) {
@@ -4173,11 +4186,8 @@ function startScanner() {
   document.getElementById('scan-status').textContent = '⏳ Solicitando cámara...';
   document.getElementById('btn-start-scan').disabled = true;
 
-  // Pre-cargar registros del día en background para que el primer escaneo sea instantáneo
-  precargarRegistrosHoy();
-  // Refrescar cada 10 minutos por si otro dispositivo registró
-  if(_hoyRegsTimer) clearInterval(_hoyRegsTimer);
-  _hoyRegsTimer = setInterval(precargarRegistrosHoy, 10 * 60 * 1000);
+  // Suscribir listener en tiempo real — reemplaza el polling de 10 min
+  iniciarHoyRegsListener();
 
   navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } } })
     .then(stream => {
@@ -4209,7 +4219,7 @@ function startScanner() {
 function stopScanner() {
   scannerRunning = false;
   if(scanInterval) { clearInterval(scanInterval); scanInterval = null; }
-  if(_hoyRegsTimer) { clearInterval(_hoyRegsTimer); _hoyRegsTimer = null; }
+  detenerHoyRegsListener();
   if(videoStream) { videoStream.getTracks().forEach(t => t.stop()); videoStream = null; }
   const video = document.getElementById('qr-video');
   if(video) video.srcObject = null;
@@ -6262,14 +6272,17 @@ async function probarFactiliza() {
 // WHATSAPP — FACTILIZA
 // ============================================================
 // Cache en memoria para config Factiliza (se carga una vez al inicio)
-let _factilizaCache = null;
+let _factilizaCache     = null;
+let _factilizaCacheTime = 0;
+const _FACTILIZA_TTL    = 60 * 60 * 1000; // 1 hora — si el token cambia, refresca automático
 
 async function getFactilizaConfig() {
-  if(_factilizaCache) return _factilizaCache;
+  if(_factilizaCache && (Date.now() - _factilizaCacheTime) < _FACTILIZA_TTL) return _factilizaCache;
   try {
     const snap = await db.collection('config').doc('factiliza').get();
     if(snap.exists) {
-      _factilizaCache = { token: snap.data().token, instancia: snap.data().instancia };
+      _factilizaCache     = { token: snap.data().token, instancia: snap.data().instancia };
+      _factilizaCacheTime = Date.now();
       return _factilizaCache;
     }
   } catch(e) { console.warn('Error cargando config Factiliza:', e); }
@@ -6277,7 +6290,8 @@ async function getFactilizaConfig() {
   const token = localStorage.getItem('factiliza_token');
   const instancia = localStorage.getItem('factiliza_instancia');
   if(token && instancia) {
-    _factilizaCache = { token, instancia };
+    _factilizaCache     = { token, instancia };
+    _factilizaCacheTime = Date.now();
     return _factilizaCache;
   }
   return null;
