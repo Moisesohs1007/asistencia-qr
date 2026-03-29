@@ -684,7 +684,9 @@ var registros = [];
 var _registrosCargados = false; // true una vez que cargarRegistros termina
 var _configCache   = null; // config/general cacheada
 var _incidentesCache = null; // incidentes del alumno cacheados
-var _registrosPorMes = {}; // cache en memoria: { '03': [...], '04': [...] }
+var _registrosPorMes     = {}; // cache en memoria: { '03': [...], '04': [...] }
+var _registrosPorMesTime = {}; // timestamps de cache por mes (para TTL del mes actual)
+var _MES_ACTUAL_TTL      = 3 * 60 * 1000; // 3 min — tiempo máximo de datos rancios para hoy
 var _resumenMensualCache = {}; // { 'YYYY-MM': {puntual, tardanza} | null }
 var _registrosRecientes     = null; // últimos 5 días procesados (para pestaña Resumen)
 var _registrosRecientesTime = 0;    // timestamp de última carga
@@ -901,13 +903,15 @@ function cargarRegistros(mes) {
   var mesNum = mes || String(new Date().getMonth()+1).padStart(2,'0');
   var mesActual = String(new Date().getMonth()+1).padStart(2,'0');
 
-  // Cache en memoria: meses anteriores se cachean para evitar releer Firestore.
-  // El mes actual NO se cachea porque sus datos cambian durante el día.
-  if(mesNum !== mesActual && _registrosPorMes[mesNum]) {
-    console.log('[APO] Registros del mes', mesNum, 'desde cache');
-    registros = _registrosPorMes[mesNum];
-    _registrosCargados = true;
-    return Promise.resolve();
+  // Cache en memoria: meses anteriores = indefinido; mes actual = TTL 3 min.
+  if(_registrosPorMes[mesNum]) {
+    var ttlCache = (mesNum === mesActual) ? _MES_ACTUAL_TTL : Infinity;
+    if((Date.now() - (_registrosPorMesTime[mesNum] || 0)) < ttlCache) {
+      console.log('[APO] Registros del mes', mesNum, 'desde cache');
+      registros = _registrosPorMes[mesNum];
+      _registrosCargados = true;
+      return Promise.resolve();
+    }
   }
 
   _registrosCargados = false;
@@ -989,10 +993,9 @@ function cargarRegistros(mes) {
         return b.fecha.localeCompare(a.fecha);
       });
       _registrosCargados = true;
-      // Guardar en cache solo si es mes anterior (el mes actual cambia durante el día)
-      if(mesNum !== mesActual) {
-        _registrosPorMes[mesNum] = registros;
-      }
+      // Guardar en cache siempre — el mes actual expira en 3 min, los anteriores no expiran
+      _registrosPorMes[mesNum]     = registros;
+      _registrosPorMesTime[mesNum] = Date.now();
       console.log('[APO] Procesados:', registros.length, 'dias (incl. ausentes habiles)');
     }).catch(function(e) {
       console.error('cargarRegistros error:', e);

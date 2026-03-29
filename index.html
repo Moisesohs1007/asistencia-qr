@@ -4114,32 +4114,51 @@ let currentSection = 'scan';
 // Estructura: { alumnoId: { ingreso: bool, salida: bool } }
 let _hoyRegs = {};
 let _hoyRegsLoaded = false;
-let _hoyRegsTimer = null;
+let _hoyRegsUnsubscribe = null; // handle del listener onSnapshot
 
-async function precargarRegistrosHoy() {
-  try {
-    const regs = await DB.getRegistros({ fecha: hoy() });
-    _hoyRegs = {};
-    regs.forEach(r => {
-      if(!_hoyRegs[r.alumnoId]) _hoyRegs[r.alumnoId] = { ingreso: false, salida: false };
-      if(r.tipo === 'INGRESO') _hoyRegs[r.alumnoId].ingreso = true;
-      if(r.tipo === 'SALIDA')  _hoyRegs[r.alumnoId].salida  = true;
+// Suscribe un listener en tiempo real sobre los registros de hoy.
+// Ventajas vs polling: 0 lecturas periódicas, sincronización inmediata entre dispositivos,
+// Firestore solo cobra 1 read por documento que cambia (no releer todo el día cada 10 min).
+function iniciarHoyRegsListener() {
+  if(_hoyRegsUnsubscribe) _hoyRegsUnsubscribe(); // limpiar listener previo si existe
+  const hoyStr = hoy();
+  _hoyRegsUnsubscribe = db.collection('registros')
+    .where('fecha', '==', hoyStr)
+    .onSnapshot(snap => {
+      _hoyRegs = {};
+      snap.docs.forEach(d => {
+        const r = d.data();
+        if(!_hoyRegs[r.alumnoId]) _hoyRegs[r.alumnoId] = { ingreso: false, salida: false, tardanza: false };
+        if(r.tipo === 'INGRESO') {
+          _hoyRegs[r.alumnoId].ingreso = true;
+          if(r.estado === 'Tardanza') _hoyRegs[r.alumnoId].tardanza = true;
+        }
+        if(r.tipo === 'SALIDA') _hoyRegs[r.alumnoId].salida = true;
+      });
+      _hoyRegsLoaded = true;
+      updateStats(); // actualiza contadores en tiempo real para todos los operadores
+    }, err => {
+      console.warn('[Scanner] listener registros error:', err);
+      _hoyRegsLoaded = false;
     });
-    _hoyRegsLoaded = true;
-  } catch(e) {
-    console.warn('precargarRegistrosHoy error:', e);
-    _hoyRegsLoaded = false;
-  }
 }
 
-function actualizarHoyRegs(alumnoId, tipo) {
-  if(!_hoyRegs[alumnoId]) _hoyRegs[alumnoId] = { ingreso: false, salida: false };
-  if(tipo === 'INGRESO') _hoyRegs[alumnoId].ingreso = true;
-  if(tipo === 'SALIDA')  _hoyRegs[alumnoId].salida  = true;
+function detenerHoyRegsListener() {
+  if(_hoyRegsUnsubscribe) { _hoyRegsUnsubscribe(); _hoyRegsUnsubscribe = null; }
+  _hoyRegsLoaded = false;
+}
+
+function actualizarHoyRegs(alumnoId, tipo, esTardanza=false) {
+  if(!_hoyRegs[alumnoId]) _hoyRegs[alumnoId] = { ingreso: false, salida: false, tardanza: false };
+  if(tipo === 'INGRESO') {
+    _hoyRegs[alumnoId].ingreso = true;
+    if(esTardanza) _hoyRegs[alumnoId].tardanza = true;
+  }
+  if(tipo === 'SALIDA') _hoyRegs[alumnoId].salida = true;
 }
 
 function getRegsHoyLocal(alumnoId) {
-  return _hoyRegs[alumnoId] || { ingreso: false, salida: false };
+  return _hoyRegs[alumnoId] || { ingreso: false, salida: false, tardanza: false };
 }
 
 function setUIScanning(active) {
@@ -4167,11 +4186,8 @@ function startScanner() {
   document.getElementById('scan-status').textContent = '⏳ Solicitando cámara...';
   document.getElementById('btn-start-scan').disabled = true;
 
-  // Pre-cargar registros del día en background para que el primer escaneo sea instantáneo
-  precargarRegistrosHoy();
-  // Refrescar cada 10 minutos por si otro dispositivo registró
-  if(_hoyRegsTimer) clearInterval(_hoyRegsTimer);
-  _hoyRegsTimer = setInterval(precargarRegistrosHoy, 10 * 60 * 1000);
+  // Suscribir listener en tiempo real — reemplaza el polling de 10 min
+  iniciarHoyRegsListener();
 
   navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } } })
     .then(stream => {
@@ -4203,7 +4219,7 @@ function startScanner() {
 function stopScanner() {
   scannerRunning = false;
   if(scanInterval) { clearInterval(scanInterval); scanInterval = null; }
-  if(_hoyRegsTimer) { clearInterval(_hoyRegsTimer); _hoyRegsTimer = null; }
+  detenerHoyRegsListener();
   if(videoStream) { videoStream.getTracks().forEach(t => t.stop()); videoStream = null; }
   const video = document.getElementById('qr-video');
   if(video) video.srcObject = null;
@@ -4519,7 +4535,7 @@ async function autoRegistrar(alumno) {
     showOverlay('loading', nombre, grado, 'Registrando ' + tipo.toLowerCase() + '...', '');
     await DB.saveRegistro(reg);
     // Actualizar Set local inmediatamente — sin esperar re-carga
-    actualizarHoyRegs(alumno.id, tipo);
+    actualizarHoyRegs(alumno.id, tipo, tardanza);
     await updateStatsForce();
     pendingStudent = alumno;
 
@@ -6256,14 +6272,17 @@ async function probarFactiliza() {
 // WHATSAPP — FACTILIZA
 // ============================================================
 // Cache en memoria para config Factiliza (se carga una vez al inicio)
-let _factilizaCache = null;
+let _factilizaCache     = null;
+let _factilizaCacheTime = 0;
+const _FACTILIZA_TTL    = 60 * 60 * 1000; // 1 hora — si el token cambia, refresca automático
 
 async function getFactilizaConfig() {
-  if(_factilizaCache) return _factilizaCache;
+  if(_factilizaCache && (Date.now() - _factilizaCacheTime) < _FACTILIZA_TTL) return _factilizaCache;
   try {
     const snap = await db.collection('config').doc('factiliza').get();
     if(snap.exists) {
-      _factilizaCache = { token: snap.data().token, instancia: snap.data().instancia };
+      _factilizaCache     = { token: snap.data().token, instancia: snap.data().instancia };
+      _factilizaCacheTime = Date.now();
       return _factilizaCache;
     }
   } catch(e) { console.warn('Error cargando config Factiliza:', e); }
@@ -6271,7 +6290,8 @@ async function getFactilizaConfig() {
   const token = localStorage.getItem('factiliza_token');
   const instancia = localStorage.getItem('factiliza_instancia');
   if(token && instancia) {
-    _factilizaCache = { token, instancia };
+    _factilizaCache     = { token, instancia };
+    _factilizaCacheTime = Date.now();
     return _factilizaCache;
   }
   return null;
@@ -7409,21 +7429,28 @@ async function updateStatsForce() {
   await updateStats();
 }
 async function updateStats() {
-  // Throttle: no ejecutar más de 1 vez cada 30 segundos
+  // Throttle: no ejecutar más de 1 vez cada 30 segundos (aplica solo al fallback con Firestore)
   const now = Date.now();
   if(now - _updateStatsTime < 30000) return;
   _updateStatsTime = now;
   try {
-    const [alumnos, regsHoy] = await Promise.all([
-      DB.getAlumnos(),
-      DB.getRegistros({fecha: hoy()})
-    ]);
-    const ingresosHoy = new Set(regsHoy.filter(r=>r.tipo==='INGRESO').map(r=>r.alumnoId));
-    const tardanzasHoy = regsHoy.filter(r=>r.estado==='Tardanza').length;
-    const ausentes = Math.max(0, alumnos.length - ingresosHoy.size);
+    const alumnos = await DB.getAlumnos(); // 0 lecturas Firestore: siempre en cache de memoria
+    let ingresosHoy, tardanzasHoy;
+    if(_hoyRegsLoaded) {
+      // Contar desde Set local — 0 lecturas Firestore
+      const entries = Object.values(_hoyRegs);
+      ingresosHoy  = entries.filter(r => r.ingreso).length;
+      tardanzasHoy = entries.filter(r => r.tardanza).length;
+    } else {
+      // Fallback solo si precargar aún no terminó (ocurre muy al inicio de sesión)
+      const regsHoy = await DB.getRegistros({fecha: hoy()});
+      ingresosHoy  = new Set(regsHoy.filter(r=>r.tipo==='INGRESO').map(r=>r.alumnoId)).size;
+      tardanzasHoy = regsHoy.filter(r=>r.estado==='Tardanza').length;
+    }
+    const ausentes = Math.max(0, alumnos.length - ingresosHoy);
     // Desktop (stats inline bar)
     document.getElementById('stat-total').textContent = alumnos.length;
-    document.getElementById('stat-hoy').textContent = ingresosHoy.size;
+    document.getElementById('stat-hoy').textContent = ingresosHoy;
     document.getElementById('stat-tarde').textContent = tardanzasHoy;
     document.getElementById('stat-ausentes').textContent = ausentes;
     // Móvil (stats-row-mobile) — pueden no existir si se eliminaron
@@ -7432,7 +7459,7 @@ async function updateStats() {
     const tdm = document.getElementById('stat-tarde-m');
     const am = document.getElementById('stat-ausentes-m');
     if(tm) tm.textContent = alumnos.length;
-    if(hm) hm.textContent = ingresosHoy.size;
+    if(hm) hm.textContent = ingresosHoy;
     if(tdm) tdm.textContent = tardanzasHoy;
     if(am) am.textContent = ausentes;
   } catch(e) { console.error('updateStats:', e); }
