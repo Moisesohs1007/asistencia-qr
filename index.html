@@ -4121,9 +4121,12 @@ async function precargarRegistrosHoy() {
     const regs = await DB.getRegistros({ fecha: hoy() });
     _hoyRegs = {};
     regs.forEach(r => {
-      if(!_hoyRegs[r.alumnoId]) _hoyRegs[r.alumnoId] = { ingreso: false, salida: false };
-      if(r.tipo === 'INGRESO') _hoyRegs[r.alumnoId].ingreso = true;
-      if(r.tipo === 'SALIDA')  _hoyRegs[r.alumnoId].salida  = true;
+      if(!_hoyRegs[r.alumnoId]) _hoyRegs[r.alumnoId] = { ingreso: false, salida: false, tardanza: false };
+      if(r.tipo === 'INGRESO') {
+        _hoyRegs[r.alumnoId].ingreso = true;
+        if(r.estado === 'Tardanza') _hoyRegs[r.alumnoId].tardanza = true;
+      }
+      if(r.tipo === 'SALIDA') _hoyRegs[r.alumnoId].salida = true;
     });
     _hoyRegsLoaded = true;
   } catch(e) {
@@ -4132,14 +4135,17 @@ async function precargarRegistrosHoy() {
   }
 }
 
-function actualizarHoyRegs(alumnoId, tipo) {
-  if(!_hoyRegs[alumnoId]) _hoyRegs[alumnoId] = { ingreso: false, salida: false };
-  if(tipo === 'INGRESO') _hoyRegs[alumnoId].ingreso = true;
-  if(tipo === 'SALIDA')  _hoyRegs[alumnoId].salida  = true;
+function actualizarHoyRegs(alumnoId, tipo, esTardanza=false) {
+  if(!_hoyRegs[alumnoId]) _hoyRegs[alumnoId] = { ingreso: false, salida: false, tardanza: false };
+  if(tipo === 'INGRESO') {
+    _hoyRegs[alumnoId].ingreso = true;
+    if(esTardanza) _hoyRegs[alumnoId].tardanza = true;
+  }
+  if(tipo === 'SALIDA') _hoyRegs[alumnoId].salida = true;
 }
 
 function getRegsHoyLocal(alumnoId) {
-  return _hoyRegs[alumnoId] || { ingreso: false, salida: false };
+  return _hoyRegs[alumnoId] || { ingreso: false, salida: false, tardanza: false };
 }
 
 function setUIScanning(active) {
@@ -4519,7 +4525,7 @@ async function autoRegistrar(alumno) {
     showOverlay('loading', nombre, grado, 'Registrando ' + tipo.toLowerCase() + '...', '');
     await DB.saveRegistro(reg);
     // Actualizar Set local inmediatamente — sin esperar re-carga
-    actualizarHoyRegs(alumno.id, tipo);
+    actualizarHoyRegs(alumno.id, tipo, tardanza);
     await updateStatsForce();
     pendingStudent = alumno;
 
@@ -7409,21 +7415,28 @@ async function updateStatsForce() {
   await updateStats();
 }
 async function updateStats() {
-  // Throttle: no ejecutar más de 1 vez cada 30 segundos
+  // Throttle: no ejecutar más de 1 vez cada 30 segundos (aplica solo al fallback con Firestore)
   const now = Date.now();
   if(now - _updateStatsTime < 30000) return;
   _updateStatsTime = now;
   try {
-    const [alumnos, regsHoy] = await Promise.all([
-      DB.getAlumnos(),
-      DB.getRegistros({fecha: hoy()})
-    ]);
-    const ingresosHoy = new Set(regsHoy.filter(r=>r.tipo==='INGRESO').map(r=>r.alumnoId));
-    const tardanzasHoy = regsHoy.filter(r=>r.estado==='Tardanza').length;
-    const ausentes = Math.max(0, alumnos.length - ingresosHoy.size);
+    const alumnos = await DB.getAlumnos(); // 0 lecturas Firestore: siempre en cache de memoria
+    let ingresosHoy, tardanzasHoy;
+    if(_hoyRegsLoaded) {
+      // Contar desde Set local — 0 lecturas Firestore
+      const entries = Object.values(_hoyRegs);
+      ingresosHoy  = entries.filter(r => r.ingreso).length;
+      tardanzasHoy = entries.filter(r => r.tardanza).length;
+    } else {
+      // Fallback solo si precargar aún no terminó (ocurre muy al inicio de sesión)
+      const regsHoy = await DB.getRegistros({fecha: hoy()});
+      ingresosHoy  = new Set(regsHoy.filter(r=>r.tipo==='INGRESO').map(r=>r.alumnoId)).size;
+      tardanzasHoy = regsHoy.filter(r=>r.estado==='Tardanza').length;
+    }
+    const ausentes = Math.max(0, alumnos.length - ingresosHoy);
     // Desktop (stats inline bar)
     document.getElementById('stat-total').textContent = alumnos.length;
-    document.getElementById('stat-hoy').textContent = ingresosHoy.size;
+    document.getElementById('stat-hoy').textContent = ingresosHoy;
     document.getElementById('stat-tarde').textContent = tardanzasHoy;
     document.getElementById('stat-ausentes').textContent = ausentes;
     // Móvil (stats-row-mobile) — pueden no existir si se eliminaron
@@ -7432,7 +7445,7 @@ async function updateStats() {
     const tdm = document.getElementById('stat-tarde-m');
     const am = document.getElementById('stat-ausentes-m');
     if(tm) tm.textContent = alumnos.length;
-    if(hm) hm.textContent = ingresosHoy.size;
+    if(hm) hm.textContent = ingresosHoy;
     if(tdm) tdm.textContent = tardanzasHoy;
     if(am) am.textContent = ausentes;
   } catch(e) { console.error('updateStats:', e); }
