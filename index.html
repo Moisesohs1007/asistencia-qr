@@ -8773,11 +8773,30 @@ async function guardarIncidente() {
       );
     }
 
-    // 3. Generar PDF con fotos embebidas y subir a Storage (un solo archivo)
-    let pdfLink = null;
-    try {
-      const pdfResult = await generarPDFIncidente({ ...incidente, fotoData });
-      if(pdfResult?.blob) {
+    // 3. Enviar WhatsApp INMEDIATAMENTE (sin esperar el PDF)
+    if(alumnoData?.telefono) {
+      const nomColegio = COLEGIO_NOMBRE;
+      const encabezado = `🏫 *${nomColegio}*\n${COLEGIO_ESLOGAN}`;
+      const sevEmoji = incidente.severidad === 'Grave' ? '🔴' : incidente.severidad === 'Moderado' ? '🟡' : '🟢';
+      const nombre1 = ((alumnoData.apoderadoNombres||'') + ' ' + (alumnoData.apoderadoApellidos||'')).trim() || 'Apoderado';
+      const nombre2 = alumnoData.telefono2 ? (((alumnoData.apoderado2Nombres||'') + ' ' + (alumnoData.apoderado2Apellidos||'')).trim() || 'Apoderado 2') : '';
+      const contactos = alumnoData.telefono2
+        ? `👨‍👩‍👧 *Apoderados notificados:*\n• ${nombre1}: ${alumnoData.telefono}\n• ${nombre2}: ${alumnoData.telefono2}`
+        : `👤 *Apoderado notificado:* ${nombre1}: ${alumnoData.telefono}`;
+      const msgBase = `🚨 *REPORTE DE INCIDENCIA*\n${encabezado}\n\n👤 *Alumno:* ${incidente.alumnoNombre}\n🏫 *Grado:* ${incidente.grado} ${incidente.seccion} — ${incidente.turno}\n📋 *Tipo:* ${incidente.tipo}\n${sevEmoji} *Severidad:* ${incidente.severidad}\n📅 *Fecha:* ${incidente.fecha} ${incidente.hora}\n\n📝 El colegio ha registrado un incidente con su hijo/a. Por favor comuníquese con la institución a la brevedad.\n\n${contactos}\n📞 Para más información contacte a la dirección del colegio.`;
+      const enviado = await sendWhatsApp(alumnoData.telefono, msgBase);
+      if(alumnoData.telefono2) sendWhatsApp(alumnoData.telefono2, msgBase);
+      if(enviado) toast('✅ WhatsApp enviado al apoderado' + (alumnoData.telefono2 ? 's' : ''), 'success');
+      else toast('⚠️ WhatsApp no pudo enviarse — revisa la configuración de Factiliza','warning');
+    }
+
+    // 4. Generar PDF y subir en segundo plano (sin bloquear)
+    ;(async () => {
+      try {
+        const pdfResult = await generarPDFIncidente({ ...incidente, fotoData });
+        if(!pdfResult?.blob) return;
+
+        let pdfLink = null;
 
         // ── Intento 1: Firebase Storage (activo cuando el plan sea Blaze) ──────
         let storageOk = false;
@@ -8818,31 +8837,19 @@ async function guardarIncidente() {
           }
         }
 
-      }
-    } catch(ePdf) { console.warn('[incidente] Error generando PDF:', ePdf); }
-
-    // 5. Enviar WhatsApp con el link del PDF en Firebase Storage
-    if(alumnoData?.telefono) {
-      const nomColegio = COLEGIO_NOMBRE;
-      const encabezado = `🏫 *${nomColegio}*\n${COLEGIO_ESLOGAN}`;
-      const sevEmoji = incidente.severidad === 'Grave' ? '🔴' : incidente.severidad === 'Moderado' ? '🟡' : '🟢';
-      const linkText = pdfLink
-        ? `\n\n📎 *Reporte PDF:* ${pdfLink}\n_(disponible por 7 días)_`
-        : '';
-      const nombre1 = ((alumnoData.apoderadoNombres||'') + ' ' + (alumnoData.apoderadoApellidos||'')).trim() || 'Apoderado';
-      const nombre2 = alumnoData.telefono2 ? (((alumnoData.apoderado2Nombres||'') + ' ' + (alumnoData.apoderado2Apellidos||'')).trim() || 'Apoderado 2') : '';
-      const contactos = alumnoData.telefono2
-        ? `👨‍👩‍👧 *Apoderados notificados:*\n• ${nombre1}: ${alumnoData.telefono}\n• ${nombre2}: ${alumnoData.telefono2}`
-        : `👤 *Apoderado notificado:* ${nombre1}: ${alumnoData.telefono}`;
-      const msg = `🚨 *REPORTE DE INCIDENCIA*\n${encabezado}\n\n👤 *Alumno:* ${incidente.alumnoNombre}\n🏫 *Grado:* ${incidente.grado} ${incidente.seccion} — ${incidente.turno}\n📋 *Tipo:* ${incidente.tipo}\n${sevEmoji} *Severidad:* ${incidente.severidad}\n📅 *Fecha:* ${incidente.fecha} ${incidente.hora}\n\n📝 El colegio ha registrado un incidente con su hijo/a. Por favor comuníquese con la institución a la brevedad.${linkText}\n\n${contactos}\n📞 Para más información contacte a la dirección del colegio.`;
-      const enviado = await sendWhatsApp(alumnoData.telefono, msg);
-      if(alumnoData.telefono2) sendWhatsApp(alumnoData.telefono2, msg);
-      if(enviado) toast('✅ WhatsApp enviado al apoderado' + (alumnoData.telefono2 ? 's' : '') + (pdfLink ? ' con link PDF ✅' : ''),'success');
-      else {
-        if(!alumnoData.telefono) toast('⚠️ El apoderado no tiene número registrado','warning');
-        else toast('⚠️ WhatsApp no pudo enviarse — revisa la configuración de Factiliza','warning');
-      }
-    }
+        // Actualizar Firestore con el link y enviar segundo WhatsApp con PDF
+        if(pdfLink) {
+          await docRef.update({ pdfUrl: pdfLink, pdfActivo: true });
+          _invalidarIncidentes();
+          if(alumnoData?.telefono) {
+            const msgPdf = `📎 *Reporte PDF del incidente:* ${pdfLink}\n_(disponible por 7 días)_`;
+            sendWhatsApp(alumnoData.telefono, msgPdf);
+            if(alumnoData.telefono2) sendWhatsApp(alumnoData.telefono2, msgPdf);
+            toast('📎 PDF enviado al apoderado', 'success');
+          }
+        }
+      } catch(ePdf) { console.warn('[incidente] Error generando PDF:', ePdf); }
+    })();
   } catch(e) { reactivarBtn(); toast('Error al guardar: ' + e.message, 'error'); }
 }
 
