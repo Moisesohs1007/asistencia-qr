@@ -9014,12 +9014,10 @@ async function generarPDFIncidente(inc) {
   const W = 210, margin = 20;
   const logoB64 = await cargarLogoBase64();
 
-  // Encabezado institucional estándar (rojo para incidentes)
+  // Encabezado institucional estándar (igual que todos los demás PDFs)
   let y = pdfHeaderColegio(doc, W, logoB64, {
-    bgColor:     [185, 28, 28],  // rojo oscuro
-    accentColor: [252, 165, 165], // rojo claro
-    subtitulo:   'Reporte de Incidente',
-    infoExtra:   'Año Escolar ' + anio,
+    subtitulo: 'Reporte de Incidente',
+    infoExtra: 'Año Escolar ' + anio,
   });
 
   // Datos alumno
