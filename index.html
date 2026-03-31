@@ -8773,7 +8773,47 @@ async function guardarIncidente() {
       );
     }
 
-    // 3. Enviar WhatsApp INMEDIATAMENTE (sin esperar el PDF)
+    // 3. Generar PDF y subir (Storage desactivado hasta plan Blaze)
+    let pdfLink = null;
+    try {
+      const pdfResult = await generarPDFIncidente({ ...incidente, fotoData });
+      if(pdfResult?.blob) {
+        // ── TODO: activar cuando se contrate plan Blaze ──────────────────────
+        // const pdfStorageRef = storage.ref(`incidentes/${docRef.id}/reporte.pdf`);
+        // await pdfStorageRef.put(pdfResult.blob, { contentType: 'application/pdf' });
+        // pdfLink = await pdfStorageRef.getDownloadURL();
+        // await docRef.update({ pdfUrl: pdfLink, pdfRef: pdfStorageRef.fullPath, pdfActivo: true });
+        // ────────────────────────────────────────────────────────────────────
+        // Fallback activo: tmpfiles.org
+        try {
+          const fd = new FormData();
+          fd.append('file', new File([pdfResult.blob], pdfResult.filename, { type: 'application/pdf' }));
+          const r = await fetch('https://tmpfiles.org/api/v1/upload', { method: 'POST', body: fd });
+          const j = await r.json();
+          if(j.status === 'success' && j.data?.url) {
+            pdfLink = j.data.url.replace('tmpfiles.org/', 'tmpfiles.org/dl/');
+          }
+        } catch(eTmp) {
+          // Fallback 2: gofile.io
+          try {
+            const srv = await fetch('https://api.gofile.io/servers');
+            const srvJ = await srv.json();
+            const server = srvJ?.data?.servers?.[0]?.name || 'store1';
+            const fd2 = new FormData();
+            fd2.append('file', new File([pdfResult.blob], pdfResult.filename, { type: 'application/pdf' }));
+            const r2 = await fetch(`https://${server}.gofile.io/contents/uploadfile`, { method: 'POST', body: fd2 });
+            const j2 = await r2.json();
+            if(j2.status === 'ok' && j2.data?.downloadPage) pdfLink = j2.data.downloadPage;
+          } catch(eGofile) { console.warn('[incidente] Todos los servicios de PDF fallaron'); }
+        }
+        if(pdfLink) {
+          await docRef.update({ pdfUrl: pdfLink, pdfActivo: true });
+          _invalidarIncidentes();
+        }
+      }
+    } catch(ePdf) { console.warn('[incidente] Error generando PDF:', ePdf); }
+
+    // 4. Enviar WhatsApp con o sin link según si el PDF estuvo listo
     if(alumnoData?.telefono) {
       const nomColegio = COLEGIO_NOMBRE;
       const encabezado = `🏫 *${nomColegio}*\n${COLEGIO_ESLOGAN}`;
@@ -8783,73 +8823,13 @@ async function guardarIncidente() {
       const contactos = alumnoData.telefono2
         ? `👨‍👩‍👧 *Apoderados notificados:*\n• ${nombre1}: ${alumnoData.telefono}\n• ${nombre2}: ${alumnoData.telefono2}`
         : `👤 *Apoderado notificado:* ${nombre1}: ${alumnoData.telefono}`;
-      const msgBase = `🚨 *REPORTE DE INCIDENCIA*\n${encabezado}\n\n👤 *Alumno:* ${incidente.alumnoNombre}\n🏫 *Grado:* ${incidente.grado} ${incidente.seccion} — ${incidente.turno}\n📋 *Tipo:* ${incidente.tipo}\n${sevEmoji} *Severidad:* ${incidente.severidad}\n📅 *Fecha:* ${incidente.fecha} ${incidente.hora}\n\n📝 El colegio ha registrado un incidente con su hijo/a. Por favor comuníquese con la institución a la brevedad.\n\n${contactos}\n📞 Para más información contacte a la dirección del colegio.`;
-      const enviado = await sendWhatsApp(alumnoData.telefono, msgBase);
-      if(alumnoData.telefono2) sendWhatsApp(alumnoData.telefono2, msgBase);
-      if(enviado) toast('✅ WhatsApp enviado al apoderado' + (alumnoData.telefono2 ? 's' : ''), 'success');
+      const linkText = pdfLink ? `\n\n📎 *Reporte PDF:* ${pdfLink}\n_(disponible por 7 días)_` : '';
+      const msg = `🚨 *REPORTE DE INCIDENCIA*\n${encabezado}\n\n👤 *Alumno:* ${incidente.alumnoNombre}\n🏫 *Grado:* ${incidente.grado} ${incidente.seccion} — ${incidente.turno}\n📋 *Tipo:* ${incidente.tipo}\n${sevEmoji} *Severidad:* ${incidente.severidad}\n📅 *Fecha:* ${incidente.fecha} ${incidente.hora}\n\n📝 El colegio ha registrado un incidente con su hijo/a. Por favor comuníquese con la institución a la brevedad.${linkText}\n\n${contactos}\n📞 Para más información contacte a la dirección del colegio.`;
+      const enviado = await sendWhatsApp(alumnoData.telefono, msg);
+      if(alumnoData.telefono2) sendWhatsApp(alumnoData.telefono2, msg);
+      if(enviado) toast('✅ WhatsApp enviado al apoderado' + (alumnoData.telefono2 ? 's' : '') + (pdfLink ? ' con PDF ✅' : ''), 'success');
       else toast('⚠️ WhatsApp no pudo enviarse — revisa la configuración de Factiliza','warning');
     }
-
-    // 4. Generar PDF y subir en segundo plano (sin bloquear)
-    ;(async () => {
-      try {
-        const pdfResult = await generarPDFIncidente({ ...incidente, fotoData });
-        if(!pdfResult?.blob) return;
-
-        let pdfLink = null;
-
-        // ── Intento 1: Firebase Storage (activo cuando el plan sea Blaze) ──────
-        let storageOk = false;
-        try {
-          const pdfStorageRef = storage.ref(`incidentes/${docRef.id}/reporte.pdf`);
-          await pdfStorageRef.put(pdfResult.blob, { contentType: 'application/pdf' });
-          pdfLink = await pdfStorageRef.getDownloadURL();
-          await docRef.update({ pdfUrl: pdfLink, pdfRef: pdfStorageRef.fullPath, pdfActivo: true });
-          _invalidarIncidentes();
-          storageOk = true;
-        } catch(eStorage) {
-          console.warn('[incidente] Storage no disponible (plan Spark), usando fallback:', eStorage.code || eStorage.message);
-        }
-
-        // ── Fallback temporal: tmpfiles.org (hasta activar Blaze) ────────────
-        if(!storageOk) {
-          try {
-            const pdfFile = new File([pdfResult.blob], pdfResult.filename, { type: 'application/pdf' });
-            const fd = new FormData();
-            fd.append('file', pdfFile);
-            const r = await fetch('https://tmpfiles.org/api/v1/upload', { method: 'POST', body: fd });
-            const j = await r.json();
-            if(j.status === 'success' && j.data?.url) {
-              pdfLink = j.data.url.replace('tmpfiles.org/', 'tmpfiles.org/dl/');
-            }
-          } catch(eTmp) {
-            // Fallback 2: gofile.io
-            try {
-              const srv = await fetch('https://api.gofile.io/servers');
-              const srvJ = await srv.json();
-              const server = srvJ?.data?.servers?.[0]?.name || 'store1';
-              const fd2 = new FormData();
-              fd2.append('file', new File([pdfResult.blob], pdfResult.filename, { type: 'application/pdf' }));
-              const r2 = await fetch(`https://${server}.gofile.io/contents/uploadfile`, { method: 'POST', body: fd2 });
-              const j2 = await r2.json();
-              if(j2.status === 'ok' && j2.data?.downloadPage) pdfLink = j2.data.downloadPage;
-            } catch(eGofile) { console.warn('[incidente] Todos los servicios de PDF fallaron'); }
-          }
-        }
-
-        // Actualizar Firestore con el link y enviar segundo WhatsApp con PDF
-        if(pdfLink) {
-          await docRef.update({ pdfUrl: pdfLink, pdfActivo: true });
-          _invalidarIncidentes();
-          if(alumnoData?.telefono) {
-            const msgPdf = `📎 *Reporte PDF del incidente:* ${pdfLink}\n_(disponible por 7 días)_`;
-            sendWhatsApp(alumnoData.telefono, msgPdf);
-            if(alumnoData.telefono2) sendWhatsApp(alumnoData.telefono2, msgPdf);
-            toast('📎 PDF enviado al apoderado', 'success');
-          }
-        }
-      } catch(ePdf) { console.warn('[incidente] Error generando PDF:', ePdf); }
-    })();
   } catch(e) { reactivarBtn(); toast('Error al guardar: ' + e.message, 'error'); }
 }
 
