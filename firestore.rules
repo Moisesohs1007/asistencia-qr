@@ -31,11 +31,6 @@ service cloud.firestore {
         request.auth.token.email.matches('.*@apo\\.marello\\.pe');
     }
 
-    // Extrae el DNI del alumno desde el email del apoderado
-    function dniDesdeEmail() {
-      return request.auth.token.email.replace('@apo.marello.pe', '');
-    }
-
     // ── Registros de asistencia ───────────────────────────────────────────────
     match /registros/{docId} {
       // get: staff o el apoderado dueño del registro
