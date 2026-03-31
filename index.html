@@ -5792,6 +5792,7 @@ async function exportPDFRegistro() {
   const diasSemana = ['Domingo','Lunes','Martes','Miercoles','Jueves','Viernes','Sabado'];
   const NAVY=[13,26,58],GOLD=[201,168,76],WHITE=[255,255,255],GRAY=[240,242,248],MUTED=[100,116,139],TEXT=[30,41,59];
   const GREEN=[22,163,74],AMBER=[202,138,4],RED=[220,38,38];
+  const logoB64 = await cargarLogoBase64();
 
   if(esPorAula) {
     // ── FORMATO MATRICIAL — por aula ──
@@ -5819,13 +5820,10 @@ async function exportPDFRegistro() {
     const nivel=alumnosAula[0]?.turno||'';
 
     function drawPH(){
-      doc.setFillColor(...NAVY);doc.rect(0,0,PW,18,'F');
-      doc.setFillColor(...GOLD);doc.rect(0,18,PW,0.8,'F');
-      doc.setTextColor(...WHITE);doc.setFontSize(11);doc.setFont('helvetica','bold');
-      doc.text(nombreColegio,PW/2,8,{align:'center'});
-      doc.setFontSize(7.5);doc.setFont('helvetica','normal');doc.setTextColor(176,196,232);
-      doc.text(`${nivel} ${grado} Seccion ${seccion} - Registro de Asistencia - ${fechaExport} - Pag. ${pageNum}`,PW/2,14.5,{align:'center'});
-      curY=22;
+      curY = pdfHeaderColegio(doc, PW, logoB64, {
+        subtitulo: 'Registro de Asistencia',
+        infoExtra: `${nivel} ${grado} Sección ${seccion}  ·  ${fechaExport}  Pág. ${pageNum}`,
+      });
     }
     function drawTH(){
       doc.setFillColor(...NAVY);doc.rect(TABLE_X,curY,TABLE_W,HEAD_H,'F');
@@ -5896,13 +5894,10 @@ async function exportPDFRegistro() {
     let pageNum=1,curY=0;
 
     function drawH(){
-      doc.setFillColor(...NAVY);doc.rect(0,0,PW,18,'F');
-      doc.setFillColor(...GOLD);doc.rect(0,18,PW,1,'F');
-      doc.setTextColor(...WHITE);doc.setFontSize(11);doc.setFont('helvetica','bold');
-      doc.text(nombreColegio,PW/2,8,{align:'center'});
-      doc.setFontSize(7);doc.setFont('helvetica','normal');doc.setTextColor(176,196,232);
-      doc.text(`Registro de Asistencia - ${q} - ${fechaExport} - Pag. ${pageNum}`,PW/2,14,{align:'center'});
-      curY=24;
+      curY = pdfHeaderColegio(doc, PW, logoB64, {
+        subtitulo: 'Registro de Asistencia',
+        infoExtra: `${q}  ·  ${fechaExport}  Pág. ${pageNum}`,
+      });
     }
     function drawTH2(){
       doc.setFillColor(...NAVY);doc.rect(TABLE_X,curY,TABLE_W,HEAD_H,'F');
@@ -5984,6 +5979,7 @@ async function exportPDFAlumnos() {
   const nombreColegio = COLEGIO_NOMBRE;
   const fechaExport = new Date().toLocaleDateString('es-PE',{day:'2-digit',month:'2-digit',year:'numeric'});
 
+  const logoB64 = await cargarLogoBase64();
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   const PW = 210, PH = 297;
   const NAVY = [13,26,58], GOLD = [201,168,76], WHITE = [255,255,255];
@@ -6004,19 +6000,14 @@ async function exportPDFAlumnos() {
   let pageNum = 1, curY = 0;
 
   function drawHeader() {
-    doc.setFillColor(...NAVY); doc.rect(0,0,PW,18,'F');
-    doc.setFillColor(...GOLD); doc.rect(0,18,PW,1,'F');
-    doc.setTextColor(...WHITE);
-    doc.setFontSize(11); doc.setFont('helvetica','bold');
-    doc.text(nombreColegio, PW/2, 8, {align:'center'});
-    doc.setFontSize(7); doc.setFont('helvetica','normal');
-    doc.setTextColor(176,196,232);
     const subtitulo = (nivel && nivel !== 'TODOS' ? nivel : '') +
       (grado && grado !== 'TODOS' ? ' — ' + grado : '') +
       (seccion && seccion !== 'TODOS' ? ' ' + seccion : '') +
-      (q ? ' — Búsqueda: "' + q + '"' : '') || 'Lista General de Alumnos';
-    doc.text(`${subtitulo.trim()} — ${fechaExport} — Pág. ${pageNum}`, PW/2, 14, {align:'center'});
-    curY = 24;
+      (q ? ' — "' + q + '"' : '') || 'Lista General';
+    curY = pdfHeaderColegio(doc, PW, logoB64, {
+      subtitulo: 'Lista de Alumnos',
+      infoExtra: `${subtitulo.trim()}  ·  ${fechaExport}  Pág. ${pageNum}`,
+    });
   }
 
   function drawTableHeader() {
@@ -6705,9 +6696,10 @@ function mostrarBtnAnio() {
   if(wrap) wrap.style.display = (currentRol === 'admin' || currentRol === 'director') ? 'block' : 'none';
 }
 
-function exportarReportePDF() {
+async function exportarReportePDF() {
   if(!window.jspdf) { alert('La librería PDF aún está cargando, intenta en un momento.'); return; }
   const { jsPDF } = window.jspdf;
+  const logoB64 = await cargarLogoBase64();
   const ctx = _repContextoPDF;
   if(!ctx || !ctx.total && ctx.total !== 0) { alert('Primero carga el reporte.'); return; }
 
@@ -6730,30 +6722,21 @@ function exportarReportePDF() {
 
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   const W = 210, marginL = 14, marginR = 14, contentW = W - marginL - marginR;
-
-  // ── Encabezado ──
-  doc.setFillColor(15, 23, 42);
-  doc.rect(0, 0, W, 38, 'F');
-  doc.setFillColor(56, 189, 248);
-  doc.rect(0, 38, W, 1.2, 'F');
-
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(16);
-  doc.setTextColor(226, 232, 240);
-  doc.text('Reporte de Asistencia', marginL, 14);
-
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(10);
-  doc.setTextColor(148, 163, 184);
-  doc.text(subtituloFiltros, marginL, 22);
-  if(subtituloExtra) doc.text(subtituloExtra, marginL, 28);
-
-  doc.setFontSize(8);
-  doc.setTextColor(100, 116, 139);
   const fechaGen = new Date().toLocaleDateString('es-PE', { day:'2-digit', month:'long', year:'numeric' });
-  doc.text('Período: ' + periodoLabel + '   ·   Generado: ' + fechaGen, marginL, 34);
 
-  let yPos = 48;
+  // ── Encabezado institucional ──
+  let yPos = pdfHeaderColegio(doc, W, logoB64, {
+    subtitulo: 'Reporte de Asistencia',
+    infoExtra: 'Período: ' + periodoLabel,
+  });
+
+  // Subtítulo del reporte (filtros activos)
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.setTextColor(100, 116, 139);
+  doc.text(subtituloFiltros + (subtituloExtra ? '  ·  ' + subtituloExtra : '') + '   ·   ' + fechaGen, marginL, yPos + 2);
+
+  yPos += 10;
 
   // ── KPIs ──
   doc.setFont('helvetica', 'bold');
@@ -8468,6 +8451,79 @@ function cargarJsPDF() {
   });
 }
 
+// ── Logo en base64 cacheado (se carga una sola vez) ──────────────────────────
+let _logoB64 = null;
+async function cargarLogoBase64() {
+  if(_logoB64) return _logoB64;
+  return new Promise(resolve => {
+    const img = new Image();
+    img.onload = () => {
+      const c = document.createElement('canvas');
+      c.width = img.width; c.height = img.height;
+      c.getContext('2d').drawImage(img, 0, 0);
+      try { _logoB64 = c.toDataURL('image/png'); resolve(_logoB64); }
+      catch(e) { resolve(null); }
+    };
+    img.onerror = () => resolve(null);
+    img.src = COLEGIO_LOGO;
+  });
+}
+
+// ── Encabezado institucional estándar para todos los PDFs ────────────────────
+// Dibuja logo + nombre del colegio + eslogan + tipo de documento.
+// Solo hay que cambiar COLEGIO_NOMBRE, COLEGIO_ESLOGAN y COLEGIO_LOGO
+// para que el cambio se refleje en todos los reportes automáticamente.
+// Retorna el Y donde empieza el contenido del PDF.
+function pdfHeaderColegio(doc, W, logoB64, {
+  bgColor     = [13, 26, 58],    // azul marino por defecto
+  accentColor = [201, 168, 76],  // dorado por defecto
+  subtitulo   = '',              // tipo de reporte (esquina derecha)
+  infoExtra   = '',              // info secundaria (esquina derecha, debajo)
+} = {}) {
+  const H = 30;
+  doc.setFillColor(...bgColor);
+  doc.rect(0, 0, W, H, 'F');
+  doc.setFillColor(...accentColor);
+  doc.rect(0, H, W, 0.8, 'F');
+
+  // Logo a la izquierda
+  const LH = 22, LW = 22, LX = 7, LY = (H - LH) / 2;
+  if(logoB64) {
+    try { doc.addImage(logoB64, 'PNG', LX, LY, LW, LH); } catch(e) {}
+  }
+  const TX = logoB64 ? LX + LW + 5 : 10;
+
+  // Nombre del colegio: separa prefijo del nombre propio
+  const mC = COLEGIO_NOMBRE.match(/^(Institución Educativa|I\.E\.P?\.?)\s+(.+)$/i);
+  const tipoColegio = mC ? mC[1].toUpperCase() : '';
+  const nomColegio  = mC ? mC[2] : COLEGIO_NOMBRE;
+  if(tipoColegio) {
+    doc.setTextColor(148,163,184); doc.setFontSize(6); doc.setFont('helvetica','normal');
+    doc.text(tipoColegio, TX, LY + 5);
+  }
+  doc.setTextColor(226,232,240); doc.setFontSize(9.5); doc.setFont('helvetica','bold');
+  const nomLines = doc.splitTextToSize(nomColegio, W - TX - (subtitulo ? 55 : 10));
+  doc.text(nomLines[0], TX, LY + (tipoColegio ? 12 : 10));
+
+  // Eslogan
+  if(COLEGIO_ESLOGAN) {
+    doc.setTextColor(...accentColor); doc.setFontSize(6.5); doc.setFont('helvetica','italic');
+    doc.text(COLEGIO_ESLOGAN, TX, LY + 21);
+  }
+
+  // Tipo de documento (derecha superior)
+  if(subtitulo) {
+    doc.setTextColor(226,232,240); doc.setFontSize(9); doc.setFont('helvetica','bold');
+    doc.text(subtitulo, W - 8, LY + 10, { align: 'right' });
+  }
+  // Info secundaria (derecha inferior)
+  if(infoExtra) {
+    doc.setTextColor(148,163,184); doc.setFontSize(6.5); doc.setFont('helvetica','normal');
+    doc.text(infoExtra, W - 8, LY + 20, { align: 'right' });
+  }
+  return H + 3; // Y donde empieza el contenido
+}
+
 let incAlumnoSeleccionado = null;
 
 
@@ -8680,9 +8736,9 @@ async function guardarIncidente() {
   const a = incAlumnoSeleccionado;
   const alumnoData = incAlumnoSeleccionado;
 
-  // Fecha de expiración de imágenes: hoy + 7 días
-  const _expDate = new Date(); _expDate.setDate(_expDate.getDate() + 7);
-  const imagenesExpiran = _expDate.toISOString().slice(0, 10);
+  // PDF en Storage: staff puede verlo 365 días, apoderado 7 días (link WhatsApp)
+  const _expStaff = new Date(); _expStaff.setDate(_expStaff.getDate() + 365);
+  const _expApo   = new Date(); _expApo.setDate(_expApo.getDate() + 7);
   const tieneImg = !!(fotoData && fotoData.length);
 
   const incidente = {
@@ -8690,15 +8746,14 @@ async function guardarIncidente() {
     alumnoNombre: a.nombres + ' ' + a.apellidos,
     grado: a.grado, seccion: a.seccion, turno: a.turno,
     tipo, severidad, fecha, hora, descripcion, medidas,
-    // Metadatos de imágenes (sin guardar base64 en Firestore)
+    // Metadatos del PDF con fotos embebidas (un solo archivo en Storage)
     tieneImagenes: tieneImg,
     cantImagenes: tieneImg ? fotoData.length : 0,
-    imagenesRefs: [],
-    imagenesUrls: [],
-    imagenesExpiran: tieneImg ? imagenesExpiran : null,
-    imagenesActivas: false,   // se actualiza tras subir a Storage
-    pdfUrl: null,
-    pdfRef: null,
+    pdfUrl: null,              // URL pública (para WhatsApp y reimprimir)
+    pdfRef: null,              // ruta en Storage (para borrar al eliminar)
+    pdfExpiraStaff: _expStaff.toISOString().slice(0, 10),  // 365 días
+    pdfExpiraApoderado: _expApo.toISOString().slice(0, 10), // 7 días
+    pdfActivo: false,          // true tras subir el PDF a Storage
     responsableId: currentUser.uid,
     responsableNombre: document.getElementById('user-name-display').textContent,
     responsableCargo: await getCargoUsuario(currentUser.uid),
@@ -8724,34 +8779,53 @@ async function guardarIncidente() {
       );
     }
 
-    // 3. Subir imágenes a Firebase Storage (en background)
-    if(tieneImg) {
-      try {
-        const imagenesRefs = [], imagenesUrls = [];
-        for(let i = 0; i < fotoData.length; i++) {
-          const blob = base64ToBlob(fotoData[i]);
-          const ref  = storage.ref(`incidentes/${docRef.id}/foto_${i}.jpg`);
-          await ref.put(blob, { contentType: 'image/jpeg' });
-          imagenesUrls.push(await ref.getDownloadURL());
-          imagenesRefs.push(ref.fullPath);
-        }
-        await docRef.update({ imagenesRefs, imagenesUrls, imagenesActivas: true });
-        _invalidarIncidentes(); // refrescar cache con los nuevos campos
-      } catch(eImg) { console.warn('[incidente] Error subiendo imágenes:', eImg); }
-    }
-
-    // 4. Generar PDF (con las imágenes ya comprimidas en memoria) y subir a Storage
+    // 3. Generar PDF con fotos embebidas y subir a Storage (un solo archivo)
     let pdfLink = null;
     try {
       const pdfResult = await generarPDFIncidente({ ...incidente, fotoData });
       if(pdfResult?.blob) {
-        const pdfRef = storage.ref(`incidentes/${docRef.id}/reporte.pdf`);
-        await pdfRef.put(pdfResult.blob, { contentType: 'application/pdf' });
-        pdfLink = await pdfRef.getDownloadURL();
-        await docRef.update({ pdfUrl: pdfLink, pdfRef: pdfRef.fullPath });
-        _invalidarIncidentes();
+
+        // ── Intento 1: Firebase Storage (activo cuando el plan sea Blaze) ──────
+        let storageOk = false;
+        try {
+          const pdfStorageRef = storage.ref(`incidentes/${docRef.id}/reporte.pdf`);
+          await pdfStorageRef.put(pdfResult.blob, { contentType: 'application/pdf' });
+          pdfLink = await pdfStorageRef.getDownloadURL();
+          await docRef.update({ pdfUrl: pdfLink, pdfRef: pdfStorageRef.fullPath, pdfActivo: true });
+          _invalidarIncidentes();
+          storageOk = true;
+        } catch(eStorage) {
+          console.warn('[incidente] Storage no disponible (plan Spark), usando fallback:', eStorage.code || eStorage.message);
+        }
+
+        // ── Fallback temporal: tmpfiles.org (hasta activar Blaze) ────────────
+        if(!storageOk) {
+          try {
+            const pdfFile = new File([pdfResult.blob], pdfResult.filename, { type: 'application/pdf' });
+            const fd = new FormData();
+            fd.append('file', pdfFile);
+            const r = await fetch('https://tmpfiles.org/api/v1/upload', { method: 'POST', body: fd });
+            const j = await r.json();
+            if(j.status === 'success' && j.data?.url) {
+              pdfLink = j.data.url.replace('tmpfiles.org/', 'tmpfiles.org/dl/');
+            }
+          } catch(eTmp) {
+            // Fallback 2: gofile.io
+            try {
+              const srv = await fetch('https://api.gofile.io/servers');
+              const srvJ = await srv.json();
+              const server = srvJ?.data?.servers?.[0]?.name || 'store1';
+              const fd2 = new FormData();
+              fd2.append('file', new File([pdfResult.blob], pdfResult.filename, { type: 'application/pdf' }));
+              const r2 = await fetch(`https://${server}.gofile.io/contents/uploadfile`, { method: 'POST', body: fd2 });
+              const j2 = await r2.json();
+              if(j2.status === 'ok' && j2.data?.downloadPage) pdfLink = j2.data.downloadPage;
+            } catch(eGofile) { console.warn('[incidente] Todos los servicios de PDF fallaron'); }
+          }
+        }
+
       }
-    } catch(ePdf) { console.warn('[incidente] Error subiendo PDF:', ePdf); }
+    } catch(ePdf) { console.warn('[incidente] Error generando PDF:', ePdf); }
 
     // 5. Enviar WhatsApp con el link del PDF en Firebase Storage
     if(alumnoData?.telefono) {
@@ -8912,11 +8986,11 @@ async function renderIncidentes() {
     const sevColors = { Leve: 'green', Moderado: 'yellow', Grave: 'red' };
     const todayStr = hoy();
     tbody.innerHTML = docs.map(d => {
-      const imgVencida  = d.imagenesExpiran && d.imagenesExpiran < todayStr;
-      const imgBadge    = d.tieneImagenes
-        ? (imgVencida
-            ? `<span title="Imágenes vencidas el ${d.imagenesExpiran}" style="font-size:0.8rem;opacity:0.45;cursor:default;">📷</span>`
-            : `<span title="${d.cantImagenes} foto(s) disponible(s)" style="font-size:0.8rem;cursor:default;">📷</span>`)
+      const pdfVencido = d.pdfExpiraStaff && d.pdfExpiraStaff < todayStr;
+      const imgBadge   = d.tieneImagenes
+        ? (pdfVencido
+            ? `<span title="PDF con fotos vencido el ${d.pdfExpiraStaff}" style="font-size:0.8rem;opacity:0.4;cursor:default;">📷</span>`
+            : `<span title="${d.cantImagenes} foto(s) en el PDF" style="font-size:0.8rem;cursor:default;">📷</span>`)
         : '';
       return `
       <tr>
@@ -8938,16 +9012,11 @@ async function renderIncidentes() {
 
 async function eliminarIncidente(id) {
   if(!confirm('¿Eliminar este reporte?')) return;
-  // Buscar en cache para obtener las referencias de Storage antes de borrar
   const cached = _incidentesCacheIdx || [];
   const inc = cached.find(d => d.id === id);
   await db.collection('incidentes').doc(id).delete();
-  // Limpiar archivos de Storage en background (no bloquea la UI)
-  if(inc) {
-    const refsToDelete = [...(inc.imagenesRefs || [])];
-    if(inc.pdfRef) refsToDelete.push(inc.pdfRef);
-    refsToDelete.forEach(ref => storage.ref(ref).delete().catch(() => {}));
-  }
+  // Borrar el PDF de Storage en background
+  if(inc?.pdfRef) storage.ref(inc.pdfRef).delete().catch(() => {});
   _invalidarIncidentes();
   toast('Reporte eliminado','info');
   renderIncidentes();
@@ -8959,18 +9028,16 @@ async function reimprimirIncidente(id) {
   if(!snap.exists) { toast('Reporte no encontrado','error'); return; }
   const inc = { id, ...snap.data() };
 
-  // Intentar cargar imágenes desde Storage si aún están activas
-  let fotoData = null;
-  const imgVencida = inc.imagenesExpiran && inc.imagenesExpiran < hoy();
-  if(inc.imagenesActivas && !imgVencida && inc.imagenesUrls?.length) {
-    try {
-      const loaded = await Promise.all(inc.imagenesUrls.map(url => fetchImageAsBase64(url)));
-      fotoData = loaded.filter(Boolean);
-      if(!fotoData.length) fotoData = null;
-    } catch(e) { fotoData = null; }
+  // Si el PDF con fotos sigue activo en Storage, descargarlo directamente
+  const pdfVencido = inc.pdfExpiraStaff && inc.pdfExpiraStaff < hoy();
+  if(inc.pdfActivo && !pdfVencido && inc.pdfUrl) {
+    // Abrir el PDF guardado en Storage (ya tiene las fotos embebidas)
+    window.open(inc.pdfUrl, '_blank');
+    return;
   }
 
-  await generarPDFIncidente({ ...inc, fotoData, _descargar: true });
+  // PDF vencido o sin Storage: regenerar sin fotos
+  await generarPDFIncidente({ ...inc, fotoData: null, _descargar: true });
 }
 
 async function generarPDFIncidente(inc) {
@@ -8978,23 +9045,15 @@ async function generarPDFIncidente(inc) {
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({ unit: 'mm', format: 'a4' });
   const cfg = await getConfig();
-  const nombreColegio = COLEGIO_NOMBRE;
-  const anio = cfg.anio || '2026';
+  const anio = cfg.anio || new Date().getFullYear();
   const W = 210, margin = 20;
+  const logoB64 = await cargarLogoBase64();
 
-  // Header
-  doc.setFillColor(239, 68, 68);
-  doc.rect(0, 0, W, 28, 'F');
-  doc.setTextColor(255,255,255);
-  doc.setFont('helvetica','bold');
-  doc.setFontSize(13);
-  doc.text(nombreColegio.toUpperCase(), W/2, 12, { align: 'center' });
-  doc.setFontSize(9);
-  doc.setFont('helvetica','normal');
-  doc.text('Año Escolar ' + anio, W/2, 19, { align: 'center' });
-  doc.text('REPORTE DE INCIDENTE', W/2, 25, { align: 'center' });
-
-  let y = 38;
+  // Encabezado institucional estándar (igual que todos los demás PDFs)
+  let y = pdfHeaderColegio(doc, W, logoB64, {
+    subtitulo: 'Reporte de Incidente',
+    infoExtra: 'Año Escolar ' + anio,
+  });
 
   // Datos alumno
   doc.setFillColor(248, 250, 252);
