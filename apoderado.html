@@ -926,6 +926,7 @@ function cargarRegistros(mes) {
     .where('alumnoId','==',alumno.id)
     .where('fecha','>=',desde)
     .where('fecha','<=',hasta)
+    .limit(500)
     .get().then(function(snap) {
       console.log('[APO] Registros del mes recibidos:', snap.docs.length);
       var docsDelMes = snap.docs;
@@ -1037,6 +1038,7 @@ function cargarRegistrosRecientes() {
   return db.collection('registros')
     .where('alumnoId','==',alumno.id)
     .where('fecha','>=',desde)
+    .limit(500)
     .get().then(function(snap) {
       var grupos = {};
       snap.docs.forEach(function(d) {
@@ -1138,20 +1140,25 @@ function showTab(tab) {
   setApoTabActive(_map[tab]||'inicio', tab);
   try { sessionStorage.setItem('asmqr_apo_lastTab', tab); } catch(e) {}
   if(tab === 'resumen') {
-    // Resumen: 1 lectura resumen_mensual + ≤14 docs recientes (NO carga mes completo)
     var mesActual = String(new Date().getMonth()+1).padStart(2,'0');
     var anio      = new Date().getFullYear();
     var mesClave  = anio + '-' + mesActual;
-    var p1 = cargarResumenMensual(mesActual); // siempre refresca mes actual
+    var p1 = cargarResumenMensual(mesActual).catch(function(){ return {}; });
     var p2 = (_registrosRecientes !== null && (Date.now() - _registrosRecientesTime) < _RECIENTES_TTL)
-      ? Promise.resolve() : cargarRegistrosRecientes();
+      ? Promise.resolve() : cargarRegistrosRecientes().catch(function(e){
+          console.warn('[APO] cargarRegistrosRecientes error:', e.message);
+          _registrosRecientes = [];
+        });
     Promise.all([p1, p2]).then(function() { renderResumen(); });
     return;
   }
   if(tab === 'historial') {
     if(!_registrosCargados) {
       var mesActual = String(new Date().getMonth()+1).padStart(2,'0');
-      cargarRegistros(mesActual).then(function() { renderHistorial(); });
+      cargarRegistros(mesActual).then(function() { renderHistorial(); }).catch(function(e){
+        console.error('[APO] historial error:', e.message);
+        renderHistorial();
+      });
       return;
     }
     renderHistorial();
@@ -1274,6 +1281,7 @@ function renderIncidentes() {
   // El filtro de mes se aplica en cliente (pocos incidentes por alumno).
   db.collection('incidentes')
     .where('alumnoId','==',alumno.id)
+    .limit(200)
     .get().then(function(snap) {
     _incidentesCache = snap.docs.map(function(d){ return Object.assign({_id: d.id}, d.data()); })
       .sort(function(a,b){ return (b.fecha||'').localeCompare(a.fecha||''); });
@@ -1638,9 +1646,15 @@ function guardarNuevaPass() {
   if(telefono2)  dataApo.telefono2  = telefono2;
   if(correo2)    dataApo.emailReal2 = correo2;
 
-  // Cargar config Factiliza PRIMERO y esperar antes de continuar (evita race condition)
-  db.collection('config').doc('factiliza').get().catch(function(){ return { exists: false }; }).then(function(cfgSnap) {
+  // Cargar config Factiliza y config general PRIMERO
+  Promise.all([
+    db.collection('config').doc('factiliza').get().catch(function(){ return { exists: false }; }),
+    db.collection('config').doc('general').get().catch(function(){ return { exists: false }; })
+  ]).then(function(results) {
+    var cfgSnap = results[0];
+    var genSnap = results[1];
     var _factConfig = (cfgSnap && cfgSnap.exists) ? cfgSnap.data() : null;
+    var _nomColegio = (genSnap && genSnap.exists && genSnap.data().nombre) ? genSnap.data().nombre : 'Portal Apoderado';
 
   auth.currentUser.getIdToken(true).then(function() {
     return auth.currentUser.updatePassword(nuevaPass);
@@ -1672,7 +1686,7 @@ function guardarNuevaPass() {
     // Enviar WhatsApp con config pre-cargada
     var nombreApo = nombres.split(' ')[0];
     var portal = window.location.href.replace(/apoderado\.html.*$/, '');
-    var msgApo = '✅ *Portal Apoderado — Colegio Marello*\n\n'
+    var msgApo = '✅ *Portal Apoderado — ' + _nomColegio + '*\n\n'
       + 'Hola *' + nombreApo + '*,\n\n'
       + 'Tu cuenta ha sido configurada exitosamente.\n\n'
       + '👤 *Apoderado 1*\n'
