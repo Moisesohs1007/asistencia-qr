@@ -8784,13 +8784,48 @@ async function guardarIncidente() {
     try {
       const pdfResult = await generarPDFIncidente({ ...incidente, fotoData });
       if(pdfResult?.blob) {
-        const pdfStorageRef = storage.ref(`incidentes/${docRef.id}/reporte.pdf`);
-        await pdfStorageRef.put(pdfResult.blob, { contentType: 'application/pdf' });
-        pdfLink = await pdfStorageRef.getDownloadURL();
-        await docRef.update({ pdfUrl: pdfLink, pdfRef: pdfStorageRef.fullPath, pdfActivo: true });
-        _invalidarIncidentes();
+
+        // ── Intento 1: Firebase Storage (activo cuando el plan sea Blaze) ──────
+        let storageOk = false;
+        try {
+          const pdfStorageRef = storage.ref(`incidentes/${docRef.id}/reporte.pdf`);
+          await pdfStorageRef.put(pdfResult.blob, { contentType: 'application/pdf' });
+          pdfLink = await pdfStorageRef.getDownloadURL();
+          await docRef.update({ pdfUrl: pdfLink, pdfRef: pdfStorageRef.fullPath, pdfActivo: true });
+          _invalidarIncidentes();
+          storageOk = true;
+        } catch(eStorage) {
+          console.warn('[incidente] Storage no disponible (plan Spark), usando fallback:', eStorage.code || eStorage.message);
+        }
+
+        // ── Fallback temporal: tmpfiles.org (hasta activar Blaze) ────────────
+        if(!storageOk) {
+          try {
+            const pdfFile = new File([pdfResult.blob], pdfResult.filename, { type: 'application/pdf' });
+            const fd = new FormData();
+            fd.append('file', pdfFile);
+            const r = await fetch('https://tmpfiles.org/api/v1/upload', { method: 'POST', body: fd });
+            const j = await r.json();
+            if(j.status === 'success' && j.data?.url) {
+              pdfLink = j.data.url.replace('tmpfiles.org/', 'tmpfiles.org/dl/');
+            }
+          } catch(eTmp) {
+            // Fallback 2: gofile.io
+            try {
+              const srv = await fetch('https://api.gofile.io/servers');
+              const srvJ = await srv.json();
+              const server = srvJ?.data?.servers?.[0]?.name || 'store1';
+              const fd2 = new FormData();
+              fd2.append('file', new File([pdfResult.blob], pdfResult.filename, { type: 'application/pdf' }));
+              const r2 = await fetch(`https://${server}.gofile.io/contents/uploadfile`, { method: 'POST', body: fd2 });
+              const j2 = await r2.json();
+              if(j2.status === 'ok' && j2.data?.downloadPage) pdfLink = j2.data.downloadPage;
+            } catch(eGofile) { console.warn('[incidente] Todos los servicios de PDF fallaron'); }
+          }
+        }
+
       }
-    } catch(ePdf) { console.warn('[incidente] Error subiendo PDF:', ePdf); }
+    } catch(ePdf) { console.warn('[incidente] Error generando PDF:', ePdf); }
 
     // 5. Enviar WhatsApp con el link del PDF en Firebase Storage
     if(alumnoData?.telefono) {
