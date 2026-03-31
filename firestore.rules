@@ -81,10 +81,9 @@ service cloud.firestore {
     // ── Configuración del colegio ─────────────────────────────────────────────
     match /config/{docId} {
       // Staff: todo
-      // Apoderado: solo config/general (nombre, logo, contacto)
-      // Otros docs de config (factiliza, etc.) solo staff
+      // Apoderado: config/general (nombre, logo) y config/factiliza (para enviar WhatsApp al registrarse)
       allow read: if isStaff() ||
-        (esEmailApoderado() && docId == 'general');
+        (esEmailApoderado() && docId in ['general', 'factiliza']);
       allow write: if isAdmin();
     }
 
