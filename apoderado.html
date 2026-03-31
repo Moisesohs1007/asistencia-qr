@@ -1140,20 +1140,25 @@ function showTab(tab) {
   setApoTabActive(_map[tab]||'inicio', tab);
   try { sessionStorage.setItem('asmqr_apo_lastTab', tab); } catch(e) {}
   if(tab === 'resumen') {
-    // Resumen: 1 lectura resumen_mensual + ≤14 docs recientes (NO carga mes completo)
     var mesActual = String(new Date().getMonth()+1).padStart(2,'0');
     var anio      = new Date().getFullYear();
     var mesClave  = anio + '-' + mesActual;
-    var p1 = cargarResumenMensual(mesActual); // siempre refresca mes actual
+    var p1 = cargarResumenMensual(mesActual).catch(function(){ return {}; });
     var p2 = (_registrosRecientes !== null && (Date.now() - _registrosRecientesTime) < _RECIENTES_TTL)
-      ? Promise.resolve() : cargarRegistrosRecientes();
+      ? Promise.resolve() : cargarRegistrosRecientes().catch(function(e){
+          console.warn('[APO] cargarRegistrosRecientes error:', e.message);
+          _registrosRecientes = [];
+        });
     Promise.all([p1, p2]).then(function() { renderResumen(); });
     return;
   }
   if(tab === 'historial') {
     if(!_registrosCargados) {
       var mesActual = String(new Date().getMonth()+1).padStart(2,'0');
-      cargarRegistros(mesActual).then(function() { renderHistorial(); });
+      cargarRegistros(mesActual).then(function() { renderHistorial(); }).catch(function(e){
+        console.error('[APO] historial error:', e.message);
+        renderHistorial();
+      });
       return;
     }
     renderHistorial();
