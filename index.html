@@ -13,6 +13,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-storage-compat.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <style>
@@ -3117,6 +3118,7 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 const auth = firebase.auth();
+const storage = firebase.storage();
 
 // Persistencia SESSION: la sesión se borra al cerrar el navegador/pestaña
 auth.setPersistence(firebase.auth.Auth.Persistence.SESSION).catch(e => console.warn('setPersistence:', e));
@@ -8558,6 +8560,54 @@ async function seleccionarAlumnoIncidente(id) {
   `;
 }
 
+// ── Helpers de imágenes ──────────────────────────────────────────────────────
+// Comprime una imagen a JPEG ≤400KB, max 1200px — obligatorio antes de subir
+async function comprimirImagen(file) {
+  return new Promise(resolve => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      const MAX_DIM = 1200;
+      let w = img.width, h = img.height;
+      if(w > MAX_DIM || h > MAX_DIM) {
+        if(w > h) { h = Math.round(h * MAX_DIM / w); w = MAX_DIM; }
+        else      { w = Math.round(w * MAX_DIM / h); h = MAX_DIM; }
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      URL.revokeObjectURL(url);
+      canvas.toBlob(blob => resolve(blob || file), 'image/jpeg', 0.78);
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); resolve(file); };
+    img.src = url;
+  });
+}
+
+// Convierte base64 Data URL a Blob para subir a Storage
+function base64ToBlob(base64) {
+  const [header, data] = base64.split(',');
+  const mime = header.match(/:(.*?);/)?.[1] || 'image/jpeg';
+  const binary = atob(data);
+  const arr = new Uint8Array(binary.length);
+  for(let i = 0; i < binary.length; i++) arr[i] = binary.charCodeAt(i);
+  return new Blob([arr], { type: mime });
+}
+
+// Descarga una imagen desde URL y la convierte a base64 (para jsPDF en reimprimir)
+async function fetchImageAsBase64(url) {
+  try {
+    const response = await fetch(url);
+    const blob = await response.blob();
+    return new Promise(resolve => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result);
+      reader.onerror  = () => resolve(null);
+      reader.readAsDataURL(blob);
+    });
+  } catch(e) { return null; }
+}
+
 function previewIncFotos(input) {
   const files = Array.from(input.files).slice(0, 4); // máx 4 fotos
   if(!files.length) return;
@@ -8567,34 +8617,38 @@ function previewIncFotos(input) {
   const count   = document.getElementById('inc-foto-count');
   grid.innerHTML = '';
   preview.style.display = 'block';
-  count.textContent = `${files.length} foto${files.length>1?'s':''} seleccionada${files.length>1?'s':''}`;
+  count.textContent = `Procesando ${files.length} foto${files.length>1?'s':''}...`;
 
-  const fotosData = [];
+  const fotosData = new Array(files.length);
   let loaded = 0;
 
   files.forEach((file, i) => {
-    const reader = new FileReader();
-    reader.onload = e => {
-      fotosData[i] = e.target.result;
-      loaded++;
-      // Agregar preview
-      const wrap = document.createElement('div');
-      wrap.style.cssText = 'position:relative;';
-      const img = document.createElement('img');
-      img.src = e.target.result;
-      img.style.cssText = 'width:100%;height:110px;object-fit:cover;border-radius:8px;border:1px solid var(--border);';
-      const badge = document.createElement('span');
-      badge.textContent = `Foto ${i+1}`;
-      badge.style.cssText = 'position:absolute;bottom:4px;left:4px;background:rgba(0,0,0,0.55);color:#fff;font-size:0.7rem;padding:2px 6px;border-radius:4px;';
-      wrap.appendChild(img);
-      wrap.appendChild(badge);
-      grid.appendChild(wrap);
-      // Guardar array JSON cuando todas estén listas
-      if(loaded === files.length) {
-        document.getElementById('inc-foto-data').value = JSON.stringify(fotosData);
-      }
-    };
-    reader.readAsDataURL(file);
+    comprimirImagen(file).then(blob => {
+      const reader = new FileReader();
+      reader.onload = e => {
+        fotosData[i] = e.target.result;
+        loaded++;
+        // Preview
+        const wrap = document.createElement('div');
+        wrap.style.cssText = 'position:relative;';
+        const imgEl = document.createElement('img');
+        imgEl.src = e.target.result;
+        imgEl.style.cssText = 'width:100%;height:110px;object-fit:cover;border-radius:8px;border:1px solid var(--border);';
+        const badge = document.createElement('span');
+        badge.textContent = `Foto ${i+1}`;
+        badge.style.cssText = 'position:absolute;bottom:4px;left:4px;background:rgba(0,0,0,0.55);color:#fff;font-size:0.7rem;padding:2px 6px;border-radius:4px;';
+        wrap.appendChild(imgEl);
+        wrap.appendChild(badge);
+        grid.appendChild(wrap);
+        if(loaded === files.length) {
+          // Mostrar tamaño total comprimido
+          const totalKB = Math.round(fotosData.reduce((s,f) => s + f.length * 0.75, 0) / 1024);
+          count.textContent = `${files.length} foto${files.length>1?'s':''} · ~${totalKB} KB comprimido`;
+          document.getElementById('inc-foto-data').value = JSON.stringify(fotosData);
+        }
+      };
+      reader.readAsDataURL(blob);
+    });
   });
 }
 
@@ -8624,13 +8678,27 @@ async function guardarIncidente() {
     catch(e) { fotoData = [fotoDataRaw]; }       // legacy: una sola foto
   }
   const a = incAlumnoSeleccionado;
+  const alumnoData = incAlumnoSeleccionado;
+
+  // Fecha de expiración de imágenes: hoy + 7 días
+  const _expDate = new Date(); _expDate.setDate(_expDate.getDate() + 7);
+  const imagenesExpiran = _expDate.toISOString().slice(0, 10);
+  const tieneImg = !!(fotoData && fotoData.length);
 
   const incidente = {
     alumnoId: a.id,
     alumnoNombre: a.nombres + ' ' + a.apellidos,
     grado: a.grado, seccion: a.seccion, turno: a.turno,
     tipo, severidad, fecha, hora, descripcion, medidas,
-    fotoData: fotoData ? `${Array.isArray(fotoData)?fotoData.length:1} foto(s)` : 'no', // no guardamos imagen en Firestore por tamaño
+    // Metadatos de imágenes (sin guardar base64 en Firestore)
+    tieneImagenes: tieneImg,
+    cantImagenes: tieneImg ? fotoData.length : 0,
+    imagenesRefs: [],
+    imagenesUrls: [],
+    imagenesExpiran: tieneImg ? imagenesExpiran : null,
+    imagenesActivas: false,   // se actualiza tras subir a Storage
+    pdfUrl: null,
+    pdfRef: null,
     responsableId: currentUser.uid,
     responsableNombre: document.getElementById('user-name-display').textContent,
     responsableCargo: await getCargoUsuario(currentUser.uid),
@@ -8638,15 +8706,15 @@ async function guardarIncidente() {
   };
 
   try {
-    await db.collection('incidentes').add(incidente);
-    _invalidarIncidentes(); // Invalidar cache para recargar con el nuevo
+    // 1. Guardar en Firestore → obtener ID del documento
+    const docRef = await db.collection('incidentes').add(incidente);
+    _invalidarIncidentes();
     toast('Reporte guardado','success');
     reactivarBtn();
     closeModal('modal-incidente');
     renderIncidentes();
 
-    // Mostrar botón de llamada INMEDIATAMENTE en móvil (sin esperar PDF ni WhatsApp)
-    const alumnoData = incAlumnoSeleccionado;
+    // 2. Mostrar botón de llamada INMEDIATAMENTE en móvil
     if(alumnoData?.telefono && /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent)) {
       mostrarBotonLlamada(
         alumnoData.telefono,
@@ -8656,8 +8724,36 @@ async function guardarIncidente() {
       );
     }
 
-    // PDF y WhatsApp corren en segundo plano sin bloquear la UI
-    const pdfLink = await generarPDFIncidente({ ...incidente, fotoData });
+    // 3. Subir imágenes a Firebase Storage (en background)
+    if(tieneImg) {
+      try {
+        const imagenesRefs = [], imagenesUrls = [];
+        for(let i = 0; i < fotoData.length; i++) {
+          const blob = base64ToBlob(fotoData[i]);
+          const ref  = storage.ref(`incidentes/${docRef.id}/foto_${i}.jpg`);
+          await ref.put(blob, { contentType: 'image/jpeg' });
+          imagenesUrls.push(await ref.getDownloadURL());
+          imagenesRefs.push(ref.fullPath);
+        }
+        await docRef.update({ imagenesRefs, imagenesUrls, imagenesActivas: true });
+        _invalidarIncidentes(); // refrescar cache con los nuevos campos
+      } catch(eImg) { console.warn('[incidente] Error subiendo imágenes:', eImg); }
+    }
+
+    // 4. Generar PDF (con las imágenes ya comprimidas en memoria) y subir a Storage
+    let pdfLink = null;
+    try {
+      const pdfResult = await generarPDFIncidente({ ...incidente, fotoData });
+      if(pdfResult?.blob) {
+        const pdfRef = storage.ref(`incidentes/${docRef.id}/reporte.pdf`);
+        await pdfRef.put(pdfResult.blob, { contentType: 'application/pdf' });
+        pdfLink = await pdfRef.getDownloadURL();
+        await docRef.update({ pdfUrl: pdfLink, pdfRef: pdfRef.fullPath });
+        _invalidarIncidentes();
+      }
+    } catch(ePdf) { console.warn('[incidente] Error subiendo PDF:', ePdf); }
+
+    // 5. Enviar WhatsApp con el link del PDF en Firebase Storage
     if(alumnoData?.telefono) {
       const nomColegio = COLEGIO_NOMBRE;
       const encabezado = `🏫 *${nomColegio}*\n${COLEGIO_ESLOGAN}`;
@@ -8675,12 +8771,10 @@ async function guardarIncidente() {
       if(alumnoData.telefono2) sendWhatsApp(alumnoData.telefono2, msg);
       if(enviado) toast('✅ WhatsApp enviado al apoderado' + (alumnoData.telefono2 ? 's' : '') + (pdfLink ? ' con link PDF ✅' : ''),'success');
       else {
-        // Mostrar detalle útil según la causa
         if(!alumnoData.telefono) toast('⚠️ El apoderado no tiene número registrado','warning');
         else toast('⚠️ WhatsApp no pudo enviarse — revisa la configuración de Factiliza','warning');
       }
     }
-    // (llamada ya mostrada arriba inmediatamente)
   } catch(e) { reactivarBtn(); toast('Error al guardar: ' + e.message, 'error'); }
 }
 
@@ -8816,36 +8910,67 @@ async function renderIncidentes() {
     empty.style.display = 'none';
 
     const sevColors = { Leve: 'green', Moderado: 'yellow', Grave: 'red' };
-    tbody.innerHTML = docs.map(d => `
+    const todayStr = hoy();
+    tbody.innerHTML = docs.map(d => {
+      const imgVencida  = d.imagenesExpiran && d.imagenesExpiran < todayStr;
+      const imgBadge    = d.tieneImagenes
+        ? (imgVencida
+            ? `<span title="Imágenes vencidas el ${d.imagenesExpiran}" style="font-size:0.8rem;opacity:0.45;cursor:default;">📷</span>`
+            : `<span title="${d.cantImagenes} foto(s) disponible(s)" style="font-size:0.8rem;cursor:default;">📷</span>`)
+        : '';
+      return `
       <tr>
         <td class="ts">${d.fecha}</td>
         <td class="td-id">${d.alumnoId||'-'}</td>
         <td class="td-name">${d.alumnoNombre}</td>
         <td>${d.grado} ${d.seccion}</td>
-        <td>${d.tipo}</td>
+        <td>${d.tipo} ${imgBadge}</td>
         <td><span class="badge ${sevColors[d.severidad]||'blue'}">${d.severidad}</span></td>
         <td style="font-size:0.82rem;">${d.responsableNombre||'-'}${d.responsableCargo?`<br><span style="color:var(--muted);font-size:0.72rem;">${d.responsableCargo}</span>`:''}</td>
         <td style="display:flex;gap:6px;">
           <button class="btn btn-ghost" style="padding:4px 10px;font-size:0.78rem;" onclick="reimprimirIncidente('${d.id}')">🖨️ PDF</button>
           ${currentRol==='admin'||currentRol==='director' ? `<button class="btn btn-danger" style="padding:4px 10px;font-size:0.78rem;" onclick="eliminarIncidente('${d.id}')">✕</button>` : ''}
         </td>
-      </tr>
-    `).join('');
+      </tr>`;
+    }).join('');
   } catch(e) { console.error(e); }
 }
 
 async function eliminarIncidente(id) {
   if(!confirm('¿Eliminar este reporte?')) return;
+  // Buscar en cache para obtener las referencias de Storage antes de borrar
+  const cached = _incidentesCacheIdx || [];
+  const inc = cached.find(d => d.id === id);
   await db.collection('incidentes').doc(id).delete();
-  _invalidarIncidentes(); // Invalidar cache tras eliminar
+  // Limpiar archivos de Storage en background (no bloquea la UI)
+  if(inc) {
+    const refsToDelete = [...(inc.imagenesRefs || [])];
+    if(inc.pdfRef) refsToDelete.push(inc.pdfRef);
+    refsToDelete.forEach(ref => storage.ref(ref).delete().catch(() => {}));
+  }
+  _invalidarIncidentes();
   toast('Reporte eliminado','info');
   renderIncidentes();
 }
 
 async function reimprimirIncidente(id) {
-  const doc = await db.collection('incidentes').doc(id).get();
-  if(!doc.exists) { toast('Reporte no encontrado','error'); return; }
-  await generarPDFIncidente({ ...doc.data(), fotoData: null, _descargar: true });
+  toast('Cargando reporte...','info');
+  const snap = await db.collection('incidentes').doc(id).get();
+  if(!snap.exists) { toast('Reporte no encontrado','error'); return; }
+  const inc = { id, ...snap.data() };
+
+  // Intentar cargar imágenes desde Storage si aún están activas
+  let fotoData = null;
+  const imgVencida = inc.imagenesExpiran && inc.imagenesExpiran < hoy();
+  if(inc.imagenesActivas && !imgVencida && inc.imagenesUrls?.length) {
+    try {
+      const loaded = await Promise.all(inc.imagenesUrls.map(url => fetchImageAsBase64(url)));
+      fotoData = loaded.filter(Boolean);
+      if(!fotoData.length) fotoData = null;
+    } catch(e) { fotoData = null; }
+  }
+
+  await generarPDFIncidente({ ...inc, fotoData, _descargar: true });
 }
 
 async function generarPDFIncidente(inc) {
@@ -9000,37 +9125,8 @@ async function generarPDFIncidente(inc) {
   // Solo descargar si se llama manualmente (reimprimir), no al guardar automáticamente
   if(inc._descargar) doc.save(filename);
 
-  // Subir PDF y obtener link compartible — intenta varios servicios
-  const pdfBlob = doc.output('blob');
-  const pdfFile = new File([pdfBlob], filename, { type: 'application/pdf' });
-
-  // Intento 1: tmpfiles.org (permite CORS desde navegador)
-  try {
-    const fd1 = new FormData();
-    fd1.append('file', pdfFile);
-    const r1 = await fetch('https://tmpfiles.org/api/v1/upload', { method: 'POST', body: fd1 });
-    const j1 = await r1.json();
-    if(j1.status === 'success' && j1.data?.url) {
-      // tmpfiles.org retorna URL de vista — convertir a descarga directa
-      const directUrl = j1.data.url.replace('tmpfiles.org/', 'tmpfiles.org/dl/');
-      return directUrl;
-    }
-  } catch(e) { console.warn('tmpfiles.org falló:', e); }
-
-  // Intento 2: gofile.io (permite CORS, sin límite de tamaño)
-  try {
-    // Primero obtener servidor disponible
-    const srv = await fetch('https://api.gofile.io/servers');
-    const srvJson = await srv.json();
-    const server = srvJson?.data?.servers?.[0]?.name || 'store1';
-    const fd2 = new FormData();
-    fd2.append('file', pdfFile);
-    const r2 = await fetch(`https://${server}.gofile.io/contents/uploadfile`, { method: 'POST', body: fd2 });
-    const j2 = await r2.json();
-    if(j2.status === 'ok' && j2.data?.downloadPage) return j2.data.downloadPage;
-  } catch(e) { console.warn('gofile.io falló:', e); }
-
-  return null;
+  // Devolver blob para que guardarIncidente() lo suba a Firebase Storage
+  return { blob: doc.output('blob'), filename };
 }
 
 
