@@ -1848,34 +1848,28 @@
       <div style="position:absolute;top:14px;right:14px;background:rgba(201,168,76,0.15);border:0.5px solid rgba(201,168,76,0.5);color:#C9A84C;font-size:0.68rem;padding:3px 10px;border-radius:12px;z-index:2;" id="banner-year-tag">Año Escolar 2026</div>
 
       <div class="banner-slide active" id="bslide-0">
-        <div class="banner-img" style="background-image:url('img/banner-login-1.png');background-size:cover;background-position:center;"></div>
+        <div class="banner-img"></div>
         <div class="banner-overlay"></div>
-
       </div>
 
       <div class="banner-slide" id="bslide-1">
-        <div class="banner-img" style="background-image:url('img/banner-login-2.png');background-size:cover;background-position:center;"></div>
+        <div class="banner-img"></div>
         <div class="banner-overlay"></div>
-
       </div>
 
       <div class="banner-slide" id="bslide-2">
-        <div class="banner-img" style="background-image:url('img/banner-login-3.png');background-size:cover;background-position:center;"></div>
+        <div class="banner-img"></div>
         <div class="banner-overlay"></div>
-
       </div>
 
       <div class="banner-slide" id="bslide-3">
-        <div class="banner-img" style="background-image:url('img/banner-login-4.png');background-size:cover;background-position:center;"></div>
+        <div class="banner-img"></div>
         <div class="banner-overlay"></div>
-
       </div>
 
-      <!-- Slide 5 -->
       <div class="banner-slide" id="bslide-4">
-        <div class="banner-img" style="background-image:url('img/banner-login-5.png');background-size:cover;background-position:center;"></div>
+        <div class="banner-img"></div>
         <div class="banner-overlay"></div>
-  
       </div>
 
       <div class="banner-dots">
@@ -3684,12 +3678,12 @@ auth.onAuthStateChanged(async user => {
     var _ls = document.getElementById('login-screen');
     var _sp = document.getElementById('splash-screen');
     var splashActivo = _sp && _sp.style.display !== 'none';
-    if(_ls && !splashActivo) { _ls.style.display = 'flex'; _ls.style.zIndex = '10005'; startBanner(); }
+    if(_ls && !splashActivo) { _ls.style.display = 'flex'; _ls.style.zIndex = '10005'; startBanner(); cargarConfigBanner(); }
     else if(_ls && splashActivo) {
       setTimeout(function() {
         var sp2 = document.getElementById('splash-screen');
         if(sp2) sp2.style.display = 'none';
-        if(_ls) { _ls.style.display = 'flex'; _ls.style.zIndex = '10005'; startBanner(); }
+        if(_ls) { _ls.style.display = 'flex'; _ls.style.zIndex = '10005'; startBanner(); cargarConfigBanner(); }
       }, 6500);
     }
     // Luego resetear el resto con protección de errores
@@ -8779,11 +8773,30 @@ async function guardarIncidente() {
       );
     }
 
-    // 3. Generar PDF con fotos embebidas y subir a Storage (un solo archivo)
-    let pdfLink = null;
-    try {
-      const pdfResult = await generarPDFIncidente({ ...incidente, fotoData });
-      if(pdfResult?.blob) {
+    // 3. Enviar WhatsApp INMEDIATAMENTE (sin esperar el PDF)
+    if(alumnoData?.telefono) {
+      const nomColegio = COLEGIO_NOMBRE;
+      const encabezado = `🏫 *${nomColegio}*\n${COLEGIO_ESLOGAN}`;
+      const sevEmoji = incidente.severidad === 'Grave' ? '🔴' : incidente.severidad === 'Moderado' ? '🟡' : '🟢';
+      const nombre1 = ((alumnoData.apoderadoNombres||'') + ' ' + (alumnoData.apoderadoApellidos||'')).trim() || 'Apoderado';
+      const nombre2 = alumnoData.telefono2 ? (((alumnoData.apoderado2Nombres||'') + ' ' + (alumnoData.apoderado2Apellidos||'')).trim() || 'Apoderado 2') : '';
+      const contactos = alumnoData.telefono2
+        ? `👨‍👩‍👧 *Apoderados notificados:*\n• ${nombre1}: ${alumnoData.telefono}\n• ${nombre2}: ${alumnoData.telefono2}`
+        : `👤 *Apoderado notificado:* ${nombre1}: ${alumnoData.telefono}`;
+      const msgBase = `🚨 *REPORTE DE INCIDENCIA*\n${encabezado}\n\n👤 *Alumno:* ${incidente.alumnoNombre}\n🏫 *Grado:* ${incidente.grado} ${incidente.seccion} — ${incidente.turno}\n📋 *Tipo:* ${incidente.tipo}\n${sevEmoji} *Severidad:* ${incidente.severidad}\n📅 *Fecha:* ${incidente.fecha} ${incidente.hora}\n\n📝 El colegio ha registrado un incidente con su hijo/a. Por favor comuníquese con la institución a la brevedad.\n\n${contactos}\n📞 Para más información contacte a la dirección del colegio.`;
+      const enviado = await sendWhatsApp(alumnoData.telefono, msgBase);
+      if(alumnoData.telefono2) sendWhatsApp(alumnoData.telefono2, msgBase);
+      if(enviado) toast('✅ WhatsApp enviado al apoderado' + (alumnoData.telefono2 ? 's' : ''), 'success');
+      else toast('⚠️ WhatsApp no pudo enviarse — revisa la configuración de Factiliza','warning');
+    }
+
+    // 4. Generar PDF y subir en segundo plano (sin bloquear)
+    ;(async () => {
+      try {
+        const pdfResult = await generarPDFIncidente({ ...incidente, fotoData });
+        if(!pdfResult?.blob) return;
+
+        let pdfLink = null;
 
         // ── Intento 1: Firebase Storage (activo cuando el plan sea Blaze) ──────
         let storageOk = false;
@@ -8824,31 +8837,19 @@ async function guardarIncidente() {
           }
         }
 
-      }
-    } catch(ePdf) { console.warn('[incidente] Error generando PDF:', ePdf); }
-
-    // 5. Enviar WhatsApp con el link del PDF en Firebase Storage
-    if(alumnoData?.telefono) {
-      const nomColegio = COLEGIO_NOMBRE;
-      const encabezado = `🏫 *${nomColegio}*\n${COLEGIO_ESLOGAN}`;
-      const sevEmoji = incidente.severidad === 'Grave' ? '🔴' : incidente.severidad === 'Moderado' ? '🟡' : '🟢';
-      const linkText = pdfLink
-        ? `\n\n📎 *Reporte PDF:* ${pdfLink}\n_(disponible por 7 días)_`
-        : '';
-      const nombre1 = ((alumnoData.apoderadoNombres||'') + ' ' + (alumnoData.apoderadoApellidos||'')).trim() || 'Apoderado';
-      const nombre2 = alumnoData.telefono2 ? (((alumnoData.apoderado2Nombres||'') + ' ' + (alumnoData.apoderado2Apellidos||'')).trim() || 'Apoderado 2') : '';
-      const contactos = alumnoData.telefono2
-        ? `👨‍👩‍👧 *Apoderados notificados:*\n• ${nombre1}: ${alumnoData.telefono}\n• ${nombre2}: ${alumnoData.telefono2}`
-        : `👤 *Apoderado notificado:* ${nombre1}: ${alumnoData.telefono}`;
-      const msg = `🚨 *REPORTE DE INCIDENCIA*\n${encabezado}\n\n👤 *Alumno:* ${incidente.alumnoNombre}\n🏫 *Grado:* ${incidente.grado} ${incidente.seccion} — ${incidente.turno}\n📋 *Tipo:* ${incidente.tipo}\n${sevEmoji} *Severidad:* ${incidente.severidad}\n📅 *Fecha:* ${incidente.fecha} ${incidente.hora}\n\n📝 El colegio ha registrado un incidente con su hijo/a. Por favor comuníquese con la institución a la brevedad.${linkText}\n\n${contactos}\n📞 Para más información contacte a la dirección del colegio.`;
-      const enviado = await sendWhatsApp(alumnoData.telefono, msg);
-      if(alumnoData.telefono2) sendWhatsApp(alumnoData.telefono2, msg);
-      if(enviado) toast('✅ WhatsApp enviado al apoderado' + (alumnoData.telefono2 ? 's' : '') + (pdfLink ? ' con link PDF ✅' : ''),'success');
-      else {
-        if(!alumnoData.telefono) toast('⚠️ El apoderado no tiene número registrado','warning');
-        else toast('⚠️ WhatsApp no pudo enviarse — revisa la configuración de Factiliza','warning');
-      }
-    }
+        // Actualizar Firestore con el link y enviar segundo WhatsApp con PDF
+        if(pdfLink) {
+          await docRef.update({ pdfUrl: pdfLink, pdfActivo: true });
+          _invalidarIncidentes();
+          if(alumnoData?.telefono) {
+            const msgPdf = `📎 *Reporte PDF del incidente:* ${pdfLink}\n_(disponible por 7 días)_`;
+            sendWhatsApp(alumnoData.telefono, msgPdf);
+            if(alumnoData.telefono2) sendWhatsApp(alumnoData.telefono2, msgPdf);
+            toast('📎 PDF enviado al apoderado', 'success');
+          }
+        }
+      } catch(ePdf) { console.warn('[incidente] Error generando PDF:', ePdf); }
+    })();
   } catch(e) { reactivarBtn(); toast('Error al guardar: ' + e.message, 'error'); }
 }
 
