@@ -1848,34 +1848,28 @@
       <div style="position:absolute;top:14px;right:14px;background:rgba(201,168,76,0.15);border:0.5px solid rgba(201,168,76,0.5);color:#C9A84C;font-size:0.68rem;padding:3px 10px;border-radius:12px;z-index:2;" id="banner-year-tag">Año Escolar 2026</div>
 
       <div class="banner-slide active" id="bslide-0">
-        <div class="banner-img" style="background-image:url('img/banner-login-1.png');background-size:cover;background-position:center;"></div>
+        <div class="banner-img"></div>
         <div class="banner-overlay"></div>
-
       </div>
 
       <div class="banner-slide" id="bslide-1">
-        <div class="banner-img" style="background-image:url('img/banner-login-2.png');background-size:cover;background-position:center;"></div>
+        <div class="banner-img"></div>
         <div class="banner-overlay"></div>
-
       </div>
 
       <div class="banner-slide" id="bslide-2">
-        <div class="banner-img" style="background-image:url('img/banner-login-3.png');background-size:cover;background-position:center;"></div>
+        <div class="banner-img"></div>
         <div class="banner-overlay"></div>
-
       </div>
 
       <div class="banner-slide" id="bslide-3">
-        <div class="banner-img" style="background-image:url('img/banner-login-4.png');background-size:cover;background-position:center;"></div>
+        <div class="banner-img"></div>
         <div class="banner-overlay"></div>
-
       </div>
 
-      <!-- Slide 5 -->
       <div class="banner-slide" id="bslide-4">
-        <div class="banner-img" style="background-image:url('img/banner-login-5.png');background-size:cover;background-position:center;"></div>
+        <div class="banner-img"></div>
         <div class="banner-overlay"></div>
-  
       </div>
 
       <div class="banner-dots">
@@ -3684,12 +3678,12 @@ auth.onAuthStateChanged(async user => {
     var _ls = document.getElementById('login-screen');
     var _sp = document.getElementById('splash-screen');
     var splashActivo = _sp && _sp.style.display !== 'none';
-    if(_ls && !splashActivo) { _ls.style.display = 'flex'; _ls.style.zIndex = '10005'; startBanner(); }
+    if(_ls && !splashActivo) { _ls.style.display = 'flex'; _ls.style.zIndex = '10005'; startBanner(); cargarConfigBanner(); }
     else if(_ls && splashActivo) {
       setTimeout(function() {
         var sp2 = document.getElementById('splash-screen');
         if(sp2) sp2.style.display = 'none';
-        if(_ls) { _ls.style.display = 'flex'; _ls.style.zIndex = '10005'; startBanner(); }
+        if(_ls) { _ls.style.display = 'flex'; _ls.style.zIndex = '10005'; startBanner(); cargarConfigBanner(); }
       }, 6500);
     }
     // Luego resetear el resto con protección de errores
