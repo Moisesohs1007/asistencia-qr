@@ -111,7 +111,10 @@ service cloud.firestore {
         (esEmailApoderado() && request.query.limit <= 200);
 
       allow create: if isStaff();
-      allow update, delete: if isAdmin();
+      // El creador puede actualizar solo para escribir los refs de Storage tras subir
+      allow update: if isAdmin() ||
+        (isStaff() && resource.data.responsableId == request.auth.uid);
+      allow delete: if isAdmin();
     }
 
     // ── Resumen mensual (pre-agregado por alumno/mes) ────────────────────────
