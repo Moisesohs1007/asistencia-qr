@@ -5231,7 +5231,7 @@ async function renderRegistro() {
     empty.querySelector('p').textContent = 'Selecciona una fecha u otro filtro para ver los registros';
     const cachedMes = DB._registrosCache['mes:' + mesSel];
     if(cachedMes) count.textContent = cachedMes.length + ' registro' + (cachedMes.length!==1?'s':'') + ' en el período';
-    else DB.getRegistros({ mes: mesSel }).then(r => count.textContent = r.length + ' registro' + (r.length!==1?'s':'') + ' en el período').catch(()=>{});
+    else DB.getResumenMes(mesSel).then(resumen => { const total = resumen.reduce((s,r) => s + (r.puntual||0) + (r.tardanza||0), 0); count.textContent = total + ' asistencias en el período'; }).catch(()=>{});
     return;
   }
 
@@ -7153,8 +7153,10 @@ async function renderReportes(anioCompleto=false) {
   }
 
   // ── Fase 2: Registros completos para gráficos ────────────────────────────────
-  // Optimización de lecturas: día específico → solo ese día (~2.6k docs vs ~52k del mes)
+  // Vista mensual sin día → usar resumen_mensual ya cargado (0 lecturas extra)
+  // Vista día/año → cargar registros reales del período específico
   let registros;
+  let _soloResumen = false;
   if(anioCompleto && (currentRol==='admin'||currentRol==='director')) {
     registros = await DB.getRegistros({anio});
     if(label) label.textContent = 'Año ' + anio + ' (' + registros.length + ' registros)';
@@ -7162,8 +7164,10 @@ async function renderReportes(anioCompleto=false) {
     registros = await DB.getRegistros({fecha: diaSel});
     if(label) label.textContent = registros.length + ' registros del ' + diaSel;
   } else {
-    registros = await DB.getRegistros({mes: mesSel});
-    if(label) label.textContent = registros.length + ' registros del período';
+    // Vista mensual: resumen_mensual ya cargado en Fase 1 — ahorra hasta 57,000 lecturas
+    registros = [];
+    _soloResumen = true;
+    if(label) label.textContent = 'Resumen del período';
   }
 
   // Filtrar registros al universo de alumnos seleccionados
@@ -7174,7 +7178,7 @@ async function renderReportes(anioCompleto=false) {
   // ── Reconciliación automática en background ──────────────────────────────────
   // Compara resumen_mensual con registros reales y corrige diferencias sin bloquear la UI
   // Usa datos ya cargados → 0 lecturas extra de Firestore
-  if(!diaSel && !anioCompleto && _resumenFase1) {
+  if(!diaSel && !anioCompleto && !_soloResumen && _resumenFase1) {
     _reconciliarResumenBackground(mesSel, ingMes, _resumenFase1).catch(e =>
       console.warn('[resumen] reconciliación:', e.message)
     );
@@ -7182,7 +7186,8 @@ async function renderReportes(anioCompleto=false) {
 
   // Si hay día seleccionado, filtrar métricas sólo a ese día
   const ingFiltro = diaSel ? ingMes.filter(r=>r.fecha===diaSel) : ingMes;
-  const puntFiltro = ingFiltro.filter(r=>r.estado==='A tiempo'||r.estado==='Puntual').length;
+  let puntFiltro = ingFiltro.filter(r=>r.estado==='A tiempo'||r.estado==='Puntual').length;
+  let _tardFiltro = ingFiltro.filter(r=>r.estado==='Tardanza').length;
 
   const diasMes = new Set(ingMes.map(r=>r.fecha));
   let faltas = 0;
@@ -7196,18 +7201,28 @@ async function renderReportes(anioCompleto=false) {
     });
   }
 
+  // Vista mensual sin registros crudos: derivar métricas desde resumen_mensual (ya en memoria)
+  if(_soloResumen && _resumenFase1) {
+    const _rf = _resumenFase1.filter(r => alumnosIds.has(r.alumnoId));
+    puntFiltro  = _rf.reduce((s,r) => s + (r.puntual||0),  0);
+    _tardFiltro = _rf.reduce((s,r) => s + (r.tardanza||0), 0);
+    faltas = Math.max(0, _calcDiasHabilesHasta(mesSel) * alumnos.length - puntFiltro - _tardFiltro);
+  }
+
   // Actualizar KPIs exactos desde registros cuando hay filtro de día o vista anual
   // (en vista mensual sin día, los KPIs rápidos ya fueron mostrados en Fase 1)
   if(diaSel || anioCompleto) {
     document.getElementById('rep-puntual').textContent   = puntFiltro;
-    document.getElementById('rep-tardanzas').textContent = ingFiltro.filter(r=>r.estado==='Tardanza').length;
+    document.getElementById('rep-tardanzas').textContent = _tardFiltro;
     document.getElementById('rep-faltas').textContent    = faltas;
   }
 
-  const totalEsperado = ingFiltro.length + faltas;
+  const totalEsperado = _soloResumen ? (puntFiltro + _tardFiltro + faltas) : (ingFiltro.length + faltas);
   const pct = totalEsperado ? Math.round(puntFiltro/totalEsperado*100) : 0;
   const fechaPresentes = diaSel || today;
-  const presHoy = new Set(regs.filter(r=>r.fecha===fechaPresentes&&r.tipo==='INGRESO').map(r=>r.alumnoId)).size;
+  const presHoy = _soloResumen
+    ? (() => { const hc = DB._registrosCache['fecha:' + today] || []; return new Set(hc.filter(r=>r.tipo==='INGRESO'&&alumnosIds.has(r.alumnoId)).map(r=>r.alumnoId)).size; })()
+    : new Set(regs.filter(r=>r.fecha===fechaPresentes&&r.tipo==='INGRESO').map(r=>r.alumnoId)).size;
   document.getElementById('rep-hoy').textContent = presHoy;
   const labelHoy = document.getElementById('rep-hoy-label');
   if(labelHoy) labelHoy.textContent = diaSel ? 'Presentes ese día' : 'Presentes hoy';
@@ -7229,9 +7244,9 @@ async function renderReportes(anioCompleto=false) {
     mesSel, diaSel, nivel, grado, seccion,
     total: alumnos.length,
     puntuales: puntFiltro,
-    tardanzas: ingFiltro.filter(r=>r.estado==='Tardanza').length,
+    tardanzas: _tardFiltro,
     ausencias: faltas,
-    presentes: new Set(regs.filter(r=>r.fecha===(diaSel||today)&&r.tipo==='INGRESO').map(r=>r.alumnoId)).size,
+    presentes: presHoy,
     presentesLabel: diaSel ? 'Presentes ese día' : 'Presentes hoy',
     datosDiarios: [],
     anioCompleto,
@@ -7239,6 +7254,9 @@ async function renderReportes(anioCompleto=false) {
 
   const chartBarras = document.getElementById('chart-barras-dia');
   if(chartBarras) {
+    if(_soloResumen) {
+      chartBarras.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:80px;color:var(--muted);font-size:0.8rem;text-align:center;padding:10px;">Selecciona un día para ver el detalle diario</div>';
+    } else {
     const barW = Math.max(6, Math.min(16, Math.floor(260/diasHabiles.length)));
     const maxAl = alumnos.length || 1;
     let barsHtml = `<div style="display:flex;align-items:flex-end;gap:2px;height:80px;padding-bottom:18px;position:relative;">`;
@@ -7270,14 +7288,14 @@ async function renderReportes(anioCompleto=false) {
       <span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:#E24B4A;margin-right:3px;"></span>Ausente</span>
     </div>`;
     chartBarras.innerHTML = barsHtml;
+    } // end else !_soloResumen
   }
 
   // ── GRÁFICO 2: Dona distribución ──
   const chartDona = document.getElementById('chart-dona');
   if(chartDona) {
-    const totalIng = ingFiltro.length;
-    const nPunt = ingFiltro.filter(r=>r.estado==='A tiempo'||r.estado==='Puntual').length;
-    const nTard = ingFiltro.filter(r=>r.estado==='Tardanza').length;
+    const nPunt = puntFiltro;
+    const nTard = _tardFiltro;
     const nAus  = faltas;
     const tot   = nPunt + nTard + nAus || 1;
     const pPunt = Math.round(nPunt/tot*100);
@@ -7328,7 +7346,37 @@ async function renderReportes(anioCompleto=false) {
         });
       });
       if(aulasList.length===0) { chartHeatmap.innerHTML='<p style="color:var(--muted);font-size:.82rem;">Sin datos</p>'; }
-      else {
+      else if(_soloResumen && _resumenFase1) {
+        // Heatmap mensual desde resumen_mensual — 0 lecturas extra
+        const _dh = _calcDiasHabilesHasta(mesSel);
+        let tbl = `<table style="border-collapse:collapse;font-size:9px;width:100%;"><thead><tr>
+          <th style="padding:2px 6px;color:var(--muted);font-weight:500;text-align:left;">Aula</th>
+          <th style="padding:2px 8px;color:var(--muted);font-weight:400;text-align:center;">Asistencia</th>
+        </tr></thead><tbody>`;
+        aulasList.forEach(({niv,g,s}) => {
+          const aulaAlumnos = alumnos.filter(a=>a.grado===g&&a.seccion===s);
+          if(!aulaAlumnos.length) return;
+          const aulaIds = new Set(aulaAlumnos.map(a=>a.id));
+          const aulaRes = _resumenFase1.filter(r=>aulaIds.has(r.alumnoId));
+          const totalAsis = aulaRes.reduce((sum,r)=>sum+(r.puntual||0)+(r.tardanza||0),0);
+          const esperado = aulaAlumnos.length * _dh;
+          const pct2 = esperado ? Math.round(totalAsis/esperado*100) : 0;
+          let bg='#F0F2F8',tc='#64748B';
+          if(pct2>=95){bg='#97C459';tc='#173404';}
+          else if(pct2>=85){bg='#C0DD97';tc='#27500A';}
+          else if(pct2>=70){bg='#FAC775';tc='#633806';}
+          else if(pct2>0){bg='#F09595';tc='#A32D2D';}
+          tbl+=`<tr><td style="padding:2px 6px;color:var(--muted);white-space:nowrap;">${g} ${s}</td>
+            <td style="padding:1px 4px;text-align:center;"><div style="background:${bg};color:${tc};border-radius:3px;padding:2px 4px;font-size:8px;font-weight:500;">${pct2>0?pct2+'%':'—'}</div></td></tr>`;
+        });
+        tbl+=`</tbody></table><div style="display:flex;gap:8px;margin-top:6px;font-size:9px;color:var(--muted);">
+          <span><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:#97C459;margin-right:3px;"></span>≥95%</span>
+          <span><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:#C0DD97;margin-right:3px;"></span>85-95%</span>
+          <span><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:#FAC775;margin-right:3px;"></span>70-85%</span>
+          <span><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:#F09595;margin-right:3px;"></span>&lt;70%</span>
+        </div>`;
+        chartHeatmap.innerHTML = tbl;
+      } else {
         const dias7 = diasHabiles.filter(d=>d<=today).slice(-10);
         let tbl = `<table style="border-collapse:collapse;font-size:9px;width:100%;">
           <thead><tr>
@@ -7359,45 +7407,69 @@ async function renderReportes(anioCompleto=false) {
           <span style="display:flex;align-items:center;gap:3px;"><span style="width:9px;height:9px;border-radius:2px;background:#F09595;display:inline-block;"></span>&lt;70%</span>
         </div>`;
         chartHeatmap.innerHTML = tbl;
-      }
+      } // end else (heatmap con registros reales)
     }
   }
 
   // ── Top tardanzas ──
-  const tardMap={};
-  regs.filter(r=>r.estado==='Tardanza').forEach(r=>{ tardMap[r.alumnoId]=(tardMap[r.alumnoId]||0)+1; });
-  const sortedTard = Object.entries(tardMap).sort((a,b)=>b[1]-a[1]).slice(0,5);
   const topTard = document.getElementById('top-tardanzas');
   if(topTard) {
-    if(!sortedTard.length){ topTard.innerHTML='<p style="color:var(--muted);font-size:.85rem;">Sin tardanzas 🎉</p>'; }
-    else topTard.innerHTML = sortedTard.map(([id,cnt])=>{
-      const a=alumnos.find(x=>x.id===id);
-      const name=a?a.apellidos+' '+a.nombres:id;
-      const det=a?`${a.grado} ${a.seccion} · ${a.turno||''}`:'-';
-      return `<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);">
-        <div><div style="font-weight:500;font-size:.85rem;">${name}</div><div style="font-size:.75rem;color:var(--muted);">${det}</div></div>
-        <span class="badge yellow">${cnt} tardanza${cnt>1?'s':''}</span></div>`;
-    }).join('');
+    if(_soloResumen && _resumenFase1) {
+      const _rfT = _resumenFase1.filter(r=>alumnosIds.has(r.alumnoId)&&(r.tardanza||0)>0)
+        .sort((a,b)=>(b.tardanza||0)-(a.tardanza||0)).slice(0,5);
+      if(!_rfT.length) topTard.innerHTML='<p style="color:var(--muted);font-size:.85rem;">Sin tardanzas 🎉</p>';
+      else topTard.innerHTML=_rfT.map(r=>{
+        const a=alumnos.find(x=>x.id===r.alumnoId);
+        const name=a?a.apellidos+' '+a.nombres:r.alumnoId;
+        const det=a?`${a.grado} ${a.seccion} · ${a.turno||''}`:'-';
+        const cnt=r.tardanza||0;
+        return `<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);"><div><div style="font-weight:500;font-size:.85rem;">${name}</div><div style="font-size:.75rem;color:var(--muted);">${det}</div></div><span class="badge yellow">${cnt} tardanza${cnt>1?'s':''}</span></div>`;
+      }).join('');
+    } else {
+      const tardMap={};
+      regs.filter(r=>r.estado==='Tardanza').forEach(r=>{ tardMap[r.alumnoId]=(tardMap[r.alumnoId]||0)+1; });
+      const sortedTard=Object.entries(tardMap).sort((a,b)=>b[1]-a[1]).slice(0,5);
+      if(!sortedTard.length) topTard.innerHTML='<p style="color:var(--muted);font-size:.85rem;">Sin tardanzas 🎉</p>';
+      else topTard.innerHTML=sortedTard.map(([id,cnt])=>{
+        const a=alumnos.find(x=>x.id===id);
+        const name=a?a.apellidos+' '+a.nombres:id;
+        const det=a?`${a.grado} ${a.seccion} · ${a.turno||''}`:'-';
+        return `<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);"><div><div style="font-weight:500;font-size:.85rem;">${name}</div><div style="font-size:.75rem;color:var(--muted);">${det}</div></div><span class="badge yellow">${cnt} tardanza${cnt>1?'s':''}</span></div>`;
+      }).join('');
+    }
   }
 
   // ── Top ausencias ──
-  const ausMap={};
-  diasMes.forEach(dia=>{
-    const pres=new Set(regs.filter(r=>r.fecha===dia&&r.tipo==='INGRESO').map(r=>r.alumnoId));
-    alumnos.forEach(a=>{ if(!pres.has(a.id)) ausMap[a.id]=(ausMap[a.id]||0)+1; });
-  });
-  const sortedAus = Object.entries(ausMap).sort((a,b)=>b[1]-a[1]).slice(0,5);
   const topAus = document.getElementById('top-ausencias');
   if(topAus) {
-    if(!sortedAus.length){ topAus.innerHTML='<p style="color:var(--muted);font-size:.85rem;">Sin ausencias 🎉</p>'; }
-    else topAus.innerHTML = sortedAus.map(([id,cnt])=>{
-      const a=alumnos.find(x=>x.id===id);
-      const name=a?a.apellidos+' '+a.nombres:id;
-      const det=a?`${a.grado} ${a.seccion} · ${a.turno||''}`:'-';
-      return `<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);">
-        <div><div style="font-weight:500;font-size:.85rem;">${name}</div><div style="font-size:.75rem;color:var(--muted);">${det}</div></div>
-        <span class="badge red">${cnt} falta${cnt>1?'s':''}</span></div>`;
-    }).join('');
+    if(_soloResumen && _resumenFase1) {
+      const _dhTop = _calcDiasHabilesHasta(mesSel);
+      const _rfA = _resumenFase1.filter(r=>alumnosIds.has(r.alumnoId)).map(r=>({
+        id: r.alumnoId,
+        faltas: Math.max(0, _dhTop - (r.puntual||0) - (r.tardanza||0))
+      })).filter(r=>r.faltas>0).sort((a,b)=>b.faltas-a.faltas).slice(0,5);
+      if(!_rfA.length) topAus.innerHTML='<p style="color:var(--muted);font-size:.85rem;">Sin ausencias 🎉</p>';
+      else topAus.innerHTML=_rfA.map(({id,faltas:cnt})=>{
+        const a=alumnos.find(x=>x.id===id);
+        const name=a?a.apellidos+' '+a.nombres:id;
+        const det=a?`${a.grado} ${a.seccion} · ${a.turno||''}`:'-';
+        return `<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);"><div><div style="font-weight:500;font-size:.85rem;">${name}</div><div style="font-size:.75rem;color:var(--muted);">${det}</div></div><span class="badge red">${cnt} falta${cnt>1?'s':''}</span></div>`;
+      }).join('');
+    } else {
+      const ausMap={};
+      diasMes.forEach(dia=>{
+        const pres=new Set(regs.filter(r=>r.fecha===dia&&r.tipo==='INGRESO').map(r=>r.alumnoId));
+        alumnos.forEach(a=>{ if(!pres.has(a.id)) ausMap[a.id]=(ausMap[a.id]||0)+1; });
+      });
+      const sortedAus=Object.entries(ausMap).sort((a,b)=>b[1]-a[1]).slice(0,5);
+      if(!sortedAus.length) topAus.innerHTML='<p style="color:var(--muted);font-size:.85rem;">Sin ausencias 🎉</p>';
+      else topAus.innerHTML=sortedAus.map(([id,cnt])=>{
+        const a=alumnos.find(x=>x.id===id);
+        const name=a?a.apellidos+' '+a.nombres:id;
+        const det=a?`${a.grado} ${a.seccion} · ${a.turno||''}`:'-';
+        return `<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);"><div><div style="font-weight:500;font-size:.85rem;">${name}</div><div style="font-size:.75rem;color:var(--muted);">${det}</div></div><span class="badge red">${cnt} falta${cnt>1?'s':''}</span></div>`;
+      }).join('');
+    }
   }
 
   } catch(e) { console.error('renderReportes:', e); }
