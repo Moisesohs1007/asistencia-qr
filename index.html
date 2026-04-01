@@ -2421,82 +2421,21 @@
       </div>
     </div>
 
-    <!-- Info del colegio — hardcodeado en código fuente -->
-    <div class="card" style="margin-bottom:20px;padding:20px 24px;border:1px solid rgba(201,168,76,0.3);">
-      <div style="font-family:var(--font-display);font-size:1rem;font-weight:700;margin-bottom:12px;color:var(--accent);">🏫 Datos del Colegio</div>
-      <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
-        <img id="cfg-logo-preview" src="" style="width:72px;height:72px;object-fit:contain;border-radius:10px;border:1px solid var(--border);background:var(--surface2);flex-shrink:0;">
-        <div>
-          <div style="font-size:1rem;font-weight:700;color:var(--text);" id="cfg-nombre-display"></div>
-          <div style="font-size:0.8rem;color:var(--muted);margin-top:4px;" id="cfg-anio-display"></div>
-          <div style="margin-top:10px;font-size:0.78rem;color:#f59e0b;background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3);border-radius:8px;padding:8px 12px;">
-            ⚙️ El nombre, insignia y año escolar están fijados en el código fuente.<br>Para actualizarlos, edita las constantes <strong>COLEGIO_NOMBRE</strong>, <strong>COLEGIO_LOGO</strong> y <strong>COLEGIO_ANIO</strong> en el archivo <code>index.html</code>.
-          </div>
-        </div>
-      </div>
-      <!-- Inputs ocultos para compatibilidad con guardarInfoColegio() -->
-      <input type="hidden" id="cfg-nombre-colegio">
-      <input type="hidden" id="cfg-anio">
-      <input type="hidden" id="cfg-telefono-colegio">
-      <input type="hidden" id="cfg-direccion-colegio">
-      <input type="hidden" id="cfg-email-colegio">
-      <input type="hidden" id="cfg-horario-colegio">
-      <!-- Logo inputs ocultos -->
-      <input type="hidden" id="cfg-logo-input">
-      <span style="display:none;" id="cfg-logo-placeholder"></span>
-      <button style="display:none;" id="cfg-logo-eliminar-btn"></button>
-      <div style="display:none;" id="cfg-logo-status"></div>
-    </div>
+    <!-- Inputs ocultos para compatibilidad con código existente -->
+    <input type="hidden" id="cfg-nombre-colegio">
+    <input type="hidden" id="cfg-anio">
+    <input type="hidden" id="cfg-telefono-colegio">
+    <input type="hidden" id="cfg-direccion-colegio">
+    <input type="hidden" id="cfg-email-colegio">
+    <input type="hidden" id="cfg-horario-colegio">
+    <input type="hidden" id="cfg-logo-input">
+    <span style="display:none;" id="cfg-logo-placeholder"></span>
+    <button style="display:none;" id="cfg-logo-eliminar-btn"></button>
+    <div style="display:none;" id="cfg-logo-status"></div>
+    <img id="cfg-logo-preview" src="" style="display:none;">
+    <div style="display:none;" id="cfg-nombre-display"></div>
+    <div style="display:none;" id="cfg-anio-display"></div>
 
-    <!-- WhatsApp Factiliza -->
-    <div class="card" style="margin-bottom:20px;padding:20px 24px;">
-      <div style="font-family:var(--font-display);font-size:1rem;font-weight:700;margin-bottom:4px;color:var(--accent);">📱 WhatsApp — Factiliza</div>
-      <div style="color:var(--muted);font-size:0.82rem;margin-bottom:16px;">Configura tu API para enviar mensajes automáticos a los apoderados</div>
-      <div class="form-grid">
-        <div class="form-group form-full">
-          <label>Token Factiliza</label>
-          <input type="password" id="factiliza-token" placeholder="eyJhbGci..." autocomplete="off">
-        </div>
-        <div class="form-group form-full">
-          <label>Nombre de instancia</label>
-          <input type="text" id="factiliza-instancia" placeholder="NTE5NzI4OTgzODk=">
-        </div>
-      </div>
-      <div style="display:flex;gap:10px;margin-top:8px;flex-wrap:wrap;">
-        <button class="btn btn-primary" onclick="guardarFactiliza()">💾 Guardar</button>
-        <button class="btn btn-ghost" onclick="probarFactiliza()">🧪 Probar conexión</button>
-      </div>
-    </div>
-
-    <!-- Cuentas Apoderados -->
-    <div class="card" style="margin-bottom:20px;padding:20px 24px;border:1px solid rgba(245,158,11,0.3);">
-      <div style="font-family:var(--font-display);font-size:1rem;font-weight:700;margin-bottom:4px;color:#f59e0b;">👨‍👩‍👧 Cuentas de Apoderados</div>
-      <div style="color:var(--muted);font-size:0.82rem;margin-bottom:16px;">Los apoderados ingresan con el DNI del alumno como usuario y contraseña inicial. Usa este botón para crear o actualizar las cuentas de todos los alumnos existentes.</div>
-      <div id="apo-bulk-status" style="display:none;margin-bottom:12px;padding:10px 14px;border-radius:10px;font-size:0.83rem;"></div>
-      <div style="display:flex;gap:10px;flex-wrap:wrap;">
-        <button class="btn btn-primary" onclick="crearCuentasApoderadosMasivo()" style="background:#f59e0b;border-color:#f59e0b;">
-          👥 Crear cuentas para todos los alumnos
-        </button>
-      </div>
-      <div style="margin-top:10px;font-size:0.78rem;color:var(--muted);">⚠️ Si ya existe una cuenta no se modifica. Solo crea las que faltan.</div>
-    </div>
-
-    <!-- Zona de peligro -->
-    <div class="card" style="margin-bottom:20px;padding:20px 24px;border:2px solid rgba(239,68,68,0.5);">
-      <div style="font-family:var(--font-display);font-size:1rem;font-weight:700;margin-bottom:6px;color:#ef4444;">&#9888;&#65039; Zona de Peligro &mdash; Resetear Sistema</div>
-      <div style="color:var(--muted);font-size:0.82rem;margin-bottom:16px;">
-        Borra <strong style="color:var(--text);">permanentemente</strong> todos los datos del sistema:<br>
-        alumnos, registros de asistencia, incidentes, cuentas de apoderados y usuarios del personal.<br>
-        <strong style="color:#ef4444;">Solo se conserva el usuario administrador principal.</strong><br>
-        Esta accion no se puede deshacer.
-      </div>
-      <div id="reset-status" style="display:none;margin-bottom:12px;padding:10px 14px;border-radius:10px;font-size:0.83rem;"></div>
-      <button class="btn" onclick="resetearTodoElSistema()" style="background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.5);color:#ef4444;font-weight:700;">
-        &#128465;&#65039; Borrar todos los datos
-      </button>
-    </div>
-
-    
     <!-- Niveles y horarios -->
     <div class="card" style="margin-bottom:20px;padding:20px 24px;">
       <div style="font-family:var(--font-display);font-size:1rem;font-weight:700;margin-bottom:4px;color:var(--accent);">🕐 Horarios de Ingreso y Salida por Nivel</div>
@@ -2514,7 +2453,7 @@
     </div>
 
     <!-- Secciones -->
-    <div class="card" style="padding:20px 24px;">
+    <div class="card" style="margin-bottom:20px;padding:20px 24px;">
       <div style="font-family:var(--font-display);font-size:1rem;font-weight:700;margin-bottom:4px;color:var(--accent);">📋 Secciones disponibles</div>
       <div style="color:var(--muted);font-size:0.82rem;margin-bottom:16px;">Secciones que aparecerán al registrar alumnos</div>
       <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
@@ -2525,17 +2464,94 @@
       <button class="btn btn-primary" onclick="guardarSecciones()" style="margin-top:12px;">💾 Guardar secciones</button>
     </div>
 
-    <!-- Cuentas de apoderado huérfanas -->
-    <div class="card" style="margin-top:20px;padding:20px 24px;border:1px solid rgba(245,158,11,0.3);">
-      <div style="font-family:var(--font-display);font-size:1rem;font-weight:700;margin-bottom:4px;color:#f59e0b;">👻 Cuentas de apoderado huérfanas</div>
-      <div style="color:var(--muted);font-size:0.82rem;margin-bottom:14px;">Cuentas de Firebase Auth de apoderados cuyos alumnos ya no existen. Deben borrarse manualmente desde la consola de Firebase.</div>
-      <button class="btn" style="background:rgba(245,158,11,0.15);color:#f59e0b;border:1px solid rgba(245,158,11,0.3);margin-bottom:12px;" onclick="verificarCuentasHuerfanas()">🔍 Verificar cuentas huérfanas</button>
-      <div id="huerfanas-result" style="font-size:0.82rem;color:var(--muted);"></div>
-      <div style="margin-top:12px;font-size:0.78rem;color:var(--muted);background:rgba(245,158,11,0.08);border-radius:8px;padding:10px 14px;">
-        <strong style="color:#f59e0b;">¿Cómo borrarlas?</strong><br>
-        1. Ve a <a href="https://console.firebase.google.com/project/asistencia-qr-a3346/authentication/users" target="_blank" style="color:#60a5fa;">Firebase Console → Authentication</a><br>
-        2. Busca los emails con formato <code><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="60242e292001100f4e0d0112050c0c0f4e1005">[email&#160;protected]</a></code><br>
-        3. Elimina los que correspondan a alumnos ya borrados
+    <!-- Botón Configuraciones Avanzadas -->
+    <div style="margin-top:8px;text-align:center;">
+      <button class="btn" onclick="abrirConfigAvanzada()" style="background:rgba(100,116,139,0.12);border:1px solid var(--border);color:var(--muted);font-size:0.85rem;gap:8px;padding:10px 20px;">
+        ⚙️ Configuraciones Avanzadas
+      </button>
+    </div>
+
+    <!-- Modal contraseña Configuraciones Avanzadas -->
+    <div id="modal-cfg-adv-pass" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:2000;align-items:center;justify-content:center;">
+      <div style="background:var(--surface);border-radius:16px;padding:28px 24px;width:90%;max-width:360px;border:1px solid var(--border);box-shadow:0 20px 60px rgba(0,0,0,0.4);">
+        <div style="font-weight:700;font-size:1rem;margin-bottom:6px;">🔒 Configuraciones Avanzadas</div>
+        <div style="font-size:0.82rem;color:var(--muted);margin-bottom:18px;">Ingresa la contraseña para acceder a esta sección</div>
+        <input type="password" id="cfg-adv-pass-input" placeholder="Contraseña" style="width:100%;margin-bottom:10px;" onkeydown="if(event.key==='Enter')verificarPassCfgAdv()">
+        <div id="cfg-adv-pass-err" style="display:none;color:#ef4444;font-size:0.8rem;margin-bottom:12px;padding:8px 10px;background:rgba(239,68,68,0.08);border-radius:8px;">Contraseña incorrecta</div>
+        <div style="display:flex;gap:10px;">
+          <button class="btn btn-primary" onclick="verificarPassCfgAdv()">Ingresar</button>
+          <button class="btn btn-ghost" onclick="document.getElementById('modal-cfg-adv-pass').style.display='none'">Cancelar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Panel Configuraciones Avanzadas (oculto hasta verificar contraseña) -->
+    <div id="panel-cfg-avanzada" style="display:none;margin-top:24px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;padding:14px 18px;background:rgba(100,116,139,0.1);border-radius:12px;border:1px solid var(--border);">
+        <div style="font-weight:700;font-size:0.95rem;color:var(--text);">⚙️ Configuraciones Avanzadas</div>
+        <button class="btn btn-ghost" onclick="cerrarConfigAvanzada()" style="font-size:0.8rem;padding:6px 14px;">✕ Cerrar</button>
+      </div>
+
+      <!-- WhatsApp Factiliza -->
+      <div class="card" style="margin-bottom:20px;padding:20px 24px;">
+        <div style="font-family:var(--font-display);font-size:1rem;font-weight:700;margin-bottom:4px;color:var(--accent);">📱 WhatsApp — Factiliza</div>
+        <div style="color:var(--muted);font-size:0.82rem;margin-bottom:16px;">Configura tu API para enviar mensajes automáticos a los apoderados</div>
+        <div class="form-grid">
+          <div class="form-group form-full">
+            <label>Token Factiliza</label>
+            <input type="password" id="factiliza-token" placeholder="eyJhbGci..." autocomplete="off">
+          </div>
+          <div class="form-group form-full">
+            <label>Nombre de instancia</label>
+            <input type="text" id="factiliza-instancia" placeholder="NTE5NzI4OTgzODk=">
+          </div>
+        </div>
+        <div style="display:flex;gap:10px;margin-top:8px;flex-wrap:wrap;">
+          <button class="btn btn-primary" onclick="guardarFactiliza()">💾 Guardar</button>
+          <button class="btn btn-ghost" onclick="probarFactiliza()">🧪 Probar conexión</button>
+        </div>
+      </div>
+
+      <!-- Cuentas Apoderados -->
+      <div class="card" style="margin-bottom:20px;padding:20px 24px;border:1px solid rgba(245,158,11,0.3);">
+        <div style="font-family:var(--font-display);font-size:1rem;font-weight:700;margin-bottom:4px;color:#f59e0b;">👨‍👩‍👧 Cuentas de Apoderados</div>
+        <div style="color:var(--muted);font-size:0.82rem;margin-bottom:16px;">Los apoderados ingresan con el DNI del alumno como usuario y contraseña inicial. Usa este botón para crear o actualizar las cuentas de todos los alumnos existentes.</div>
+        <div id="apo-bulk-status" style="display:none;margin-bottom:12px;padding:10px 14px;border-radius:10px;font-size:0.83rem;"></div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+          <button class="btn btn-primary" onclick="crearCuentasApoderadosMasivo()" style="background:#f59e0b;border-color:#f59e0b;">
+            👥 Crear cuentas para todos los alumnos
+          </button>
+        </div>
+        <div style="margin-top:10px;font-size:0.78rem;color:var(--muted);">⚠️ Si ya existe una cuenta no se modifica. Solo crea las que faltan.</div>
+      </div>
+
+      <!-- Zona de peligro -->
+      <div class="card" style="margin-bottom:20px;padding:20px 24px;border:2px solid rgba(239,68,68,0.5);">
+        <div style="font-family:var(--font-display);font-size:1rem;font-weight:700;margin-bottom:6px;color:#ef4444;">&#9888;&#65039; Zona de Peligro &mdash; Resetear Sistema</div>
+        <div style="color:var(--muted);font-size:0.82rem;margin-bottom:16px;">
+          Borra <strong style="color:var(--text);">permanentemente</strong> todos los datos del sistema:<br>
+          alumnos, registros de asistencia, incidentes, cuentas de apoderados y usuarios del personal.<br>
+          <strong style="color:#ef4444;">Solo se conserva el usuario administrador principal.</strong><br>
+          Esta accion no se puede deshacer.
+        </div>
+        <div id="reset-status" style="display:none;margin-bottom:12px;padding:10px 14px;border-radius:10px;font-size:0.83rem;"></div>
+        <button class="btn" onclick="resetearTodoElSistema()" style="background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.5);color:#ef4444;font-weight:700;">
+          &#128465;&#65039; Borrar todos los datos
+        </button>
+      </div>
+
+      <!-- Cuentas de apoderado huérfanas -->
+      <div class="card" style="margin-bottom:20px;padding:20px 24px;border:1px solid rgba(245,158,11,0.3);">
+        <div style="font-family:var(--font-display);font-size:1rem;font-weight:700;margin-bottom:4px;color:#f59e0b;">👻 Cuentas de apoderado huérfanas</div>
+        <div style="color:var(--muted);font-size:0.82rem;margin-bottom:14px;">Cuentas de Firebase Auth de apoderados cuyos alumnos ya no existen. Deben borrarse manualmente desde la consola de Firebase.</div>
+        <button class="btn" style="background:rgba(245,158,11,0.15);color:#f59e0b;border:1px solid rgba(245,158,11,0.3);margin-bottom:12px;" onclick="verificarCuentasHuerfanas()">🔍 Verificar cuentas huérfanas</button>
+        <div id="huerfanas-result" style="font-size:0.82rem;color:var(--muted);"></div>
+        <div style="margin-top:12px;font-size:0.78rem;color:var(--muted);background:rgba(245,158,11,0.08);border-radius:8px;padding:10px 14px;">
+          <strong style="color:#f59e0b;">¿Cómo borrarlas?</strong><br>
+          1. Ve a <a href="https://console.firebase.google.com/project/asistencia-qr-a3346/authentication/users" target="_blank" style="color:#60a5fa;">Firebase Console → Authentication</a><br>
+          2. Busca los emails con formato <code>dni@apo.marello.pe</code><br>
+          3. Elimina los que correspondan a alumnos ya borrados
+        </div>
       </div>
     </div>
   </div>
@@ -3585,6 +3601,8 @@ function doLogout() {
   if(!confirm('¿Cerrar sesión?')) return;
   sessionStorage.removeItem('splashMostrado');
   try { localStorage.removeItem('asmqr_lastTab'); } catch(e) {}
+  if(_alumnosTsUnsubscribe) { _alumnosTsUnsubscribe(); _alumnosTsUnsubscribe = null; }
+  if(_configUnsubscribe) { _configUnsubscribe(); _configUnsubscribe = null; }
   auth.signOut();
   // Resetear splash y mostrarlo
   var splash = document.getElementById('splash-screen');
@@ -3671,6 +3689,8 @@ auth.onAuthStateChanged(async user => {
     await actualizarTodosLosFiltros();
     updateStats();
     getFactilizaConfig(); // Precargar config WhatsApp en cache (sin await, en paralelo)
+    iniciarAlumnosListener(); // Listener en tiempo real para alumnos — sincroniza importación Excel entre dispositivos
+    iniciarConfigListener(); // Listener en tiempo real para config — sincroniza horarios entre dispositivos
     initSessionControl();   // Iniciar control de sesión duplicada
     anunciarSesion();        // Avisar a otras pestañas
   } else {
@@ -4682,6 +4702,7 @@ async function saveAlumno() {
       await crearCuentaApoderadoSilencioso(alumno);
       toast('Alumno registrado','success');
     }
+    DB.bumpAlumnosVersion(); // Notificar a otros dispositivos
     closeModal('modal-alumno');
     renderAlumnos();
     updateStats();
@@ -4761,6 +4782,7 @@ async function deleteAlumno(id) {
     await db.collection('apoderados').doc(id).delete().catch(()=>{});
     // Eliminar alumno
     await DB.deleteAlumno(id);
+    DB.bumpAlumnosVersion(); // Notificar a otros dispositivos
     toast('Alumno y sus registros eliminados','info');
     renderAlumnos();
     updateStats();
@@ -5231,7 +5253,7 @@ async function renderRegistro() {
     empty.querySelector('p').textContent = 'Selecciona una fecha u otro filtro para ver los registros';
     const cachedMes = DB._registrosCache['mes:' + mesSel];
     if(cachedMes) count.textContent = cachedMes.length + ' registro' + (cachedMes.length!==1?'s':'') + ' en el período';
-    else DB.getRegistros({ mes: mesSel }).then(r => count.textContent = r.length + ' registro' + (r.length!==1?'s':'') + ' en el período').catch(()=>{});
+    else DB.getResumenMes(mesSel).then(resumen => { const total = resumen.reduce((s,r) => s + (r.puntual||0) + (r.tardanza||0), 0); count.textContent = total + ' asistencias en el período'; }).catch(()=>{});
     return;
   }
 
@@ -6094,6 +6116,7 @@ function handleCSV(e) {
         added++;
       }
     }
+    DB.bumpAlumnosVersion(); // Notificar a otros dispositivos
     renderAlumnos();
     updateStats();
     toast(`${added} alumnos nuevos, ${updated} actualizados`, 'success');
@@ -6207,7 +6230,8 @@ async function handleExcel(e) {
       // Quitar barra de progreso
       const cont = document.getElementById('import-progress-container');
       if(cont) cont.remove();
-      DB.invalidarAlumnos(); // Refrescar cache
+      DB.invalidarAlumnos(); // Refrescar cache local
+      DB.bumpAlumnosVersion(); // Notificar a otros dispositivos (1 write total)
 
       renderAlumnos();
       updateStats();
@@ -7153,8 +7177,10 @@ async function renderReportes(anioCompleto=false) {
   }
 
   // ── Fase 2: Registros completos para gráficos ────────────────────────────────
-  // Optimización de lecturas: día específico → solo ese día (~2.6k docs vs ~52k del mes)
+  // Vista mensual sin día → usar resumen_mensual ya cargado (0 lecturas extra)
+  // Vista día/año → cargar registros reales del período específico
   let registros;
+  let _soloResumen = false;
   if(anioCompleto && (currentRol==='admin'||currentRol==='director')) {
     registros = await DB.getRegistros({anio});
     if(label) label.textContent = 'Año ' + anio + ' (' + registros.length + ' registros)';
@@ -7162,8 +7188,10 @@ async function renderReportes(anioCompleto=false) {
     registros = await DB.getRegistros({fecha: diaSel});
     if(label) label.textContent = registros.length + ' registros del ' + diaSel;
   } else {
-    registros = await DB.getRegistros({mes: mesSel});
-    if(label) label.textContent = registros.length + ' registros del período';
+    // Vista mensual: resumen_mensual ya cargado en Fase 1 — ahorra hasta 57,000 lecturas
+    registros = [];
+    _soloResumen = true;
+    if(label) label.textContent = 'Resumen del período';
   }
 
   // Filtrar registros al universo de alumnos seleccionados
@@ -7174,7 +7202,7 @@ async function renderReportes(anioCompleto=false) {
   // ── Reconciliación automática en background ──────────────────────────────────
   // Compara resumen_mensual con registros reales y corrige diferencias sin bloquear la UI
   // Usa datos ya cargados → 0 lecturas extra de Firestore
-  if(!diaSel && !anioCompleto && _resumenFase1) {
+  if(!diaSel && !anioCompleto && !_soloResumen && _resumenFase1) {
     _reconciliarResumenBackground(mesSel, ingMes, _resumenFase1).catch(e =>
       console.warn('[resumen] reconciliación:', e.message)
     );
@@ -7182,7 +7210,8 @@ async function renderReportes(anioCompleto=false) {
 
   // Si hay día seleccionado, filtrar métricas sólo a ese día
   const ingFiltro = diaSel ? ingMes.filter(r=>r.fecha===diaSel) : ingMes;
-  const puntFiltro = ingFiltro.filter(r=>r.estado==='A tiempo'||r.estado==='Puntual').length;
+  let puntFiltro = ingFiltro.filter(r=>r.estado==='A tiempo'||r.estado==='Puntual').length;
+  let _tardFiltro = ingFiltro.filter(r=>r.estado==='Tardanza').length;
 
   const diasMes = new Set(ingMes.map(r=>r.fecha));
   let faltas = 0;
@@ -7196,18 +7225,28 @@ async function renderReportes(anioCompleto=false) {
     });
   }
 
+  // Vista mensual sin registros crudos: derivar métricas desde resumen_mensual (ya en memoria)
+  if(_soloResumen && _resumenFase1) {
+    const _rf = _resumenFase1.filter(r => alumnosIds.has(r.alumnoId));
+    puntFiltro  = _rf.reduce((s,r) => s + (r.puntual||0),  0);
+    _tardFiltro = _rf.reduce((s,r) => s + (r.tardanza||0), 0);
+    faltas = Math.max(0, _calcDiasHabilesHasta(mesSel) * alumnos.length - puntFiltro - _tardFiltro);
+  }
+
   // Actualizar KPIs exactos desde registros cuando hay filtro de día o vista anual
   // (en vista mensual sin día, los KPIs rápidos ya fueron mostrados en Fase 1)
   if(diaSel || anioCompleto) {
     document.getElementById('rep-puntual').textContent   = puntFiltro;
-    document.getElementById('rep-tardanzas').textContent = ingFiltro.filter(r=>r.estado==='Tardanza').length;
+    document.getElementById('rep-tardanzas').textContent = _tardFiltro;
     document.getElementById('rep-faltas').textContent    = faltas;
   }
 
-  const totalEsperado = ingFiltro.length + faltas;
+  const totalEsperado = _soloResumen ? (puntFiltro + _tardFiltro + faltas) : (ingFiltro.length + faltas);
   const pct = totalEsperado ? Math.round(puntFiltro/totalEsperado*100) : 0;
   const fechaPresentes = diaSel || today;
-  const presHoy = new Set(regs.filter(r=>r.fecha===fechaPresentes&&r.tipo==='INGRESO').map(r=>r.alumnoId)).size;
+  const presHoy = _soloResumen
+    ? (() => { const hc = DB._registrosCache['fecha:' + today] || []; return new Set(hc.filter(r=>r.tipo==='INGRESO'&&alumnosIds.has(r.alumnoId)).map(r=>r.alumnoId)).size; })()
+    : new Set(regs.filter(r=>r.fecha===fechaPresentes&&r.tipo==='INGRESO').map(r=>r.alumnoId)).size;
   document.getElementById('rep-hoy').textContent = presHoy;
   const labelHoy = document.getElementById('rep-hoy-label');
   if(labelHoy) labelHoy.textContent = diaSel ? 'Presentes ese día' : 'Presentes hoy';
@@ -7229,9 +7268,9 @@ async function renderReportes(anioCompleto=false) {
     mesSel, diaSel, nivel, grado, seccion,
     total: alumnos.length,
     puntuales: puntFiltro,
-    tardanzas: ingFiltro.filter(r=>r.estado==='Tardanza').length,
+    tardanzas: _tardFiltro,
     ausencias: faltas,
-    presentes: new Set(regs.filter(r=>r.fecha===(diaSel||today)&&r.tipo==='INGRESO').map(r=>r.alumnoId)).size,
+    presentes: presHoy,
     presentesLabel: diaSel ? 'Presentes ese día' : 'Presentes hoy',
     datosDiarios: [],
     anioCompleto,
@@ -7239,6 +7278,9 @@ async function renderReportes(anioCompleto=false) {
 
   const chartBarras = document.getElementById('chart-barras-dia');
   if(chartBarras) {
+    if(_soloResumen) {
+      chartBarras.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:80px;color:var(--muted);font-size:0.8rem;text-align:center;padding:10px;">Selecciona un día para ver el detalle diario</div>';
+    } else {
     const barW = Math.max(6, Math.min(16, Math.floor(260/diasHabiles.length)));
     const maxAl = alumnos.length || 1;
     let barsHtml = `<div style="display:flex;align-items:flex-end;gap:2px;height:80px;padding-bottom:18px;position:relative;">`;
@@ -7270,14 +7312,14 @@ async function renderReportes(anioCompleto=false) {
       <span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:#E24B4A;margin-right:3px;"></span>Ausente</span>
     </div>`;
     chartBarras.innerHTML = barsHtml;
+    } // end else !_soloResumen
   }
 
   // ── GRÁFICO 2: Dona distribución ──
   const chartDona = document.getElementById('chart-dona');
   if(chartDona) {
-    const totalIng = ingFiltro.length;
-    const nPunt = ingFiltro.filter(r=>r.estado==='A tiempo'||r.estado==='Puntual').length;
-    const nTard = ingFiltro.filter(r=>r.estado==='Tardanza').length;
+    const nPunt = puntFiltro;
+    const nTard = _tardFiltro;
     const nAus  = faltas;
     const tot   = nPunt + nTard + nAus || 1;
     const pPunt = Math.round(nPunt/tot*100);
@@ -7328,7 +7370,37 @@ async function renderReportes(anioCompleto=false) {
         });
       });
       if(aulasList.length===0) { chartHeatmap.innerHTML='<p style="color:var(--muted);font-size:.82rem;">Sin datos</p>'; }
-      else {
+      else if(_soloResumen && _resumenFase1) {
+        // Heatmap mensual desde resumen_mensual — 0 lecturas extra
+        const _dh = _calcDiasHabilesHasta(mesSel);
+        let tbl = `<table style="border-collapse:collapse;font-size:9px;width:100%;"><thead><tr>
+          <th style="padding:2px 6px;color:var(--muted);font-weight:500;text-align:left;">Aula</th>
+          <th style="padding:2px 8px;color:var(--muted);font-weight:400;text-align:center;">Asistencia</th>
+        </tr></thead><tbody>`;
+        aulasList.forEach(({niv,g,s}) => {
+          const aulaAlumnos = alumnos.filter(a=>a.grado===g&&a.seccion===s);
+          if(!aulaAlumnos.length) return;
+          const aulaIds = new Set(aulaAlumnos.map(a=>a.id));
+          const aulaRes = _resumenFase1.filter(r=>aulaIds.has(r.alumnoId));
+          const totalAsis = aulaRes.reduce((sum,r)=>sum+(r.puntual||0)+(r.tardanza||0),0);
+          const esperado = aulaAlumnos.length * _dh;
+          const pct2 = esperado ? Math.round(totalAsis/esperado*100) : 0;
+          let bg='#F0F2F8',tc='#64748B';
+          if(pct2>=95){bg='#97C459';tc='#173404';}
+          else if(pct2>=85){bg='#C0DD97';tc='#27500A';}
+          else if(pct2>=70){bg='#FAC775';tc='#633806';}
+          else if(pct2>0){bg='#F09595';tc='#A32D2D';}
+          tbl+=`<tr><td style="padding:2px 6px;color:var(--muted);white-space:nowrap;">${g} ${s}</td>
+            <td style="padding:1px 4px;text-align:center;"><div style="background:${bg};color:${tc};border-radius:3px;padding:2px 4px;font-size:8px;font-weight:500;">${pct2>0?pct2+'%':'—'}</div></td></tr>`;
+        });
+        tbl+=`</tbody></table><div style="display:flex;gap:8px;margin-top:6px;font-size:9px;color:var(--muted);">
+          <span><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:#97C459;margin-right:3px;"></span>≥95%</span>
+          <span><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:#C0DD97;margin-right:3px;"></span>85-95%</span>
+          <span><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:#FAC775;margin-right:3px;"></span>70-85%</span>
+          <span><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:#F09595;margin-right:3px;"></span>&lt;70%</span>
+        </div>`;
+        chartHeatmap.innerHTML = tbl;
+      } else {
         const dias7 = diasHabiles.filter(d=>d<=today).slice(-10);
         let tbl = `<table style="border-collapse:collapse;font-size:9px;width:100%;">
           <thead><tr>
@@ -7359,45 +7431,69 @@ async function renderReportes(anioCompleto=false) {
           <span style="display:flex;align-items:center;gap:3px;"><span style="width:9px;height:9px;border-radius:2px;background:#F09595;display:inline-block;"></span>&lt;70%</span>
         </div>`;
         chartHeatmap.innerHTML = tbl;
-      }
+      } // end else (heatmap con registros reales)
     }
   }
 
   // ── Top tardanzas ──
-  const tardMap={};
-  regs.filter(r=>r.estado==='Tardanza').forEach(r=>{ tardMap[r.alumnoId]=(tardMap[r.alumnoId]||0)+1; });
-  const sortedTard = Object.entries(tardMap).sort((a,b)=>b[1]-a[1]).slice(0,5);
   const topTard = document.getElementById('top-tardanzas');
   if(topTard) {
-    if(!sortedTard.length){ topTard.innerHTML='<p style="color:var(--muted);font-size:.85rem;">Sin tardanzas 🎉</p>'; }
-    else topTard.innerHTML = sortedTard.map(([id,cnt])=>{
-      const a=alumnos.find(x=>x.id===id);
-      const name=a?a.apellidos+' '+a.nombres:id;
-      const det=a?`${a.grado} ${a.seccion} · ${a.turno||''}`:'-';
-      return `<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);">
-        <div><div style="font-weight:500;font-size:.85rem;">${name}</div><div style="font-size:.75rem;color:var(--muted);">${det}</div></div>
-        <span class="badge yellow">${cnt} tardanza${cnt>1?'s':''}</span></div>`;
-    }).join('');
+    if(_soloResumen && _resumenFase1) {
+      const _rfT = _resumenFase1.filter(r=>alumnosIds.has(r.alumnoId)&&(r.tardanza||0)>0)
+        .sort((a,b)=>(b.tardanza||0)-(a.tardanza||0)).slice(0,5);
+      if(!_rfT.length) topTard.innerHTML='<p style="color:var(--muted);font-size:.85rem;">Sin tardanzas 🎉</p>';
+      else topTard.innerHTML=_rfT.map(r=>{
+        const a=alumnos.find(x=>x.id===r.alumnoId);
+        const name=a?a.apellidos+' '+a.nombres:r.alumnoId;
+        const det=a?`${a.grado} ${a.seccion} · ${a.turno||''}`:'-';
+        const cnt=r.tardanza||0;
+        return `<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);"><div><div style="font-weight:500;font-size:.85rem;">${name}</div><div style="font-size:.75rem;color:var(--muted);">${det}</div></div><span class="badge yellow">${cnt} tardanza${cnt>1?'s':''}</span></div>`;
+      }).join('');
+    } else {
+      const tardMap={};
+      regs.filter(r=>r.estado==='Tardanza').forEach(r=>{ tardMap[r.alumnoId]=(tardMap[r.alumnoId]||0)+1; });
+      const sortedTard=Object.entries(tardMap).sort((a,b)=>b[1]-a[1]).slice(0,5);
+      if(!sortedTard.length) topTard.innerHTML='<p style="color:var(--muted);font-size:.85rem;">Sin tardanzas 🎉</p>';
+      else topTard.innerHTML=sortedTard.map(([id,cnt])=>{
+        const a=alumnos.find(x=>x.id===id);
+        const name=a?a.apellidos+' '+a.nombres:id;
+        const det=a?`${a.grado} ${a.seccion} · ${a.turno||''}`:'-';
+        return `<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);"><div><div style="font-weight:500;font-size:.85rem;">${name}</div><div style="font-size:.75rem;color:var(--muted);">${det}</div></div><span class="badge yellow">${cnt} tardanza${cnt>1?'s':''}</span></div>`;
+      }).join('');
+    }
   }
 
   // ── Top ausencias ──
-  const ausMap={};
-  diasMes.forEach(dia=>{
-    const pres=new Set(regs.filter(r=>r.fecha===dia&&r.tipo==='INGRESO').map(r=>r.alumnoId));
-    alumnos.forEach(a=>{ if(!pres.has(a.id)) ausMap[a.id]=(ausMap[a.id]||0)+1; });
-  });
-  const sortedAus = Object.entries(ausMap).sort((a,b)=>b[1]-a[1]).slice(0,5);
   const topAus = document.getElementById('top-ausencias');
   if(topAus) {
-    if(!sortedAus.length){ topAus.innerHTML='<p style="color:var(--muted);font-size:.85rem;">Sin ausencias 🎉</p>'; }
-    else topAus.innerHTML = sortedAus.map(([id,cnt])=>{
-      const a=alumnos.find(x=>x.id===id);
-      const name=a?a.apellidos+' '+a.nombres:id;
-      const det=a?`${a.grado} ${a.seccion} · ${a.turno||''}`:'-';
-      return `<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);">
-        <div><div style="font-weight:500;font-size:.85rem;">${name}</div><div style="font-size:.75rem;color:var(--muted);">${det}</div></div>
-        <span class="badge red">${cnt} falta${cnt>1?'s':''}</span></div>`;
-    }).join('');
+    if(_soloResumen && _resumenFase1) {
+      const _dhTop = _calcDiasHabilesHasta(mesSel);
+      const _rfA = _resumenFase1.filter(r=>alumnosIds.has(r.alumnoId)).map(r=>({
+        id: r.alumnoId,
+        faltas: Math.max(0, _dhTop - (r.puntual||0) - (r.tardanza||0))
+      })).filter(r=>r.faltas>0).sort((a,b)=>b.faltas-a.faltas).slice(0,5);
+      if(!_rfA.length) topAus.innerHTML='<p style="color:var(--muted);font-size:.85rem;">Sin ausencias 🎉</p>';
+      else topAus.innerHTML=_rfA.map(({id,faltas:cnt})=>{
+        const a=alumnos.find(x=>x.id===id);
+        const name=a?a.apellidos+' '+a.nombres:id;
+        const det=a?`${a.grado} ${a.seccion} · ${a.turno||''}`:'-';
+        return `<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);"><div><div style="font-weight:500;font-size:.85rem;">${name}</div><div style="font-size:.75rem;color:var(--muted);">${det}</div></div><span class="badge red">${cnt} falta${cnt>1?'s':''}</span></div>`;
+      }).join('');
+    } else {
+      const ausMap={};
+      diasMes.forEach(dia=>{
+        const pres=new Set(regs.filter(r=>r.fecha===dia&&r.tipo==='INGRESO').map(r=>r.alumnoId));
+        alumnos.forEach(a=>{ if(!pres.has(a.id)) ausMap[a.id]=(ausMap[a.id]||0)+1; });
+      });
+      const sortedAus=Object.entries(ausMap).sort((a,b)=>b[1]-a[1]).slice(0,5);
+      if(!sortedAus.length) topAus.innerHTML='<p style="color:var(--muted);font-size:.85rem;">Sin ausencias 🎉</p>';
+      else topAus.innerHTML=sortedAus.map(([id,cnt])=>{
+        const a=alumnos.find(x=>x.id===id);
+        const name=a?a.apellidos+' '+a.nombres:id;
+        const det=a?`${a.grado} ${a.seccion} · ${a.turno||''}`:'-';
+        return `<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);"><div><div style="font-weight:500;font-size:.85rem;">${name}</div><div style="font-size:.75rem;color:var(--muted);">${det}</div></div><span class="badge red">${cnt} falta${cnt>1?'s':''}</span></div>`;
+      }).join('');
+    }
   }
 
   } catch(e) { console.error('renderReportes:', e); }
@@ -8059,6 +8155,44 @@ function invalidateConfig() {
   LSC.del('config');
 }
 
+let _alumnosTsUnsubscribe = null;
+function iniciarAlumnosListener() {
+  if(_alumnosTsUnsubscribe) return; // ya activo
+  // Observa solo el documento de versión (1 lectura por cambio, no 1,300)
+  _alumnosTsUnsubscribe = db.collection('config').doc('alumnos_ts')
+    .onSnapshot(snap => {
+      if(!snap.exists) return;
+      // Invalidar cache local — el próximo getAlumnos() recargará desde Firestore
+      DB.invalidarAlumnos();
+      // Si el tab alumnos está visible, re-renderizar automáticamente
+      const secAlumnos = document.getElementById('sec-alumnos');
+      if(secAlumnos && secAlumnos.style.display !== 'none' && secAlumnos.style.display !== '') {
+        renderAlumnos();
+      }
+    }, err => {
+      console.warn('[Alumnos] listener error:', err);
+    });
+}
+
+let _configUnsubscribe = null;
+function iniciarConfigListener() {
+  if(_configUnsubscribe) return; // ya activo
+  _configUnsubscribe = db.collection('config').doc('general')
+    .onSnapshot(snap => {
+      if(!snap.exists) return;
+      // Invalidar cache local — fuerza re-fetch desde Firestore en próximo getConfig()
+      configCache = null;
+      LSC.del('config');
+      // Si el tab config está visible, re-renderizar para reflejar los cambios
+      const secConfig = document.getElementById('sec-config');
+      if(secConfig && secConfig.style.display !== 'none' && secConfig.style.display !== '') {
+        renderConfig();
+      }
+    }, err => {
+      console.warn('[Config] listener error:', err);
+    });
+}
+
 async function getLimiteByNivel(nivel) {
   const cfg = await getConfig();
   const n = (cfg.niveles||[]).find(x => x.nombre === nivel);
@@ -8074,6 +8208,30 @@ async function getHorarioByNivel(nivel) {
     horaCorte:    n?.horaCorte    || '10:30',
     horaSalida:   n?.horaSalida   || '13:00',
   };
+}
+
+function abrirConfigAvanzada() {
+  document.getElementById('cfg-adv-pass-input').value = '';
+  document.getElementById('cfg-adv-pass-err').style.display = 'none';
+  document.getElementById('modal-cfg-adv-pass').style.display = 'flex';
+  setTimeout(() => document.getElementById('cfg-adv-pass-input').focus(), 100);
+}
+
+function verificarPassCfgAdv() {
+  const pass = document.getElementById('cfg-adv-pass-input').value;
+  if(pass === 'Chapica2010') {
+    document.getElementById('modal-cfg-adv-pass').style.display = 'none';
+    document.getElementById('panel-cfg-avanzada').style.display = 'block';
+    document.getElementById('panel-cfg-avanzada').scrollIntoView({ behavior: 'smooth' });
+  } else {
+    document.getElementById('cfg-adv-pass-err').style.display = 'block';
+    document.getElementById('cfg-adv-pass-input').value = '';
+    document.getElementById('cfg-adv-pass-input').focus();
+  }
+}
+
+function cerrarConfigAvanzada() {
+  document.getElementById('panel-cfg-avanzada').style.display = 'none';
 }
 
 async function renderConfig() {

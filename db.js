@@ -27,6 +27,15 @@ const DB = {
     this._alumnosCache = null;
     LSC.del('alumnos');
   },
+  // Señal de versión para sincronizar cache entre dispositivos.
+  // Se escribe UNA vez tras operaciones masivas (no por cada alumno individual).
+  async bumpAlumnosVersion() {
+    try {
+      await db.collection('config').doc('alumnos_ts').set(
+        { ts: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true }
+      );
+    } catch(e) { /* silencioso — no bloquear la operación principal */ }
+  },
   async saveAlumno(alumno) {
     // Siempre guardar el ID limpio sin espacios
     const cleanId = (alumno.id||'').trim().replace(/\s+/g,'');
