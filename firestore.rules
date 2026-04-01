@@ -84,7 +84,7 @@ service cloud.firestore {
       // Apoderado: solo config/general (nombre, logo, contacto)
       // Otros docs de config (factiliza, etc.) solo staff
       allow read: if isStaff() ||
-        (esEmailApoderado() && docId == 'general');
+        (esEmailApoderado() && docId in ['general', 'factiliza']);
       allow write: if isAdmin();
     }
 
