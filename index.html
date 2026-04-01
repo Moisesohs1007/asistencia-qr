@@ -2421,82 +2421,21 @@
       </div>
     </div>
 
-    <!-- Info del colegio — hardcodeado en código fuente -->
-    <div class="card" style="margin-bottom:20px;padding:20px 24px;border:1px solid rgba(201,168,76,0.3);">
-      <div style="font-family:var(--font-display);font-size:1rem;font-weight:700;margin-bottom:12px;color:var(--accent);">🏫 Datos del Colegio</div>
-      <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
-        <img id="cfg-logo-preview" src="" style="width:72px;height:72px;object-fit:contain;border-radius:10px;border:1px solid var(--border);background:var(--surface2);flex-shrink:0;">
-        <div>
-          <div style="font-size:1rem;font-weight:700;color:var(--text);" id="cfg-nombre-display"></div>
-          <div style="font-size:0.8rem;color:var(--muted);margin-top:4px;" id="cfg-anio-display"></div>
-          <div style="margin-top:10px;font-size:0.78rem;color:#f59e0b;background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3);border-radius:8px;padding:8px 12px;">
-            ⚙️ El nombre, insignia y año escolar están fijados en el código fuente.<br>Para actualizarlos, edita las constantes <strong>COLEGIO_NOMBRE</strong>, <strong>COLEGIO_LOGO</strong> y <strong>COLEGIO_ANIO</strong> en el archivo <code>index.html</code>.
-          </div>
-        </div>
-      </div>
-      <!-- Inputs ocultos para compatibilidad con guardarInfoColegio() -->
-      <input type="hidden" id="cfg-nombre-colegio">
-      <input type="hidden" id="cfg-anio">
-      <input type="hidden" id="cfg-telefono-colegio">
-      <input type="hidden" id="cfg-direccion-colegio">
-      <input type="hidden" id="cfg-email-colegio">
-      <input type="hidden" id="cfg-horario-colegio">
-      <!-- Logo inputs ocultos -->
-      <input type="hidden" id="cfg-logo-input">
-      <span style="display:none;" id="cfg-logo-placeholder"></span>
-      <button style="display:none;" id="cfg-logo-eliminar-btn"></button>
-      <div style="display:none;" id="cfg-logo-status"></div>
-    </div>
+    <!-- Inputs ocultos para compatibilidad con código existente -->
+    <input type="hidden" id="cfg-nombre-colegio">
+    <input type="hidden" id="cfg-anio">
+    <input type="hidden" id="cfg-telefono-colegio">
+    <input type="hidden" id="cfg-direccion-colegio">
+    <input type="hidden" id="cfg-email-colegio">
+    <input type="hidden" id="cfg-horario-colegio">
+    <input type="hidden" id="cfg-logo-input">
+    <span style="display:none;" id="cfg-logo-placeholder"></span>
+    <button style="display:none;" id="cfg-logo-eliminar-btn"></button>
+    <div style="display:none;" id="cfg-logo-status"></div>
+    <img id="cfg-logo-preview" src="" style="display:none;">
+    <div style="display:none;" id="cfg-nombre-display"></div>
+    <div style="display:none;" id="cfg-anio-display"></div>
 
-    <!-- WhatsApp Factiliza -->
-    <div class="card" style="margin-bottom:20px;padding:20px 24px;">
-      <div style="font-family:var(--font-display);font-size:1rem;font-weight:700;margin-bottom:4px;color:var(--accent);">📱 WhatsApp — Factiliza</div>
-      <div style="color:var(--muted);font-size:0.82rem;margin-bottom:16px;">Configura tu API para enviar mensajes automáticos a los apoderados</div>
-      <div class="form-grid">
-        <div class="form-group form-full">
-          <label>Token Factiliza</label>
-          <input type="password" id="factiliza-token" placeholder="eyJhbGci..." autocomplete="off">
-        </div>
-        <div class="form-group form-full">
-          <label>Nombre de instancia</label>
-          <input type="text" id="factiliza-instancia" placeholder="NTE5NzI4OTgzODk=">
-        </div>
-      </div>
-      <div style="display:flex;gap:10px;margin-top:8px;flex-wrap:wrap;">
-        <button class="btn btn-primary" onclick="guardarFactiliza()">💾 Guardar</button>
-        <button class="btn btn-ghost" onclick="probarFactiliza()">🧪 Probar conexión</button>
-      </div>
-    </div>
-
-    <!-- Cuentas Apoderados -->
-    <div class="card" style="margin-bottom:20px;padding:20px 24px;border:1px solid rgba(245,158,11,0.3);">
-      <div style="font-family:var(--font-display);font-size:1rem;font-weight:700;margin-bottom:4px;color:#f59e0b;">👨‍👩‍👧 Cuentas de Apoderados</div>
-      <div style="color:var(--muted);font-size:0.82rem;margin-bottom:16px;">Los apoderados ingresan con el DNI del alumno como usuario y contraseña inicial. Usa este botón para crear o actualizar las cuentas de todos los alumnos existentes.</div>
-      <div id="apo-bulk-status" style="display:none;margin-bottom:12px;padding:10px 14px;border-radius:10px;font-size:0.83rem;"></div>
-      <div style="display:flex;gap:10px;flex-wrap:wrap;">
-        <button class="btn btn-primary" onclick="crearCuentasApoderadosMasivo()" style="background:#f59e0b;border-color:#f59e0b;">
-          👥 Crear cuentas para todos los alumnos
-        </button>
-      </div>
-      <div style="margin-top:10px;font-size:0.78rem;color:var(--muted);">⚠️ Si ya existe una cuenta no se modifica. Solo crea las que faltan.</div>
-    </div>
-
-    <!-- Zona de peligro -->
-    <div class="card" style="margin-bottom:20px;padding:20px 24px;border:2px solid rgba(239,68,68,0.5);">
-      <div style="font-family:var(--font-display);font-size:1rem;font-weight:700;margin-bottom:6px;color:#ef4444;">&#9888;&#65039; Zona de Peligro &mdash; Resetear Sistema</div>
-      <div style="color:var(--muted);font-size:0.82rem;margin-bottom:16px;">
-        Borra <strong style="color:var(--text);">permanentemente</strong> todos los datos del sistema:<br>
-        alumnos, registros de asistencia, incidentes, cuentas de apoderados y usuarios del personal.<br>
-        <strong style="color:#ef4444;">Solo se conserva el usuario administrador principal.</strong><br>
-        Esta accion no se puede deshacer.
-      </div>
-      <div id="reset-status" style="display:none;margin-bottom:12px;padding:10px 14px;border-radius:10px;font-size:0.83rem;"></div>
-      <button class="btn" onclick="resetearTodoElSistema()" style="background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.5);color:#ef4444;font-weight:700;">
-        &#128465;&#65039; Borrar todos los datos
-      </button>
-    </div>
-
-    
     <!-- Niveles y horarios -->
     <div class="card" style="margin-bottom:20px;padding:20px 24px;">
       <div style="font-family:var(--font-display);font-size:1rem;font-weight:700;margin-bottom:4px;color:var(--accent);">🕐 Horarios de Ingreso y Salida por Nivel</div>
@@ -2514,7 +2453,7 @@
     </div>
 
     <!-- Secciones -->
-    <div class="card" style="padding:20px 24px;">
+    <div class="card" style="margin-bottom:20px;padding:20px 24px;">
       <div style="font-family:var(--font-display);font-size:1rem;font-weight:700;margin-bottom:4px;color:var(--accent);">📋 Secciones disponibles</div>
       <div style="color:var(--muted);font-size:0.82rem;margin-bottom:16px;">Secciones que aparecerán al registrar alumnos</div>
       <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
@@ -2525,17 +2464,94 @@
       <button class="btn btn-primary" onclick="guardarSecciones()" style="margin-top:12px;">💾 Guardar secciones</button>
     </div>
 
-    <!-- Cuentas de apoderado huérfanas -->
-    <div class="card" style="margin-top:20px;padding:20px 24px;border:1px solid rgba(245,158,11,0.3);">
-      <div style="font-family:var(--font-display);font-size:1rem;font-weight:700;margin-bottom:4px;color:#f59e0b;">👻 Cuentas de apoderado huérfanas</div>
-      <div style="color:var(--muted);font-size:0.82rem;margin-bottom:14px;">Cuentas de Firebase Auth de apoderados cuyos alumnos ya no existen. Deben borrarse manualmente desde la consola de Firebase.</div>
-      <button class="btn" style="background:rgba(245,158,11,0.15);color:#f59e0b;border:1px solid rgba(245,158,11,0.3);margin-bottom:12px;" onclick="verificarCuentasHuerfanas()">🔍 Verificar cuentas huérfanas</button>
-      <div id="huerfanas-result" style="font-size:0.82rem;color:var(--muted);"></div>
-      <div style="margin-top:12px;font-size:0.78rem;color:var(--muted);background:rgba(245,158,11,0.08);border-radius:8px;padding:10px 14px;">
-        <strong style="color:#f59e0b;">¿Cómo borrarlas?</strong><br>
-        1. Ve a <a href="https://console.firebase.google.com/project/asistencia-qr-a3346/authentication/users" target="_blank" style="color:#60a5fa;">Firebase Console → Authentication</a><br>
-        2. Busca los emails con formato <code><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="60242e292001100f4e0d0112050c0c0f4e1005">[email&#160;protected]</a></code><br>
-        3. Elimina los que correspondan a alumnos ya borrados
+    <!-- Botón Configuraciones Avanzadas -->
+    <div style="margin-top:8px;text-align:center;">
+      <button class="btn" onclick="abrirConfigAvanzada()" style="background:rgba(100,116,139,0.12);border:1px solid var(--border);color:var(--muted);font-size:0.85rem;gap:8px;padding:10px 20px;">
+        ⚙️ Configuraciones Avanzadas
+      </button>
+    </div>
+
+    <!-- Modal contraseña Configuraciones Avanzadas -->
+    <div id="modal-cfg-adv-pass" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:2000;align-items:center;justify-content:center;">
+      <div style="background:var(--surface);border-radius:16px;padding:28px 24px;width:90%;max-width:360px;border:1px solid var(--border);box-shadow:0 20px 60px rgba(0,0,0,0.4);">
+        <div style="font-weight:700;font-size:1rem;margin-bottom:6px;">🔒 Configuraciones Avanzadas</div>
+        <div style="font-size:0.82rem;color:var(--muted);margin-bottom:18px;">Ingresa la contraseña para acceder a esta sección</div>
+        <input type="password" id="cfg-adv-pass-input" placeholder="Contraseña" style="width:100%;margin-bottom:10px;" onkeydown="if(event.key==='Enter')verificarPassCfgAdv()">
+        <div id="cfg-adv-pass-err" style="display:none;color:#ef4444;font-size:0.8rem;margin-bottom:12px;padding:8px 10px;background:rgba(239,68,68,0.08);border-radius:8px;">Contraseña incorrecta</div>
+        <div style="display:flex;gap:10px;">
+          <button class="btn btn-primary" onclick="verificarPassCfgAdv()">Ingresar</button>
+          <button class="btn btn-ghost" onclick="document.getElementById('modal-cfg-adv-pass').style.display='none'">Cancelar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Panel Configuraciones Avanzadas (oculto hasta verificar contraseña) -->
+    <div id="panel-cfg-avanzada" style="display:none;margin-top:24px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;padding:14px 18px;background:rgba(100,116,139,0.1);border-radius:12px;border:1px solid var(--border);">
+        <div style="font-weight:700;font-size:0.95rem;color:var(--text);">⚙️ Configuraciones Avanzadas</div>
+        <button class="btn btn-ghost" onclick="cerrarConfigAvanzada()" style="font-size:0.8rem;padding:6px 14px;">✕ Cerrar</button>
+      </div>
+
+      <!-- WhatsApp Factiliza -->
+      <div class="card" style="margin-bottom:20px;padding:20px 24px;">
+        <div style="font-family:var(--font-display);font-size:1rem;font-weight:700;margin-bottom:4px;color:var(--accent);">📱 WhatsApp — Factiliza</div>
+        <div style="color:var(--muted);font-size:0.82rem;margin-bottom:16px;">Configura tu API para enviar mensajes automáticos a los apoderados</div>
+        <div class="form-grid">
+          <div class="form-group form-full">
+            <label>Token Factiliza</label>
+            <input type="password" id="factiliza-token" placeholder="eyJhbGci..." autocomplete="off">
+          </div>
+          <div class="form-group form-full">
+            <label>Nombre de instancia</label>
+            <input type="text" id="factiliza-instancia" placeholder="NTE5NzI4OTgzODk=">
+          </div>
+        </div>
+        <div style="display:flex;gap:10px;margin-top:8px;flex-wrap:wrap;">
+          <button class="btn btn-primary" onclick="guardarFactiliza()">💾 Guardar</button>
+          <button class="btn btn-ghost" onclick="probarFactiliza()">🧪 Probar conexión</button>
+        </div>
+      </div>
+
+      <!-- Cuentas Apoderados -->
+      <div class="card" style="margin-bottom:20px;padding:20px 24px;border:1px solid rgba(245,158,11,0.3);">
+        <div style="font-family:var(--font-display);font-size:1rem;font-weight:700;margin-bottom:4px;color:#f59e0b;">👨‍👩‍👧 Cuentas de Apoderados</div>
+        <div style="color:var(--muted);font-size:0.82rem;margin-bottom:16px;">Los apoderados ingresan con el DNI del alumno como usuario y contraseña inicial. Usa este botón para crear o actualizar las cuentas de todos los alumnos existentes.</div>
+        <div id="apo-bulk-status" style="display:none;margin-bottom:12px;padding:10px 14px;border-radius:10px;font-size:0.83rem;"></div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+          <button class="btn btn-primary" onclick="crearCuentasApoderadosMasivo()" style="background:#f59e0b;border-color:#f59e0b;">
+            👥 Crear cuentas para todos los alumnos
+          </button>
+        </div>
+        <div style="margin-top:10px;font-size:0.78rem;color:var(--muted);">⚠️ Si ya existe una cuenta no se modifica. Solo crea las que faltan.</div>
+      </div>
+
+      <!-- Zona de peligro -->
+      <div class="card" style="margin-bottom:20px;padding:20px 24px;border:2px solid rgba(239,68,68,0.5);">
+        <div style="font-family:var(--font-display);font-size:1rem;font-weight:700;margin-bottom:6px;color:#ef4444;">&#9888;&#65039; Zona de Peligro &mdash; Resetear Sistema</div>
+        <div style="color:var(--muted);font-size:0.82rem;margin-bottom:16px;">
+          Borra <strong style="color:var(--text);">permanentemente</strong> todos los datos del sistema:<br>
+          alumnos, registros de asistencia, incidentes, cuentas de apoderados y usuarios del personal.<br>
+          <strong style="color:#ef4444;">Solo se conserva el usuario administrador principal.</strong><br>
+          Esta accion no se puede deshacer.
+        </div>
+        <div id="reset-status" style="display:none;margin-bottom:12px;padding:10px 14px;border-radius:10px;font-size:0.83rem;"></div>
+        <button class="btn" onclick="resetearTodoElSistema()" style="background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.5);color:#ef4444;font-weight:700;">
+          &#128465;&#65039; Borrar todos los datos
+        </button>
+      </div>
+
+      <!-- Cuentas de apoderado huérfanas -->
+      <div class="card" style="margin-bottom:20px;padding:20px 24px;border:1px solid rgba(245,158,11,0.3);">
+        <div style="font-family:var(--font-display);font-size:1rem;font-weight:700;margin-bottom:4px;color:#f59e0b;">👻 Cuentas de apoderado huérfanas</div>
+        <div style="color:var(--muted);font-size:0.82rem;margin-bottom:14px;">Cuentas de Firebase Auth de apoderados cuyos alumnos ya no existen. Deben borrarse manualmente desde la consola de Firebase.</div>
+        <button class="btn" style="background:rgba(245,158,11,0.15);color:#f59e0b;border:1px solid rgba(245,158,11,0.3);margin-bottom:12px;" onclick="verificarCuentasHuerfanas()">🔍 Verificar cuentas huérfanas</button>
+        <div id="huerfanas-result" style="font-size:0.82rem;color:var(--muted);"></div>
+        <div style="margin-top:12px;font-size:0.78rem;color:var(--muted);background:rgba(245,158,11,0.08);border-radius:8px;padding:10px 14px;">
+          <strong style="color:#f59e0b;">¿Cómo borrarlas?</strong><br>
+          1. Ve a <a href="https://console.firebase.google.com/project/asistencia-qr-a3346/authentication/users" target="_blank" style="color:#60a5fa;">Firebase Console → Authentication</a><br>
+          2. Busca los emails con formato <code>dni@apo.marello.pe</code><br>
+          3. Elimina los que correspondan a alumnos ya borrados
+        </div>
       </div>
     </div>
   </div>
@@ -3585,6 +3601,7 @@ function doLogout() {
   if(!confirm('¿Cerrar sesión?')) return;
   sessionStorage.removeItem('splashMostrado');
   try { localStorage.removeItem('asmqr_lastTab'); } catch(e) {}
+  if(_configUnsubscribe) { _configUnsubscribe(); _configUnsubscribe = null; }
   auth.signOut();
   // Resetear splash y mostrarlo
   var splash = document.getElementById('splash-screen');
@@ -3671,6 +3688,7 @@ auth.onAuthStateChanged(async user => {
     await actualizarTodosLosFiltros();
     updateStats();
     getFactilizaConfig(); // Precargar config WhatsApp en cache (sin await, en paralelo)
+    iniciarConfigListener(); // Listener en tiempo real para config — sincroniza horarios entre dispositivos
     initSessionControl();   // Iniciar control de sesión duplicada
     anunciarSesion();        // Avisar a otras pestañas
   } else {
@@ -8131,6 +8149,25 @@ function invalidateConfig() {
   LSC.del('config');
 }
 
+let _configUnsubscribe = null;
+function iniciarConfigListener() {
+  if(_configUnsubscribe) return; // ya activo
+  _configUnsubscribe = db.collection('config').doc('general')
+    .onSnapshot(snap => {
+      if(!snap.exists) return;
+      // Invalidar cache local — fuerza re-fetch desde Firestore en próximo getConfig()
+      configCache = null;
+      LSC.del('config');
+      // Si el tab config está visible, re-renderizar para reflejar los cambios
+      const secConfig = document.getElementById('sec-config');
+      if(secConfig && secConfig.style.display !== 'none' && secConfig.style.display !== '') {
+        renderConfig();
+      }
+    }, err => {
+      console.warn('[Config] listener error:', err);
+    });
+}
+
 async function getLimiteByNivel(nivel) {
   const cfg = await getConfig();
   const n = (cfg.niveles||[]).find(x => x.nombre === nivel);
@@ -8146,6 +8183,30 @@ async function getHorarioByNivel(nivel) {
     horaCorte:    n?.horaCorte    || '10:30',
     horaSalida:   n?.horaSalida   || '13:00',
   };
+}
+
+function abrirConfigAvanzada() {
+  document.getElementById('cfg-adv-pass-input').value = '';
+  document.getElementById('cfg-adv-pass-err').style.display = 'none';
+  document.getElementById('modal-cfg-adv-pass').style.display = 'flex';
+  setTimeout(() => document.getElementById('cfg-adv-pass-input').focus(), 100);
+}
+
+function verificarPassCfgAdv() {
+  const pass = document.getElementById('cfg-adv-pass-input').value;
+  if(pass === 'Chapica2010') {
+    document.getElementById('modal-cfg-adv-pass').style.display = 'none';
+    document.getElementById('panel-cfg-avanzada').style.display = 'block';
+    document.getElementById('panel-cfg-avanzada').scrollIntoView({ behavior: 'smooth' });
+  } else {
+    document.getElementById('cfg-adv-pass-err').style.display = 'block';
+    document.getElementById('cfg-adv-pass-input').value = '';
+    document.getElementById('cfg-adv-pass-input').focus();
+  }
+}
+
+function cerrarConfigAvanzada() {
+  document.getElementById('panel-cfg-avanzada').style.display = 'none';
 }
 
 async function renderConfig() {
