@@ -8158,9 +8158,11 @@ function invalidateConfig() {
 let _alumnosTsUnsubscribe = null;
 function iniciarAlumnosListener() {
   if(_alumnosTsUnsubscribe) return; // ya activo
+  let _primerFire = true; // ignorar el disparo inicial (solo refleja estado actual, no un cambio real)
   // Observa solo el documento de versión (1 lectura por cambio, no 1,300)
   _alumnosTsUnsubscribe = db.collection('config').doc('alumnos_ts')
     .onSnapshot(snap => {
+      if(_primerFire) { _primerFire = false; return; } // skip estado inicial
       if(!snap.exists) return;
       // Invalidar cache local — el próximo getAlumnos() recargará desde Firestore
       DB.invalidarAlumnos();
@@ -8177,8 +8179,10 @@ function iniciarAlumnosListener() {
 let _configUnsubscribe = null;
 function iniciarConfigListener() {
   if(_configUnsubscribe) return; // ya activo
+  let _primerFire = true; // ignorar el disparo inicial
   _configUnsubscribe = db.collection('config').doc('general')
     .onSnapshot(snap => {
+      if(_primerFire) { _primerFire = false; return; } // skip estado inicial
       if(!snap.exists) return;
       // Invalidar cache local — fuerza re-fetch desde Firestore en próximo getConfig()
       configCache = null;
