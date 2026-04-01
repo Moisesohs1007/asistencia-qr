@@ -12,6 +12,7 @@ function _mesLocalActual() {
 const DB = {
   // ALUMNOS
   _alumnosCache: null,
+  _alumnosScopedCache: {}, // cache separado por asignaciones de profesor
   async getAlumnos() {
     if(this._alumnosCache) return this._alumnosCache;
     // Intentar desde localStorage
@@ -23,9 +24,46 @@ const DB = {
     LSC.set('alumnos', this._alumnosCache, LSC.TTL_ALUMNOS);
     return this._alumnosCache;
   },
+  // Carga solo los alumnos de los grados/secciones asignadas al profesor.
+  // Reduce lecturas de 1,300 a ~28 para tutores (97% menos).
+  // asignaciones: { 'grado': ['A','B'] } — secciones vacías = todas las del grado
+  async getAlumnosScoped(asignaciones) {
+    const grados = Object.keys(asignaciones || {});
+    if(!grados.length) return this.getAlumnos();
+
+    const cacheKey = 'scoped:' + grados.sort().join(',');
+    if(this._alumnosScopedCache[cacheKey]) return this._alumnosScopedCache[cacheKey];
+    const lsData = LSC.get(cacheKey);
+    if(lsData) { this._alumnosScopedCache[cacheKey] = lsData; return lsData; }
+
+    // Firestore permite hasta 10 valores en 'in' — dividir en chunks si necesario
+    let todos = [];
+    for(let i = 0; i < grados.length; i += 10) {
+      const chunk = grados.slice(i, i + 10);
+      const snap = await db.collection('alumnos').where('grado', 'in', chunk).get();
+      snap.docs.forEach(d => todos.push({id: d.id, ...d.data()}));
+    }
+    // Filtrar por sección en memoria (dataset ya pequeño tras filtro de grado)
+    const result = todos.filter(a => {
+      const seccs = asignaciones[a.grado];
+      if(!Array.isArray(seccs) || !seccs.length) return true; // todas las secciones del grado
+      return seccs.includes(a.seccion);
+    });
+
+    this._alumnosScopedCache[cacheKey] = result;
+    LSC.set(cacheKey, result, LSC.TTL_ALUMNOS);
+    return result;
+  },
   invalidarAlumnos() {
     this._alumnosCache = null;
+    this._alumnosScopedCache = {};
     LSC.del('alumnos');
+    // Limpiar también todas las entradas scoped del localStorage
+    try {
+      Object.keys(localStorage)
+        .filter(k => k.startsWith('asmqr_scoped:'))
+        .forEach(k => localStorage.removeItem(k));
+    } catch(e) {}
   },
   // Señal de versión para sincronizar cache entre dispositivos.
   // Se escribe UNA vez tras operaciones masivas (no por cada alumno individual).
