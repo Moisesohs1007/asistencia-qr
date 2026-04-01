@@ -3601,6 +3601,7 @@ function doLogout() {
   if(!confirm('¿Cerrar sesión?')) return;
   sessionStorage.removeItem('splashMostrado');
   try { localStorage.removeItem('asmqr_lastTab'); } catch(e) {}
+  if(_alumnosTsUnsubscribe) { _alumnosTsUnsubscribe(); _alumnosTsUnsubscribe = null; }
   if(_configUnsubscribe) { _configUnsubscribe(); _configUnsubscribe = null; }
   auth.signOut();
   // Resetear splash y mostrarlo
@@ -3688,6 +3689,7 @@ auth.onAuthStateChanged(async user => {
     await actualizarTodosLosFiltros();
     updateStats();
     getFactilizaConfig(); // Precargar config WhatsApp en cache (sin await, en paralelo)
+    iniciarAlumnosListener(); // Listener en tiempo real para alumnos — sincroniza importación Excel entre dispositivos
     iniciarConfigListener(); // Listener en tiempo real para config — sincroniza horarios entre dispositivos
     initSessionControl();   // Iniciar control de sesión duplicada
     anunciarSesion();        // Avisar a otras pestañas
@@ -4700,6 +4702,7 @@ async function saveAlumno() {
       await crearCuentaApoderadoSilencioso(alumno);
       toast('Alumno registrado','success');
     }
+    DB.bumpAlumnosVersion(); // Notificar a otros dispositivos
     closeModal('modal-alumno');
     renderAlumnos();
     updateStats();
@@ -4779,6 +4782,7 @@ async function deleteAlumno(id) {
     await db.collection('apoderados').doc(id).delete().catch(()=>{});
     // Eliminar alumno
     await DB.deleteAlumno(id);
+    DB.bumpAlumnosVersion(); // Notificar a otros dispositivos
     toast('Alumno y sus registros eliminados','info');
     renderAlumnos();
     updateStats();
@@ -6112,6 +6116,7 @@ function handleCSV(e) {
         added++;
       }
     }
+    DB.bumpAlumnosVersion(); // Notificar a otros dispositivos
     renderAlumnos();
     updateStats();
     toast(`${added} alumnos nuevos, ${updated} actualizados`, 'success');
@@ -6225,7 +6230,8 @@ async function handleExcel(e) {
       // Quitar barra de progreso
       const cont = document.getElementById('import-progress-container');
       if(cont) cont.remove();
-      DB.invalidarAlumnos(); // Refrescar cache
+      DB.invalidarAlumnos(); // Refrescar cache local
+      DB.bumpAlumnosVersion(); // Notificar a otros dispositivos (1 write total)
 
       renderAlumnos();
       updateStats();
@@ -8147,6 +8153,25 @@ async function getConfig() {
 function invalidateConfig() {
   configCache = null;
   LSC.del('config');
+}
+
+let _alumnosTsUnsubscribe = null;
+function iniciarAlumnosListener() {
+  if(_alumnosTsUnsubscribe) return; // ya activo
+  // Observa solo el documento de versión (1 lectura por cambio, no 1,300)
+  _alumnosTsUnsubscribe = db.collection('config').doc('alumnos_ts')
+    .onSnapshot(snap => {
+      if(!snap.exists) return;
+      // Invalidar cache local — el próximo getAlumnos() recargará desde Firestore
+      DB.invalidarAlumnos();
+      // Si el tab alumnos está visible, re-renderizar automáticamente
+      const secAlumnos = document.getElementById('sec-alumnos');
+      if(secAlumnos && secAlumnos.style.display !== 'none' && secAlumnos.style.display !== '') {
+        renderAlumnos();
+      }
+    }, err => {
+      console.warn('[Alumnos] listener error:', err);
+    });
 }
 
 let _configUnsubscribe = null;
