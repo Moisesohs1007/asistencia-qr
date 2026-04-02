@@ -269,6 +269,8 @@ ALTER TABLE apoderados       ENABLE ROW LEVEL SECURITY;
 
 -- ── colegios ─────────────────────────────────────────────────
 -- Staff puede leer su colegio. Solo admin puede modificarlo.
+DROP POLICY IF EXISTS "colegios_read"  ON colegios;
+DROP POLICY IF EXISTS "colegios_write" ON colegios;
 CREATE POLICY "colegios_read"   ON colegios FOR SELECT
   USING (id = auth_colegio_id() AND (is_staff() OR is_apoderado()));
 
@@ -278,6 +280,9 @@ CREATE POLICY "colegios_write"  ON colegios FOR ALL
 -- ── alumnos ──────────────────────────────────────────────────
 -- Staff: lectura total. Admin: escritura.
 -- Apoderado: solo su propio alumno (por DNI).
+DROP POLICY IF EXISTS "alumnos_staff_read"     ON alumnos;
+DROP POLICY IF EXISTS "alumnos_apoderado_read" ON alumnos;
+DROP POLICY IF EXISTS "alumnos_admin_write"    ON alumnos;
 CREATE POLICY "alumnos_staff_read"     ON alumnos FOR SELECT
   USING (colegio_id = auth_colegio_id() AND is_staff());
 
@@ -289,6 +294,8 @@ CREATE POLICY "alumnos_admin_write"    ON alumnos FOR ALL
 
 -- ── usuarios ─────────────────────────────────────────────────
 -- Staff: lectura de su colegio. Admin: escritura.
+DROP POLICY IF EXISTS "usuarios_read"  ON usuarios;
+DROP POLICY IF EXISTS "usuarios_write" ON usuarios;
 CREATE POLICY "usuarios_read"   ON usuarios FOR SELECT
   USING (colegio_id = auth_colegio_id() AND is_staff());
 
@@ -299,6 +306,11 @@ CREATE POLICY "usuarios_write"  ON usuarios FOR ALL
 -- Staff: lectura total y creación propia.
 -- Apoderado: solo sus registros (con límite).
 -- Solo admin puede modificar/borrar.
+DROP POLICY IF EXISTS "registros_staff_read"     ON registros;
+DROP POLICY IF EXISTS "registros_staff_insert"   ON registros;
+DROP POLICY IF EXISTS "registros_apoderado_read" ON registros;
+DROP POLICY IF EXISTS "registros_admin_write"    ON registros;
+DROP POLICY IF EXISTS "registros_admin_delete"   ON registros;
 CREATE POLICY "registros_staff_read"     ON registros FOR SELECT
   USING (colegio_id = auth_colegio_id() AND is_staff());
 
@@ -314,6 +326,8 @@ CREATE POLICY "registros_admin_delete"   ON registros FOR DELETE USING (colegio_
 -- ── resumen_mensual ──────────────────────────────────────────
 -- Staff: lectura y escritura (el escáner actualiza el resumen).
 -- Apoderado: solo su alumno.
+DROP POLICY IF EXISTS "resumen_staff"          ON resumen_mensual;
+DROP POLICY IF EXISTS "resumen_apoderado_read" ON resumen_mensual;
 CREATE POLICY "resumen_staff"          ON resumen_mensual FOR ALL
   USING (colegio_id = auth_colegio_id() AND is_staff());
 
@@ -324,6 +338,11 @@ CREATE POLICY "resumen_apoderado_read" ON resumen_mensual FOR SELECT
 -- Staff: lectura total, creación propia, actualización si es responsable.
 -- Apoderado: solo sus incidentes.
 -- Solo admin puede borrar.
+DROP POLICY IF EXISTS "incidentes_staff_read"      ON incidentes;
+DROP POLICY IF EXISTS "incidentes_staff_insert"    ON incidentes;
+DROP POLICY IF EXISTS "incidentes_responsable_upd" ON incidentes;
+DROP POLICY IF EXISTS "incidentes_admin_delete"    ON incidentes;
+DROP POLICY IF EXISTS "incidentes_apoderado_read"  ON incidentes;
 CREATE POLICY "incidentes_staff_read"      ON incidentes FOR SELECT
   USING (colegio_id = auth_colegio_id() AND is_staff());
 
@@ -342,6 +361,9 @@ CREATE POLICY "incidentes_apoderado_read"  ON incidentes FOR SELECT
 
 -- ── apoderados ───────────────────────────────────────────────
 -- Staff: lectura y escritura. Apoderado: solo su propio doc.
+DROP POLICY IF EXISTS "apoderados_staff"       ON apoderados;
+DROP POLICY IF EXISTS "apoderados_self_read"   ON apoderados;
+DROP POLICY IF EXISTS "apoderados_self_update" ON apoderados;
 CREATE POLICY "apoderados_staff"          ON apoderados FOR ALL
   USING (colegio_id = auth_colegio_id() AND is_staff());
 
@@ -420,10 +442,12 @@ BEGIN
 END;
 $$;
 
+DROP TRIGGER IF EXISTS trg_colegios_updated_at ON colegios;
 CREATE TRIGGER trg_colegios_updated_at
   BEFORE UPDATE ON colegios
   FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
+DROP TRIGGER IF EXISTS trg_alumnos_updated_at ON alumnos;
 CREATE TRIGGER trg_alumnos_updated_at
   BEFORE UPDATE ON alumnos
   FOR EACH ROW EXECUTE FUNCTION set_updated_at();
