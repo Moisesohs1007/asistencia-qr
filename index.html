@@ -4832,7 +4832,8 @@ async function renderAlumnos() {
   const count = document.getElementById('alumnos-count');
 
   try {
-    let alumnos = await DB.getAlumnos();
+    // getAlumnosFiltrados: profesores restringidos cargan solo sus aulas (28 lecturas vs 1,300)
+    let alumnos = await getAlumnosFiltrados();
     const totalDB = alumnos.length;
     if(grado   && grado   !== 'TODOS') alumnos = alumnos.filter(a => a.grado === grado);
     if(seccion && seccion !== 'TODOS') alumnos = alumnos.filter(a => a.seccion === seccion);
@@ -4869,7 +4870,6 @@ async function renderAlumnos() {
       if(apComp !== 0) return apComp;
       return (a.nombres||'').localeCompare(b.nombres||'');
     });
-    alumnos = aplicarFiltroProfesor(alumnos);
 
     // Paginación: mostrar de a 50
     const PAGE_SIZE = 50;
@@ -5288,9 +5288,9 @@ async function renderRegistro() {
     if(q) regs = regs.filter(r => r.nombre.toLowerCase().includes(q.trim()) || r.alumnoId.trim().toLowerCase().includes(q.trim()));
 
     // 2. Agrupar por alumnoId + fecha → una fila por alumno por día
-    // Mapa de alumnos para normalizar nombre (apellidos + nombres)
+    // Mapa de alumnos para normalizar nombre — profesores restringidos usan scoped cache
     const alumnosMapa = {};
-    (await DB.getAlumnos()).forEach(a => { alumnosMapa[a.id] = a; });
+    (await getAlumnosFiltrados()).forEach(a => { alumnosMapa[a.id] = a; });
     const grupos = {};
     regs.forEach(r => {
       const key = r.alumnoId + '_' + r.fecha;
@@ -7021,7 +7021,7 @@ async function onRepGradoChange() {
   secEl.innerHTML = '<option value="">Todas</option>';
   secEl.value = '';
   if(grado) {
-    const alumnos = await DB.getAlumnos();
+    const alumnos = await getAlumnosFiltrados();
     const secs = [...new Set(alumnos.filter(a=>a.grado===grado).map(a=>a.seccion))].sort();
     secs.forEach(s => { secEl.innerHTML += `<option value="${s}">${s}</option>`; });
     secEl.disabled = false; secEl.style.opacity = '1';
@@ -7148,8 +7148,8 @@ async function renderReportes(anioCompleto=false) {
   const q       = (document.getElementById('rep-search')?.value || '').toLowerCase().trim();
   const label   = document.getElementById('rep-periodo-label');
 
-  // Cargar alumnos y aplicar filtros de cascada
-  let alumnos = await DB.getAlumnos();
+  // Cargar alumnos — profesores restringidos usan scoped (28 lecturas vs 1,300)
+  let alumnos = await getAlumnosFiltrados();
   if(nivel)   alumnos = alumnos.filter(a => a.turno   === nivel);
   if(grado)   alumnos = alumnos.filter(a => a.grado   === grado);
   if(seccion) alumnos = alumnos.filter(a => a.seccion === seccion);
@@ -7938,6 +7938,18 @@ function aplicarFiltroProfesor(alumnos) {
 }
 
 
+// Helper: retorna solo los alumnos visibles para el usuario actual.
+// Para profesores con restricciones usa getAlumnosScoped() —
+// consulta Firestore solo por sus grados/secciones (28 lecturas vs 1,300).
+// Para admins/directores/sin restricción usa getAlumnos() (cache completo).
+async function getAlumnosFiltrados() {
+  if(currentRol === 'profesor' && currentPrivilegios?.restringir) {
+    const asig = currentPrivilegios.asignaciones || {};
+    if(Object.keys(asig).length) return DB.getAlumnosScoped(asig);
+  }
+  return DB.getAlumnos();
+}
+
 // ============================================================
 // FILTROS DINÁMICOS POR NIVEL → GRADO → SECCIÓN
 // ============================================================
@@ -8158,9 +8170,11 @@ function invalidateConfig() {
 let _alumnosTsUnsubscribe = null;
 function iniciarAlumnosListener() {
   if(_alumnosTsUnsubscribe) return; // ya activo
+  let _primerFire = true; // ignorar el disparo inicial (solo refleja estado actual, no un cambio real)
   // Observa solo el documento de versión (1 lectura por cambio, no 1,300)
   _alumnosTsUnsubscribe = db.collection('config').doc('alumnos_ts')
     .onSnapshot(snap => {
+      if(_primerFire) { _primerFire = false; return; } // skip estado inicial
       if(!snap.exists) return;
       // Invalidar cache local — el próximo getAlumnos() recargará desde Firestore
       DB.invalidarAlumnos();
@@ -8177,8 +8191,10 @@ function iniciarAlumnosListener() {
 let _configUnsubscribe = null;
 function iniciarConfigListener() {
   if(_configUnsubscribe) return; // ya activo
+  let _primerFire = true; // ignorar el disparo inicial
   _configUnsubscribe = db.collection('config').doc('general')
     .onSnapshot(snap => {
+      if(_primerFire) { _primerFire = false; return; } // skip estado inicial
       if(!snap.exists) return;
       // Invalidar cache local — fuerza re-fetch desde Firestore en próximo getConfig()
       configCache = null;
