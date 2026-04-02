@@ -183,8 +183,9 @@ CREATE INDEX IF NOT EXISTS idx_registros_alumno
   ON registros(colegio_id, alumno_id);
 
 -- Registros: consulta por mes (tab Reportes — optimiza WHERE fecha BETWEEN)
+-- Nota: DATE_TRUNC no es IMMUTABLE, usamos índice en año+mes extraídos como columnas
 CREATE INDEX IF NOT EXISTS idx_registros_mes
-  ON registros(colegio_id, DATE_TRUNC('month', fecha));
+  ON registros(colegio_id, fecha);
 
 -- Alumnos: consulta por grado+sección (profesores con restricción)
 CREATE INDEX IF NOT EXISTS idx_alumnos_grado_seccion
