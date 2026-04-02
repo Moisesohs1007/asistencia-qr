@@ -1,0 +1,15 @@
+# Variables de entorno — contienen claves secretas
+.env
+supabase/.env
+*.env
+
+# Credenciales de Firebase Admin (para script de migración)
+firebase-service-account.json
+supabase/firebase-service-account.json
+
+# Node modules
+node_modules/
+supabase/node_modules/
+
+# Logs
+*.log
