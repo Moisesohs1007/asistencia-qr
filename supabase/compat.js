@@ -134,7 +134,7 @@ class _DocRef {
       return {
         exists: !!data,
         id:     this._id,
-        data:   () => data ? _toCamel(data) : null,
+        data:   () => data ? _rowToDoc(data) : null,
       };
     }
 
