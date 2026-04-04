@@ -294,8 +294,12 @@ class _CollectionRef extends _Query {
   async add(data) {
     const row = _docToRow(data);
     if (!row.id) row.id = crypto.randomUUID();
+    console.log('[compat.add] inserting into', this._col, JSON.stringify(row));
     const { data: inserted, error } = await _sb.from(this._col).insert(row).select().single();
-    if (error) throw new Error(error.message);
+    if (error) {
+      console.error('[compat.add] ERROR:', JSON.stringify(error));
+      throw new Error(error.message);
+    }
     return new _DocRef(this._col, inserted.id);
   }
 }
