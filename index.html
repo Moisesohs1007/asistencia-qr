@@ -8947,24 +8947,17 @@ async function guardarIncidente() {
       );
     }
 
-    // 3. Generar imagen y subir a Supabase Storage
+    // 3. Generar imagen JPEG y subir a Supabase Storage
     let imgLinkApo = null;
     try {
-      console.log('[incidente] Generando imagen...');
       const blob = await generarImagenIncidente(incidente, fotoData);
-      console.log('[incidente] Imagen generada:', blob ? `${Math.round(blob.size/1024)}KB` : 'null');
       if (blob && window._sbStorage) {
         const path = `${window.COLEGIO_ID}/${docRef.id}/reporte.jpg`;
-        console.log('[incidente] Subiendo a Storage:', path);
         await _sbStorage.upload('incidentes', path, blob, 'image/jpeg');
-        console.log('[incidente] Upload OK ✅');
-        const imgLinkStaff = await _sbStorage.signedUrl('incidentes', path, 365 * 24 * 3600);
         imgLinkApo         = await _sbStorage.signedUrl('incidentes', path,   7 * 24 * 3600);
-        console.log('[incidente] URL apoderado:', imgLinkApo);
+        const imgLinkStaff = await _sbStorage.signedUrl('incidentes', path, 365 * 24 * 3600);
         await docRef.update({ pdfUrl: imgLinkStaff, pdfRef: path, pdfActivo: true });
         _invalidarIncidentes();
-      } else {
-        console.warn('[incidente] blob o _sbStorage no disponible', { blob: !!blob, storage: !!window._sbStorage });
       }
     } catch(eImg) { console.warn('[incidente] Error generando/subiendo imagen:', eImg); }
 

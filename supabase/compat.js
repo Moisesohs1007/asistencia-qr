@@ -122,6 +122,7 @@ class _DocRef {
     this._col = collection;
     this._id  = id;
   }
+  get id() { return this._id; }
 
   async get() {
     if (this._col === 'config') return _getConfig(this._id);
