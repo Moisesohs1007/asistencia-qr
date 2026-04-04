@@ -6331,7 +6331,7 @@ async function sendWhatsApp(telefono, mensaje, imageUrl = null) {
     return false;
   }
   try {
-    const imgUrl = imageUrl || 'https://moisesohs1007.github.io/asistencia-qr/img/logo-colegio.png';
+    const imgUrl = 'https://moisesohs1007.github.io/asistencia-qr/img/logo-colegio.png';
     const resImg = await fetch(`https://apiwsp.factiliza.com/v1/message/sendimage/${instancia}`, {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
