@@ -9325,6 +9325,26 @@ async function generarPDFIncidente(inc) {
 }
 
 
+// ── SUPABASE STORAGE (fallback si compat.js no lo definió) ──
+if (!window._sbStorage && window._sb) {
+  window._sbStorage = {
+    async upload(bucket, path, blob, contentType = 'image/jpeg') {
+      const { error } = await _sb.storage.from(bucket)
+        .upload(path, blob, { upsert: true, contentType });
+      if (error) throw new Error('[storage] ' + error.message);
+    },
+    async signedUrl(bucket, path, seconds) {
+      const { data, error } = await _sb.storage.from(bucket)
+        .createSignedUrl(path, seconds);
+      if (error) throw new Error('[storage] ' + error.message);
+      return data.signedUrl;
+    },
+    async remove(bucket, path) {
+      await _sb.storage.from(bucket).remove([path]);
+    }
+  };
+}
+
 // ============================================================
 // GENERAR IMAGEN DE INCIDENTE (html2canvas → JPEG)
 // Reemplaza el PDF para envío por WhatsApp y almacenamiento seguro.
