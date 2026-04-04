@@ -25,6 +25,7 @@ window.COLEGIO_ID       = 'sigece'; // slug del colegio, debe existir en tabla c
 const _sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   auth: { persistSession: true, storageKey: 'asmqr_auth_' + COLEGIO_ID }
 });
+window._sb = _sb; // disponible para db_supabase.js
 
 // ============================================================
 // CONVERSIÓN snake_case ↔ camelCase
@@ -47,6 +48,7 @@ function _docToRow(data, colegioId) {
   const out = { colegio_id: colegioId || COLEGIO_ID };
   for (const [k, v] of Object.entries(data)) {
     if (k === 'id') { out.id = v; continue; }
+    if (k === 'timestamp') continue; // created_at tiene DEFAULT NOW() en Supabase
     // Ignorar FieldValues especiales — se manejan abajo
     if (v && v.__type === 'serverTimestamp') { out[_toSnake(k)] = new Date().toISOString(); continue; }
     if (v && v.__type === 'increment')       { /* manejar con RPC */ continue; }
