@@ -8870,7 +8870,7 @@ function previewIncFotos(input) {
 
 async function acortarUrl(url) {
   try {
-    const r = await fetch('https://is.gd/create.php?format=simple&url=' + encodeURIComponent(url));
+    const r = await fetch('https://tinyurl.com/api-create.php?url=' + encodeURIComponent(url));
     if (r.ok) { const t = await r.text(); if (t.startsWith('http')) return t.trim(); }
   } catch(e) {}
   return url;
