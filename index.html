@@ -8947,39 +8947,17 @@ async function guardarIncidente() {
       );
     }
 
-    // 3. Generar imagen y subir a Supabase Storage
-    // Inicializar _sbStorage si compat.js no lo hizo (compatibilidad con versiones viejas)
-    if (!window._sbStorage && window._sb) {
-      window._sbStorage = {
-        async upload(b, p, blob, ct = 'image/jpeg') {
-          const { error } = await _sb.storage.from(b).upload(p, blob, { upsert: true, contentType: ct });
-          if (error) throw new Error('[storage] ' + error.message);
-        },
-        async signedUrl(b, p, s) {
-          const { data, error } = await _sb.storage.from(b).createSignedUrl(p, s);
-          if (error) throw new Error('[storage] ' + error.message);
-          return data.signedUrl;
-        },
-        async remove(b, p) { await _sb.storage.from(b).remove([p]); }
-      };
-    }
+    // 3. Generar imagen JPEG y subir a Firebase Storage
     let imgLinkApo = null;
     try {
-      console.log('[incidente] Generando imagen...');
       const blob = await generarImagenIncidente(incidente, fotoData);
-      console.log('[incidente] Imagen generada:', blob ? `${Math.round(blob.size/1024)}KB` : 'null');
-      if (blob && window._sbStorage) {
-        const path = `${window.COLEGIO_ID}/${docRef.id}/reporte.jpg`;
-        console.log('[incidente] Subiendo a Storage:', path);
-        await _sbStorage.upload('incidentes', path, blob, 'image/jpeg');
-        console.log('[incidente] Upload OK ✅');
-        const imgLinkStaff = await _sbStorage.signedUrl('incidentes', path, 365 * 24 * 3600);
-        imgLinkApo         = await _sbStorage.signedUrl('incidentes', path,   7 * 24 * 3600);
-        console.log('[incidente] URL apoderado:', imgLinkApo);
-        await docRef.update({ pdfUrl: imgLinkStaff, pdfRef: path, pdfActivo: true });
+      if (blob) {
+        const fbPath = `incidentes/${window.COLEGIO_ID}/${docRef.id}/reporte.jpg`;
+        const storageRef = firebase.storage().ref(fbPath);
+        await storageRef.put(blob, { contentType: 'image/jpeg' });
+        imgLinkApo = await storageRef.getDownloadURL();
+        await docRef.update({ pdfUrl: imgLinkApo, pdfRef: fbPath, pdfActivo: true });
         _invalidarIncidentes();
-      } else {
-        console.warn('[incidente] blob o _sbStorage no disponible', { blob: !!blob, storage: !!window._sbStorage });
       }
     } catch(eImg) { console.warn('[incidente] Error generando/subiendo imagen:', eImg); }
 
@@ -8993,7 +8971,7 @@ async function guardarIncidente() {
       const contactos = alumnoData.telefono2
         ? `👨‍👩‍👧 *Apoderados notificados:*\n• ${nombre1}: ${alumnoData.telefono}\n• ${nombre2}: ${alumnoData.telefono2}`
         : `👤 *Apoderado notificado:* ${nombre1}: ${alumnoData.telefono}`;
-      const linkImagen = imgLinkApo ? `\n\n🖼️ *Ver reporte:* ${imgLinkApo}\n_(disponible 7 días)_` : '';
+      const linkImagen = imgLinkApo ? `\n\n🖼️ *Ver reporte:* ${imgLinkApo}` : '';
       const msg = `🚨 *REPORTE DE INCIDENCIA*\n${encabezado}\n\n👤 *Alumno:* ${incidente.alumnoNombre}\n🏫 *Grado:* ${incidente.grado} ${incidente.seccion} — ${incidente.turno}\n📋 *Tipo:* ${incidente.tipo}\n${sevEmoji} *Severidad:* ${incidente.severidad}\n📅 *Fecha:* ${incidente.fecha} ${incidente.hora}\n\n📝 El colegio ha registrado un incidente con su hijo/a. Por favor comuníquese con la institución a la brevedad.${linkImagen}\n\n${contactos}\n📞 Para más información contacte a la dirección del colegio.`;
       const enviado = await sendWhatsApp(alumnoData.telefono, msg, imgLinkApo);
       if(alumnoData.telefono2) sendWhatsApp(alumnoData.telefono2, msg, imgLinkApo);
@@ -9167,7 +9145,7 @@ async function eliminarIncidente(id) {
   const inc = cached.find(d => d.id === id);
   await db.collection('incidentes').doc(id).delete();
   // Borrar el PDF de Storage en background
-  if(inc?.pdfRef && window._sbStorage) _sbStorage.remove('incidentes', inc.pdfRef).catch(() => {});
+  if(inc?.pdfRef) firebase.storage().ref(inc.pdfRef).delete().catch(() => {});
   _invalidarIncidentes();
   toast('Reporte eliminado','info');
   renderIncidentes();
