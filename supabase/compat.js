@@ -529,6 +529,11 @@ const _sbStorage = {
 };
 window._sbStorage = _sbStorage;
 
+// Exponer globalmente para que index.html los use sin Firebase CDN
+window.firebase = firebase;
+window.db       = db;
+window.auth     = auth;
+
 // ============================================================
 // INICIAR REALTIME al cargar
 // ============================================================
