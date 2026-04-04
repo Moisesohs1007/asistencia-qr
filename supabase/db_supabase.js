@@ -7,6 +7,8 @@
 //   - window.COLEGIO_ID (ej: 'sigece')
 //   - LSC (cache localStorage, definido en index.html)
 // ============================================================
+// eslint-disable-next-line no-var
+var supabase = window._sb; // sobreescribir referencia de librería con el cliente activo
 
 const DB = {
 
