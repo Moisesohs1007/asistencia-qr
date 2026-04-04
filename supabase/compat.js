@@ -19,7 +19,7 @@
 // ── CONFIGURACIÓN — editar por colegio ───────────────────────
 const SUPABASE_URL      = 'https://bqnhlzwdibcmstqzspmj.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJxbmhsendkaWJjbXN0cXpzcG1qIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUwODY2MTAsImV4cCI6MjA5MDY2MjYxMH0.mm7eMEOMzylzKeWJbcI_gHaHbwnGpQo0UVhZUOB9q2s';
-window.COLEGIO_ID       = 'marello'; // slug del colegio, debe existir en tabla colegios
+window.COLEGIO_ID       = 'sigece'; // slug del colegio, debe existir en tabla colegios
 
 // ── Inicializar cliente Supabase ─────────────────────────────
 const _sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
@@ -124,6 +124,7 @@ class _DocRef {
     if (this._col === 'config') return _getConfig(this._id);
     const { data, error } = await _sb.from(this._col).select('*')
       .eq('colegio_id', COLEGIO_ID).eq('id', this._id).maybeSingle();
+    console.log('[compat.get]', this._col, this._id, 'data:', data, 'error:', error);
     if (error) throw new Error(error.message);
     return {
       exists: !!data,
