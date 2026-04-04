@@ -10,10 +10,9 @@
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 
 
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-storage-compat.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="compat.js"></script>
+<script src="db_supabase.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <style>
@@ -3125,13 +3124,7 @@ const firebaseConfig = {
   messagingSenderId: "617000910031",
   appId: "1:617000910031:web:ccc2454260d8b4e7704bba"
 };
-firebase.initializeApp(firebaseConfig);
-const db = firebase.firestore();
-const auth = firebase.auth();
-const storage = firebase.storage();
-
-// Persistencia SESSION: la sesión se borra al cerrar el navegador/pestaña
-auth.setPersistence(firebase.auth.Auth.Persistence.SESSION).catch(e => console.warn('setPersistence:', e));
+// db, auth, firebase ya vienen de compat.js (Supabase)
 
 // Usuario actual
 let currentUser = null;
@@ -3992,7 +3985,6 @@ const LSC = {
 };
 
 </script>
-<script src="db.js"></script>
 <script>
 
 // ============================================================
@@ -8878,7 +8870,7 @@ function previewIncFotos(input) {
 
 async function acortarUrl(url) {
   try {
-    const r = await fetch('https://is.gd/create.php?format=simple&url=' + encodeURIComponent(url));
+    const r = await fetch('https://tinyurl.com/api-create.php?url=' + encodeURIComponent(url));
     if (r.ok) { const t = await r.text(); if (t.startsWith('http')) return t.trim(); }
   } catch(e) {}
   return url;
