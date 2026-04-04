@@ -489,6 +489,27 @@ const storage = {
 };
 
 // ============================================================
+// SUPABASE STORAGE HELPER — para imágenes de incidentes
+// ============================================================
+const _sbStorage = {
+  async upload(bucket, path, blob, contentType = 'image/jpeg') {
+    const { error } = await _sb.storage.from(bucket)
+      .upload(path, blob, { upsert: true, contentType });
+    if (error) throw new Error('[storage] ' + error.message);
+  },
+  async signedUrl(bucket, path, seconds) {
+    const { data, error } = await _sb.storage.from(bucket)
+      .createSignedUrl(path, seconds);
+    if (error) throw new Error('[storage] ' + error.message);
+    return data.signedUrl;
+  },
+  async remove(bucket, path) {
+    await _sb.storage.from(bucket).remove([path]);
+  }
+};
+window._sbStorage = _sbStorage;
+
+// ============================================================
 // INICIAR REALTIME al cargar
 // ============================================================
 document.addEventListener('DOMContentLoaded', () => {

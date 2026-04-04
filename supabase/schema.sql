@@ -456,3 +456,24 @@ DROP TRIGGER IF EXISTS trg_alumnos_updated_at ON alumnos;
 CREATE TRIGGER trg_alumnos_updated_at
   BEFORE UPDATE ON alumnos
   FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+-- ============================================================
+-- STORAGE: bucket incidentes — políticas RLS
+-- Estructura del path: {colegio_id}/{incidente_id}/reporte.jpg
+-- ============================================================
+DROP POLICY IF EXISTS "inc_storage_staff_select" ON storage.objects;
+DROP POLICY IF EXISTS "inc_storage_staff_insert" ON storage.objects;
+DROP POLICY IF EXISTS "inc_storage_staff_update" ON storage.objects;
+DROP POLICY IF EXISTS "inc_storage_admin_delete" ON storage.objects;
+
+CREATE POLICY "inc_storage_staff_select" ON storage.objects FOR SELECT TO authenticated
+  USING (bucket_id = 'incidentes' AND (storage.foldername(name))[1] = auth_colegio_id() AND is_staff());
+
+CREATE POLICY "inc_storage_staff_insert" ON storage.objects FOR INSERT TO authenticated
+  WITH CHECK (bucket_id = 'incidentes' AND (storage.foldername(name))[1] = auth_colegio_id() AND is_staff());
+
+CREATE POLICY "inc_storage_staff_update" ON storage.objects FOR UPDATE TO authenticated
+  USING (bucket_id = 'incidentes' AND (storage.foldername(name))[1] = auth_colegio_id() AND is_staff());
+
+CREATE POLICY "inc_storage_admin_delete" ON storage.objects FOR DELETE TO authenticated
+  USING (bucket_id = 'incidentes' AND (storage.foldername(name))[1] = auth_colegio_id() AND is_admin());

@@ -6309,7 +6309,7 @@ async function getFactilizaConfig() {
   return null;
 }
 
-async function sendWhatsApp(telefono, mensaje) {
+async function sendWhatsApp(telefono, mensaje, imageUrl = null) {
   const cfg = await getFactilizaConfig();
   let token     = cfg?.token;
   let instancia = cfg?.instancia;
@@ -6331,11 +6331,11 @@ async function sendWhatsApp(telefono, mensaje) {
     return false;
   }
   try {
-    const logoUrl = 'https://moisesohs1007.github.io/asistencia-qr/img/logo-colegio.png';
+    const imgUrl = imageUrl || 'https://moisesohs1007.github.io/asistencia-qr/img/logo-colegio.png';
     const resImg = await fetch(`https://apiwsp.factiliza.com/v1/message/sendimage/${instancia}`, {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ number: num, url: logoUrl, caption: mensaje })
+      body: JSON.stringify({ number: num, url: imgUrl, caption: mensaje })
     });
     if(resImg.ok) {
       console.log('📱 Imagen enviada OK');
@@ -8947,47 +8947,21 @@ async function guardarIncidente() {
       );
     }
 
-    // 3. Generar PDF y subir (Storage desactivado hasta plan Blaze)
-    let pdfLink = null;
+    // 3. Generar imagen y subir a Supabase Storage
+    let imgLinkApo = null;
     try {
-      const pdfResult = await generarPDFIncidente({ ...incidente, fotoData });
-      if(pdfResult?.blob) {
-        // ── TODO: activar cuando se contrate plan Blaze ──────────────────────
-        // const pdfStorageRef = storage.ref(`incidentes/${docRef.id}/reporte.pdf`);
-        // await pdfStorageRef.put(pdfResult.blob, { contentType: 'application/pdf' });
-        // pdfLink = await pdfStorageRef.getDownloadURL();
-        // await docRef.update({ pdfUrl: pdfLink, pdfRef: pdfStorageRef.fullPath, pdfActivo: true });
-        // ────────────────────────────────────────────────────────────────────
-        // Fallback activo: tmpfiles.org
-        try {
-          const fd = new FormData();
-          fd.append('file', new File([pdfResult.blob], pdfResult.filename, { type: 'application/pdf' }));
-          const r = await fetch('https://tmpfiles.org/api/v1/upload', { method: 'POST', body: fd });
-          const j = await r.json();
-          if(j.status === 'success' && j.data?.url) {
-            pdfLink = j.data.url.replace('tmpfiles.org/', 'tmpfiles.org/dl/');
-          }
-        } catch(eTmp) {
-          // Fallback 2: gofile.io
-          try {
-            const srv = await fetch('https://api.gofile.io/servers');
-            const srvJ = await srv.json();
-            const server = srvJ?.data?.servers?.[0]?.name || 'store1';
-            const fd2 = new FormData();
-            fd2.append('file', new File([pdfResult.blob], pdfResult.filename, { type: 'application/pdf' }));
-            const r2 = await fetch(`https://${server}.gofile.io/contents/uploadfile`, { method: 'POST', body: fd2 });
-            const j2 = await r2.json();
-            if(j2.status === 'ok' && j2.data?.downloadPage) pdfLink = j2.data.downloadPage;
-          } catch(eGofile) { console.warn('[incidente] Todos los servicios de PDF fallaron'); }
-        }
-        if(pdfLink) {
-          await docRef.update({ pdfUrl: pdfLink, pdfActivo: true });
-          _invalidarIncidentes();
-        }
+      const blob = await generarImagenIncidente(incidente, fotoData);
+      if (blob && window._sbStorage) {
+        const path = `${window.COLEGIO_ID}/${docRef.id}/reporte.jpg`;
+        await _sbStorage.upload('incidentes', path, blob, 'image/jpeg');
+        const imgLinkStaff = await _sbStorage.signedUrl('incidentes', path, 365 * 24 * 3600);
+        imgLinkApo         = await _sbStorage.signedUrl('incidentes', path,   7 * 24 * 3600);
+        await docRef.update({ pdfUrl: imgLinkStaff, pdfRef: path, pdfActivo: true });
+        _invalidarIncidentes();
       }
-    } catch(ePdf) { console.warn('[incidente] Error generando PDF:', ePdf); }
+    } catch(eImg) { console.warn('[incidente] Error generando/subiendo imagen:', eImg); }
 
-    // 4. Enviar WhatsApp con o sin link según si el PDF estuvo listo
+    // 4. Enviar WhatsApp — imagen del reporte directamente en el chat
     if(alumnoData?.telefono) {
       const nomColegio = COLEGIO_NOMBRE;
       const encabezado = `🏫 *${nomColegio}*\n${COLEGIO_ESLOGAN}`;
@@ -8997,11 +8971,10 @@ async function guardarIncidente() {
       const contactos = alumnoData.telefono2
         ? `👨‍👩‍👧 *Apoderados notificados:*\n• ${nombre1}: ${alumnoData.telefono}\n• ${nombre2}: ${alumnoData.telefono2}`
         : `👤 *Apoderado notificado:* ${nombre1}: ${alumnoData.telefono}`;
-      const linkText = pdfLink ? `\n\n📎 *Reporte PDF:* ${pdfLink}\n_(disponible por 7 días)_` : '';
-      const msg = `🚨 *REPORTE DE INCIDENCIA*\n${encabezado}\n\n👤 *Alumno:* ${incidente.alumnoNombre}\n🏫 *Grado:* ${incidente.grado} ${incidente.seccion} — ${incidente.turno}\n📋 *Tipo:* ${incidente.tipo}\n${sevEmoji} *Severidad:* ${incidente.severidad}\n📅 *Fecha:* ${incidente.fecha} ${incidente.hora}\n\n📝 El colegio ha registrado un incidente con su hijo/a. Por favor comuníquese con la institución a la brevedad.${linkText}\n\n${contactos}\n📞 Para más información contacte a la dirección del colegio.`;
-      const enviado = await sendWhatsApp(alumnoData.telefono, msg);
-      if(alumnoData.telefono2) sendWhatsApp(alumnoData.telefono2, msg);
-      if(enviado) toast('✅ WhatsApp enviado al apoderado' + (alumnoData.telefono2 ? 's' : '') + (pdfLink ? ' con PDF ✅' : ''), 'success');
+      const msg = `🚨 *REPORTE DE INCIDENCIA*\n${encabezado}\n\n👤 *Alumno:* ${incidente.alumnoNombre}\n🏫 *Grado:* ${incidente.grado} ${incidente.seccion} — ${incidente.turno}\n📋 *Tipo:* ${incidente.tipo}\n${sevEmoji} *Severidad:* ${incidente.severidad}\n📅 *Fecha:* ${incidente.fecha} ${incidente.hora}\n\n📝 El colegio ha registrado un incidente con su hijo/a. Por favor comuníquese con la institución a la brevedad.\n\n${contactos}\n📞 Para más información contacte a la dirección del colegio.`;
+      const enviado = await sendWhatsApp(alumnoData.telefono, msg, imgLinkApo);
+      if(alumnoData.telefono2) sendWhatsApp(alumnoData.telefono2, msg, imgLinkApo);
+      if(enviado) toast('✅ WhatsApp enviado al apoderado' + (alumnoData.telefono2 ? 's' : '') + (imgLinkApo ? ' con imagen ✅' : ''), 'success');
       else toast('⚠️ WhatsApp no pudo enviarse — revisa la configuración de Factiliza','warning');
     }
   } catch(e) { reactivarBtn(); toast('Error al guardar: ' + e.message, 'error'); }
@@ -9171,7 +9144,7 @@ async function eliminarIncidente(id) {
   const inc = cached.find(d => d.id === id);
   await db.collection('incidentes').doc(id).delete();
   // Borrar el PDF de Storage en background
-  if(inc?.pdfRef) storage.ref(inc.pdfRef).delete().catch(() => {});
+  if(inc?.pdfRef && window._sbStorage) _sbStorage.remove('incidentes', inc.pdfRef).catch(() => {});
   _invalidarIncidentes();
   toast('Reporte eliminado','info');
   renderIncidentes();
@@ -9343,6 +9316,105 @@ async function generarPDFIncidente(inc) {
   return { blob: doc.output('blob'), filename };
 }
 
+
+// ============================================================
+// GENERAR IMAGEN DE INCIDENTE (html2canvas → JPEG)
+// Reemplaza el PDF para envío por WhatsApp y almacenamiento seguro.
+// ============================================================
+async function generarImagenIncidente(inc, fotoData) {
+  if (!window.html2canvas) {
+    await new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
+      s.onload = resolve; s.onerror = reject;
+      document.head.appendChild(s);
+    });
+  }
+  const cfg = await getConfig();
+  const anio = cfg.anio || new Date().getFullYear();
+  const logoB64 = await cargarLogoBase64();
+
+  let fotosArray = [];
+  if (Array.isArray(fotoData)) fotosArray = fotoData.filter(f => f && f.startsWith && f.startsWith('data:image'));
+  else if (fotoData && fotoData.startsWith && fotoData.startsWith('data:image')) fotosArray = [fotoData];
+
+  const fotoItems = fotosArray.map((f, i) => `
+    <div style="position:relative;display:inline-block;margin:4px;">
+      <img src="${f}" style="width:172px;height:128px;object-fit:cover;border-radius:4px;" crossorigin="anonymous"/>
+      <span style="position:absolute;top:4px;left:4px;background:#000;color:#fff;font-size:10px;padding:2px 6px;border-radius:2px;">Foto ${i+1}</span>
+    </div>`).join('');
+
+  const sevColor = inc.severidad==='Grave'?'#ef4444':inc.severidad==='Moderado'?'#f59e0b':'#10b981';
+  const logoHtml = logoB64 ? `<img src="${logoB64}" style="width:54px;height:54px;object-fit:contain;" crossorigin="anonymous"/>` : '';
+
+  const el = document.createElement('div');
+  el.style.cssText = 'position:fixed;left:-9999px;top:0;width:794px;background:white;font-family:Arial,sans-serif;color:#1e293b;';
+  el.innerHTML = `<div style="padding:28px 32px;">
+    <div style="display:flex;align-items:center;gap:16px;padding-bottom:14px;border-bottom:3px solid #ef4444;margin-bottom:16px;">
+      ${logoHtml}
+      <div style="flex:1;">
+        <div style="font-size:15px;font-weight:bold;color:#0d1a3a;">${COLEGIO_NOMBRE||''}</div>
+        <div style="font-size:10px;color:#64748b;">${COLEGIO_ESLOGAN||''}</div>
+        <div style="font-size:9px;color:#94a3b8;">Año Escolar ${anio}</div>
+      </div>
+      <div style="text-align:right;">
+        <div style="font-size:13px;font-weight:bold;color:#ef4444;text-transform:uppercase;">Reporte de Incidente</div>
+        <div style="font-size:9px;color:#94a3b8;">Documento oficial</div>
+      </div>
+    </div>
+    <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;padding:12px 16px;margin-bottom:14px;">
+      <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:10px;margin-bottom:10px;">
+        <div><div style="font-size:8px;font-weight:bold;color:#64748b;text-transform:uppercase;margin-bottom:2px;">Alumno</div><div style="font-size:11px;font-weight:bold;">${inc.alumnoNombre||'-'}</div></div>
+        <div><div style="font-size:8px;font-weight:bold;color:#64748b;text-transform:uppercase;margin-bottom:2px;">DNI/ID</div><div style="font-size:11px;">${inc.alumnoId||'-'}</div></div>
+        <div><div style="font-size:8px;font-weight:bold;color:#64748b;text-transform:uppercase;margin-bottom:2px;">Grado/Secc.</div><div style="font-size:11px;">${inc.grado||'-'} ${inc.seccion||''}</div></div>
+        <div><div style="font-size:8px;font-weight:bold;color:#64748b;text-transform:uppercase;margin-bottom:2px;">Turno</div><div style="font-size:11px;">${inc.turno||'-'}</div></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 2fr 1fr;gap:10px;">
+        <div><div style="font-size:8px;font-weight:bold;color:#64748b;text-transform:uppercase;margin-bottom:2px;">Fecha</div><div style="font-size:11px;">${inc.fecha||'-'}</div></div>
+        <div><div style="font-size:8px;font-weight:bold;color:#64748b;text-transform:uppercase;margin-bottom:2px;">Hora</div><div style="font-size:11px;">${inc.hora||'-'}</div></div>
+        <div><div style="font-size:8px;font-weight:bold;color:#64748b;text-transform:uppercase;margin-bottom:2px;">Tipo</div><div style="font-size:11px;">${inc.tipo||'-'}</div></div>
+        <div><div style="font-size:8px;font-weight:bold;color:#64748b;text-transform:uppercase;margin-bottom:2px;">Severidad</div><div style="font-size:11px;font-weight:bold;color:${sevColor};">${inc.severidad||'-'}</div></div>
+      </div>
+    </div>
+    <div style="margin-bottom:12px;">
+      <div style="font-size:8px;font-weight:bold;color:#64748b;text-transform:uppercase;margin-bottom:4px;">Descripción del Incidente</div>
+      <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:4px;padding:10px 12px;font-size:11px;line-height:1.5;">${inc.descripcion||'-'}</div>
+    </div>
+    ${inc.medidas ? `<div style="margin-bottom:12px;">
+      <div style="font-size:8px;font-weight:bold;color:#64748b;text-transform:uppercase;margin-bottom:4px;">Medidas Tomadas</div>
+      <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:4px;padding:10px 12px;font-size:11px;line-height:1.5;">${inc.medidas}</div>
+    </div>` : ''}
+    ${fotosArray.length ? `<div style="margin-bottom:12px;">
+      <div style="font-size:8px;font-weight:bold;color:#64748b;text-transform:uppercase;margin-bottom:6px;">Evidencia Fotográfica (${fotosArray.length} foto${fotosArray.length>1?'s':''})</div>
+      <div style="display:flex;flex-wrap:wrap;gap:4px;">${fotoItems}</div>
+    </div>` : ''}
+    <div style="display:flex;justify-content:space-around;margin-top:24px;padding-top:14px;border-top:1px solid #e2e8f0;">
+      <div style="text-align:center;width:200px;">
+        <div style="border-top:1px solid #94a3b8;padding-top:6px;">
+          <div style="font-size:10px;font-weight:bold;">${inc.responsableNombre||'Responsable'}</div>
+          <div style="font-size:9px;color:#64748b;">${inc.responsableCargo||'Responsable'}</div>
+        </div>
+      </div>
+      <div style="text-align:center;width:200px;">
+        <div style="border-top:1px solid #94a3b8;padding-top:6px;">
+          <div style="font-size:10px;font-weight:bold;">Director(a) / V°B°</div>
+          <div style="font-size:9px;color:#64748b;">Firma y sello</div>
+        </div>
+      </div>
+    </div>
+    <div style="margin-top:18px;background:#ef4444;padding:7px;text-align:center;border-radius:4px;">
+      <div style="font-size:9px;color:white;">Documento generado por AsistenciaQR · ${new Date().toLocaleString('es-PE')}</div>
+    </div>
+  </div>`;
+
+  document.body.appendChild(el);
+  try {
+    const canvas = await html2canvas(el, { scale: 1.5, useCORS: true, allowTaint: true, backgroundColor: '#ffffff' });
+    return new Promise(resolve => canvas.toBlob(blob => resolve(blob), 'image/jpeg', 0.78));
+  } finally {
+    document.body.removeChild(el);
+  }
+}
 
 // ============================================================
 // BOTTOM NAV MOBILE
