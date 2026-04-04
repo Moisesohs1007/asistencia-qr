@@ -7,7 +7,6 @@
 //   - window.COLEGIO_ID (ej: 'sigece')
 //   - LSC (cache localStorage, definido en index.html)
 // ============================================================
-const supabase = window._sb; // alias del cliente inicializado en compat.js
 
 const DB = {
 
@@ -241,7 +240,7 @@ const DB = {
 
   async saveRegistro(reg) {
     // Obtener usuario actual de Supabase Auth
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user } } = await _sb.auth.getUser();
     if (!reg.registradoPor && user) reg.registradoPor = user.email || user.id;
 
     const row = {
@@ -258,7 +257,7 @@ const DB = {
       registrado_por: reg.registradoPor || '',
     };
 
-    const { error } = await supabase.from('registros').insert(row);
+    const { error } = await _sb.from('registros').insert(row);
     if (error) throw new Error(error.message);
 
     this.invalidarRegistros(reg.fecha);
@@ -267,7 +266,7 @@ const DB = {
     if (reg.tipo === 'INGRESO') {
       const mes        = reg.fecha.substring(0, 7);
       const esTardanza = (reg.estado || '').trim() === 'Tardanza';
-      const { error: eRes } = await supabase.rpc('upsert_resumen_mensual', {
+      const { error: eRes } = await _sb.rpc('upsert_resumen_mensual', {
         p_colegio_id:  COLEGIO_ID,
         p_mes:         mes,
         p_alumno_id:   reg.alumnoId,
@@ -333,7 +332,7 @@ const DB = {
     if (alumnoIds.length) {
       const mes = fecha.substring(0, 7);
       for (const alumnoId of alumnoIds) {
-        supabase.rpc('recalcular_resumen_mes', {
+        _sb.rpc('recalcular_resumen_mes', {
           p_colegio_id: COLEGIO_ID,
           p_mes:        mes,
           p_alumno_id:  alumnoId,
@@ -389,7 +388,7 @@ function iniciarRealtimeListeners() {
 
 function detenerRealtimeListeners() {
   if (_realtimeChannel) {
-    supabase.removeChannel(_realtimeChannel);
+    _sb.removeChannel(_realtimeChannel);
     _realtimeChannel = null;
   }
 }
