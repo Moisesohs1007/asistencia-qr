@@ -124,6 +124,25 @@ class _DocRef {
   }
   get id() { return this._id; }
 
+  onSnapshot(callback, errorCallback) {
+    // 1. Carga inicial
+    this.get()
+      .then(snap => callback(snap))
+      .catch(err => errorCallback && errorCallback(err));
+    // 2. Realtime para cambios en este documento
+    const channelName = this._col + '_doc_' + this._id + '_' + Date.now();
+    const channel = _sb.channel(channelName)
+      .on('postgres_changes', { event: '*', schema: 'public', table: this._col,
+        filter: `colegio_id=eq.${COLEGIO_ID}` }, (payload) => {
+        if (payload.new?.id !== this._id && payload.old?.id !== this._id) return;
+        this.get()
+          .then(snap => callback(snap))
+          .catch(err => errorCallback && errorCallback(err));
+      })
+      .subscribe();
+    return () => { _sb.removeChannel(channel); };
+  }
+
   async get() {
     if (this._col === 'config') return _getConfig(this._id);
 
