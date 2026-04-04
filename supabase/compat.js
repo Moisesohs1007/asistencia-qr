@@ -49,6 +49,7 @@ function _docToRow(data, colegioId) {
   for (const [k, v] of Object.entries(data)) {
     if (k === 'id') { out.id = v; continue; }
     if (k === 'timestamp') continue; // created_at tiene DEFAULT NOW() en Supabase
+    if (v === null || v === undefined) continue; // dejar que Supabase use DEFAULT
     // Ignorar FieldValues especiales — se manejan abajo
     if (v && v.__type === 'serverTimestamp') { out[_toSnake(k)] = new Date().toISOString(); continue; }
     if (v && v.__type === 'increment')       { /* manejar con RPC */ continue; }
