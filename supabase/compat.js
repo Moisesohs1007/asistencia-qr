@@ -25,6 +25,7 @@ window.COLEGIO_ID       = 'sigece'; // slug del colegio, debe existir en tabla c
 const _sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   auth: { persistSession: true, storageKey: 'asmqr_auth_' + COLEGIO_ID }
 });
+window._sb = _sb; // disponible para db_supabase.js
 
 // ============================================================
 // CONVERSIÓN snake_case ↔ camelCase

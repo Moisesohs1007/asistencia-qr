@@ -3,10 +3,11 @@
 // Misma API que DB en db.js → index.html no necesita cambios.
 //
 // Depende de:
-//   - window.supabase  (cliente Supabase inicializado)
-//   - window.COLEGIO_ID (ej: 'marello')
+//   - window._sb  (cliente Supabase, expuesto por compat.js)
+//   - window.COLEGIO_ID (ej: 'sigece')
 //   - LSC (cache localStorage, definido en index.html)
 // ============================================================
+const supabase = window._sb; // alias del cliente inicializado en compat.js
 
 const DB = {
 
