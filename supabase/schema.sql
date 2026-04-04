@@ -294,10 +294,15 @@ CREATE POLICY "alumnos_admin_write"    ON alumnos FOR ALL
 
 -- ── usuarios ─────────────────────────────────────────────────
 -- Staff: lectura de su colegio. Admin: escritura.
-DROP POLICY IF EXISTS "usuarios_read"  ON usuarios;
-DROP POLICY IF EXISTS "usuarios_write" ON usuarios;
-CREATE POLICY "usuarios_read"   ON usuarios FOR SELECT
+-- Self: cualquier usuario puede leer su propio registro (necesario para login).
+DROP POLICY IF EXISTS "usuarios_read"      ON usuarios;
+DROP POLICY IF EXISTS "usuarios_self_read" ON usuarios;
+DROP POLICY IF EXISTS "usuarios_write"     ON usuarios;
+CREATE POLICY "usuarios_read"      ON usuarios FOR SELECT
   USING (colegio_id = auth_colegio_id() AND is_staff());
+
+CREATE POLICY "usuarios_self_read" ON usuarios FOR SELECT
+  USING (id = auth.uid());
 
 CREATE POLICY "usuarios_write"  ON usuarios FOR ALL
   USING (colegio_id = auth_colegio_id() AND is_admin());
