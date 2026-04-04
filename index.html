@@ -8948,6 +8948,21 @@ async function guardarIncidente() {
     }
 
     // 3. Generar imagen y subir a Supabase Storage
+    // Inicializar _sbStorage si compat.js no lo hizo (compatibilidad con versiones viejas)
+    if (!window._sbStorage && window._sb) {
+      window._sbStorage = {
+        async upload(b, p, blob, ct = 'image/jpeg') {
+          const { error } = await _sb.storage.from(b).upload(p, blob, { upsert: true, contentType: ct });
+          if (error) throw new Error('[storage] ' + error.message);
+        },
+        async signedUrl(b, p, s) {
+          const { data, error } = await _sb.storage.from(b).createSignedUrl(p, s);
+          if (error) throw new Error('[storage] ' + error.message);
+          return data.signedUrl;
+        },
+        async remove(b, p) { await _sb.storage.from(b).remove([p]); }
+      };
+    }
     let imgLinkApo = null;
     try {
       console.log('[incidente] Generando imagen...');
