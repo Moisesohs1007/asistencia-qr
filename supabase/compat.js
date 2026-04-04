@@ -124,6 +124,7 @@ class _DocRef {
     if (this._col === 'config') return _getConfig(this._id);
     const { data, error } = await _sb.from(this._col).select('*')
       .eq('colegio_id', COLEGIO_ID).eq('id', this._id).maybeSingle();
+    console.log('[compat.get]', this._col, this._id, 'data:', data, 'error:', error);
     if (error) throw new Error(error.message);
     return {
       exists: !!data,
