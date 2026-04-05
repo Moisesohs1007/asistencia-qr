@@ -1763,7 +1763,12 @@ function guardarNuevaPass() {
   }).catch(function(e) {
     btn.disabled = false;
     btn.textContent = 'Guardar y continuar';
-    errEl.textContent = 'Error (' + (e.code||'?') + '): ' + e.message;
+    var _msgs = {
+      'auth/same-password': '⚠️ La nueva contraseña debe ser diferente a la actual. Elige otra contraseña.',
+      'auth/weak-password':  '⚠️ La contraseña es muy débil. Usa al menos 6 caracteres.',
+      'auth/update-failed':  '⚠️ ' + (e.message || 'No se pudo actualizar la contraseña.'),
+    };
+    errEl.textContent = _msgs[e.code] || ('Error (' + (e.code||'?') + '): ' + e.message);
     errEl.style.display = 'block';
   });
 
