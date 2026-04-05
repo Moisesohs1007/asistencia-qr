@@ -1670,7 +1670,10 @@ function guardarNuevaPass() {
     // Enviar WhatsApp con config pre-cargada
     var nombreApo = nombres.split(' ')[0];
     var portal = window.location.href.replace(/apoderado\.html.*$/, '');
-    var msgApo = '✅ *Portal Apoderado — ' + _nomColegio + '*\n\n'
+    var _waEnc = '🏫 *' + (window.COLEGIO_NOMBRE || _nomColegio) + '*'
+      + (window.COLEGIO_ESLOGAN ? '\n_' + window.COLEGIO_ESLOGAN + '_' : '');
+    var _waPie = '\n\n⚠️ _Este número es exclusivo para mensajes automáticos del colegio. Por favor no responda ni llame a este número._';
+    var msgApo = '✅ *CUENTA DE PORTAL CONFIGURADA*\n' + _waEnc + '\n\n'
       + 'Hola *' + nombreApo + '*,\n\n'
       + 'Tu cuenta ha sido configurada exitosamente.\n\n'
       + '👤 *Apoderado 1*\n'
@@ -1684,8 +1687,8 @@ function guardarNuevaPass() {
         : '')
       + '\n📱 *Usuario:* ' + alumno.id + '\n'
       + '🔑 *Contraseña:* la que acabas de registrar\n\n'
-      + '🌐 Acceso: ' + portal + '\n\n'
-      + '⚠️ _Este número es exclusivo para mensajes automáticos del colegio. Por favor no llame ni responda._';
+      + '🌐 Acceso: ' + portal
+      + _waPie;
     // Mostrar resultado WhatsApp en pantalla
     function mostrarResultadoWA(tel, ok, detalle) {
       var div = document.createElement('div');

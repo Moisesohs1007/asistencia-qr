@@ -4608,17 +4608,17 @@ async function autoRegistrar(alumno) {
 
     // Enviar WhatsApp al apoderado
     if(alumno.telefono) {
-      const nomColegio = COLEGIO_NOMBRE;
-      const encabezado = `🏫 *${nomColegio}*\n${COLEGIO_ESLOGAN}`;
+      const enc = _waEncabezado();
+      const pie = _waPie();
       let msg = '';
       if(tipo === 'INGRESO' && estado === 'A tiempo') {
-        msg = `✅ *INGRESO REGISTRADO*\n${encabezado}\n\n👤 *Alumno:* ${nombre}\n🏫 *Grado:* ${alumno.grado} ${alumno.seccion} — ${alumno.turno}\n🕐 *Hora:* ${reg.hora}\n📅 *Fecha:* ${reg.fecha}\n\n✔️ Su hijo/a ingresó *puntualmente* al colegio.`;
+        msg = `✅ *INGRESO REGISTRADO*\n${enc}\n\n👤 *Alumno:* ${nombre}\n🏫 *Grado:* ${alumno.grado} ${alumno.seccion} — ${alumno.turno}\n🕐 *Hora:* ${reg.hora}\n📅 *Fecha:* ${reg.fecha}\n\n✔️ Su hijo/a ingresó *puntualmente* al colegio.${pie}`;
       } else if(tipo === 'INGRESO' && estado === 'Tardanza') {
-        msg = `⚠️ *TARDANZA REGISTRADA*\n${encabezado}\n\n👤 *Alumno:* ${nombre}\n🏫 *Grado:* ${alumno.grado} ${alumno.seccion} — ${alumno.turno}\n🕐 *Hora:* ${reg.hora}\n📅 *Fecha:* ${reg.fecha}\n\n⏰ Su hijo/a ingresó *con tardanza* al colegio.`;
+        msg = `⚠️ *TARDANZA REGISTRADA*\n${enc}\n\n👤 *Alumno:* ${nombre}\n🏫 *Grado:* ${alumno.grado} ${alumno.seccion} — ${alumno.turno}\n🕐 *Hora:* ${reg.hora}\n📅 *Fecha:* ${reg.fecha}\n\n⏰ Su hijo/a ingresó *con tardanza* al colegio.${pie}`;
       } else if(tipo === 'SALIDA' && sinIngresoPrevio) {
-        msg = `⚠️ *SALIDA SIN INGRESO PREVIO*\n${encabezado}\n\n👤 *Alumno:* ${nombre}\n🏫 *Grado:* ${alumno.grado} ${alumno.seccion} — ${alumno.turno}\n🕐 *Hora de salida:* ${reg.hora}\n📅 *Fecha:* ${reg.fecha}\n\n⚠️ Su hijo/a registró salida pero *no tiene ingreso registrado* hoy. Por favor comuníquese con el colegio.`;
+        msg = `⚠️ *SALIDA SIN INGRESO PREVIO*\n${enc}\n\n👤 *Alumno:* ${nombre}\n🏫 *Grado:* ${alumno.grado} ${alumno.seccion} — ${alumno.turno}\n🕐 *Hora de salida:* ${reg.hora}\n📅 *Fecha:* ${reg.fecha}\n\n⚠️ Su hijo/a registró salida pero *no tiene ingreso registrado* hoy. Por favor comuníquese con el colegio.${pie}`;
       } else if(tipo === 'SALIDA') {
-        msg = `🚪 *SALIDA REGISTRADA*\n${encabezado}\n\n👤 *Alumno:* ${nombre}\n🏫 *Grado:* ${alumno.grado} ${alumno.seccion} — ${alumno.turno}\n🕐 *Hora:* ${reg.hora}\n📅 *Fecha:* ${reg.fecha}\n\n🏠 Su hijo/a ha salido del colegio.`;
+        msg = `🚪 *SALIDA REGISTRADA*\n${enc}\n\n👤 *Alumno:* ${nombre}\n🏫 *Grado:* ${alumno.grado} ${alumno.seccion} — ${alumno.turno}\n🕐 *Hora:* ${reg.hora}\n📅 *Fecha:* ${reg.fecha}\n\n🏠 Su hijo/a ha salido del colegio.${pie}`;
       }
       if(msg) {
         sendWhatsApp(alumno.telefono, msg);
@@ -6314,10 +6314,22 @@ async function probarFactiliza() {
   localStorage.setItem('factiliza_instancia', instancia);
   toast('Enviando mensaje de prueba...','info');
   const cfg = await getConfig();
-  const msg = `✅ *Conexión exitosa*\nLa integración WhatsApp de ${COLEGIO_NOMBRE} está funcionando correctamente. 🎉`;
+  const msg = `✅ *Conexión exitosa*\n${_waEncabezado()}\n\nLa integración WhatsApp está funcionando correctamente. 🎉${_waPie()}`;
   const ok = await sendWhatsApp('51972898389', msg);
   if(ok) toast('✅ Mensaje de prueba enviado correctamente','success');
   else toast('❌ Error al enviar. Verifica token e instancia','error');
+}
+
+// ============================================================
+// WHATSAPP — ENCABEZADO Y PIE INSTITUCIONAL
+// ============================================================
+function _waEncabezado() {
+  const linea1 = `🏫 *${COLEGIO_NOMBRE}*`;
+  const linea2 = COLEGIO_ESLOGAN ? `_${COLEGIO_ESLOGAN}_` : '';
+  return linea2 ? `${linea1}\n${linea2}` : linea1;
+}
+function _waPie() {
+  return `\n\n⚠️ _Este número es exclusivo para mensajes automáticos del colegio. Por favor no responda ni llame a este número._`;
 }
 
 // ============================================================
@@ -9005,8 +9017,8 @@ async function guardarIncidente() {
 
     // 4. Enviar WhatsApp — imagen del reporte directamente en el chat
     if(alumnoData?.telefono) {
-      const nomColegio = COLEGIO_NOMBRE;
-      const encabezado = `🏫 *${nomColegio}*\n${COLEGIO_ESLOGAN}`;
+      const enc = _waEncabezado();
+      const pie = _waPie();
       const sevEmoji = incidente.severidad === 'Grave' ? '🔴' : incidente.severidad === 'Moderado' ? '🟡' : '🟢';
       const nombre1 = ((alumnoData.apoderadoNombres||'') + ' ' + (alumnoData.apoderadoApellidos||'')).trim() || 'Apoderado';
       const nombre2 = alumnoData.telefono2 ? (((alumnoData.apoderado2Nombres||'') + ' ' + (alumnoData.apoderado2Apellidos||'')).trim() || 'Apoderado 2') : '';
@@ -9014,7 +9026,7 @@ async function guardarIncidente() {
         ? `👨‍👩‍👧 *Apoderados notificados:*\n• ${nombre1}: ${alumnoData.telefono}\n• ${nombre2}: ${alumnoData.telefono2}`
         : `👤 *Apoderado notificado:* ${nombre1}: ${alumnoData.telefono}`;
       const linkImagen = imgLinkApo ? `\n\n🖼️ *Ver reporte:* ${imgLinkApo}\n_(disponible 7 días)_` : '';
-      const msg = `🚨 *REPORTE DE INCIDENCIA*\n${encabezado}\n\n👤 *Alumno:* ${incidente.alumnoNombre}\n🏫 *Grado:* ${incidente.grado} ${incidente.seccion} — ${incidente.turno}\n📋 *Tipo:* ${incidente.tipo}\n${sevEmoji} *Severidad:* ${incidente.severidad}\n📅 *Fecha:* ${incidente.fecha} ${incidente.hora}\n\n📝 El colegio ha registrado un incidente con su hijo/a. Por favor comuníquese con la institución a la brevedad.${linkImagen}\n\n${contactos}\n📞 Para más información contacte a la dirección del colegio.`;
+      const msg = `🚨 *REPORTE DE INCIDENCIA*\n${enc}\n\n👤 *Alumno:* ${incidente.alumnoNombre}\n🏫 *Grado:* ${incidente.grado} ${incidente.seccion} — ${incidente.turno}\n📋 *Tipo:* ${incidente.tipo}\n${sevEmoji} *Severidad:* ${incidente.severidad}\n📅 *Fecha:* ${incidente.fecha} ${incidente.hora}\n\n📝 El colegio ha registrado un incidente con su hijo/a. Por favor comuníquese con la institución a la brevedad.${linkImagen}\n\n${contactos}\n📞 Para más información contacte a la dirección del colegio.${pie}`;
       const enviado = await sendWhatsApp(alumnoData.telefono, msg, imgLinkApo);
       if(alumnoData.telefono2) sendWhatsApp(alumnoData.telefono2, msg, imgLinkApo);
       if(enviado) toast('✅ WhatsApp enviado al apoderado' + (alumnoData.telefono2 ? 's' : '') + (imgLinkApo ? ' con imagen ✅' : ''), 'success');
