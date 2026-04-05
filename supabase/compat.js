@@ -483,31 +483,20 @@ class _SecondaryAuth {
     const { data: { session } } = await _sb.auth.getSession();
     const token = session?.access_token;
 
-    // Si hay un admin logueado, usar Edge Function (no cierra su sesión)
-    if (token) {
-      const res = await fetch(`${SUPABASE_URL}/functions/v1/crear-usuario`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify({ email, password: pass, colegioId: COLEGIO_ID }),
-      });
-      const result = await res.json();
-      if (!res.ok) {
-        const code = result.code || 'auth/unknown';
-        throw { code, message: result.error || 'Error creando usuario' };
-      }
-      return { user: result.user };
-    }
+    const headers = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
 
-    // Sin sesión activa (primer login de apoderado): signUp directo
-    const { data, error } = await _sb.auth.signUp({ email, password: pass });
-    if (error) {
-      const code = error.message.includes('already') ? 'auth/email-already-in-use' : 'auth/unknown';
-      throw { code, message: error.message };
+    const res = await fetch(`${SUPABASE_URL}/functions/v1/crear-usuario`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ email, password: pass, colegioId: COLEGIO_ID }),
+    });
+    const result = await res.json();
+    if (!res.ok) {
+      const code = result.code || 'auth/unknown';
+      throw { code, message: result.error || 'Error creando usuario' };
     }
-    return { user: data.user ? { uid: data.user.id, email: data.user.email } : null };
+    return { user: result.user };
   }
   async signOut() {}
   async delete() {}

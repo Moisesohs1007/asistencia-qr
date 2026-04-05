@@ -1,16 +1,3 @@
-// ============================================================
-// EDGE FUNCTION: crear-usuario
-// Crea cuentas en Supabase Auth usando service_role (server-side).
-// Reemplaza el patrón firebase.initializeApp(config, name) usado
-// en index.html para crear cuentas de apoderados y staff sin
-// cerrar la sesión del usuario actual.
-//
-// Deploy:
-//   supabase functions deploy crear-usuario
-//
-// Llamada desde compat.js (clase _SecondaryAuth)
-// ============================================================
-
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const corsHeaders = {
@@ -24,75 +11,79 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    // Verificar que el llamador está autenticado (token del staff)
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
-      return new Response(JSON.stringify({ error: 'No autorizado' }), {
-        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
-    }
-
-    // Cliente con service_role para operaciones de admin
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
       { auth: { autoRefreshToken: false, persistSession: false } }
     );
 
-    // Verificar identidad del llamador (debe ser staff activo del colegio)
-    const userToken = authHeader.replace('Bearer ', '');
-    const { data: { user: caller }, error: callerError } = await supabaseAdmin.auth.getUser(userToken);
-    if (callerError || !caller) {
-      return new Response(JSON.stringify({ error: 'Token inválido' }), {
-        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
-    }
-
-    // Verificar que el caller es staff del colegio indicado
     const body = await req.json();
     const { email, password, colegioId, rolNuevo = 'apoderado', alumnoId = null } = body;
 
     if (!email || !password || !colegioId) {
-      return new Response(JSON.stringify({ error: 'Faltan parámetros: email, password, colegioId' }), {
+      return new Response(JSON.stringify({ error: 'Faltan parámetros' }), {
         status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
 
-    const { data: callerProfile } = await supabaseAdmin
-      .from('usuarios')
-      .select('rol, colegio_id')
-      .eq('id', caller.id)
-      .single();
+    const authHeader = req.headers.get('Authorization');
+    const token = authHeader?.replace('Bearer ', '');
 
-    if (!callerProfile || callerProfile.colegio_id !== colegioId) {
-      return new Response(JSON.stringify({ error: 'Sin permisos para este colegio' }), {
-        status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
+    if (token) {
+      // Staff autenticado creando cuenta → verificar permisos
+      const { data: { user: caller }, error: callerError } = await supabaseAdmin.auth.getUser(token);
+      if (callerError || !caller) {
+        return new Response(JSON.stringify({ error: 'Token inválido' }), {
+          status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+      const { data: callerProfile } = await supabaseAdmin
+        .from('usuarios').select('rol, colegio_id').eq('id', caller.id).single();
+      if (!callerProfile || callerProfile.colegio_id !== colegioId) {
+        return new Response(JSON.stringify({ error: 'Sin permisos' }), {
+          status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+      if (rolNuevo !== 'apoderado' && callerProfile.rol !== 'admin') {
+        return new Response(JSON.stringify({ error: 'Solo admin puede crear staff' }), {
+          status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+    } else {
+      // Sin token → solo se permite crear apoderados (self-registro primer login)
+      if (rolNuevo !== 'apoderado') {
+        return new Response(JSON.stringify({ error: 'No autorizado' }), {
+          status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+      // Verificar que el DNI existe en alumnos del colegio
+      const dni = email.split('@')[0];
+      const { data: alumno } = await supabaseAdmin
+        .from('alumnos')
+        .select('id')
+        .eq('colegio_id', colegioId)
+        .or(`dni_apoderado.eq.${dni},dni_apoderado2.eq.${dni}`)
+        .maybeSingle();
+      if (!alumno) {
+        return new Response(JSON.stringify({ error: 'DNI no encontrado' }), {
+          status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
     }
 
-    // Solo admin puede crear cuentas de staff. Staff puede crear apoderados.
-    if (rolNuevo !== 'apoderado' && callerProfile.rol !== 'admin') {
-      return new Response(JSON.stringify({ error: 'Solo admin puede crear cuentas de staff' }), {
-        status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
-    }
-
-    // Crear usuario en Supabase Auth con metadata
     const appMeta: Record<string, string> = { colegio_id: colegioId, rol: rolNuevo };
     if (rolNuevo === 'apoderado' && alumnoId) appMeta.alumno_id = alumnoId;
 
     const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
       email,
       password,
-      email_confirm: true,   // confirmar email automáticamente (no require link)
+      email_confirm: true,
       app_metadata: appMeta,
     });
 
     if (createError) {
-      // Traducir error "already exists" al código de Firebase para compatibilidad
       const code = createError.message.includes('already') || createError.message.includes('registered')
-        ? 'auth/email-already-in-use'
-        : 'auth/unknown';
+        ? 'auth/email-already-in-use' : 'auth/unknown';
       return new Response(JSON.stringify({ error: createError.message, code }), {
         status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
