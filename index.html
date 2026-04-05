@@ -5172,6 +5172,13 @@ function setTodayFilter() {
   document.getElementById('filter-hasta').value = hoyStr;
 }
 
+function onRegMesChange() {
+  // Al cambiar el mes se limpian las fechas (son del mes anterior) y se recarga
+  document.getElementById('filter-desde').value = '';
+  document.getElementById('filter-hasta').value = '';
+  renderRegistros();
+}
+
 async function limpiarFiltrosRegistro() {
   document.getElementById('filter-desde').value   = '';
   document.getElementById('filter-hasta').value   = '';
