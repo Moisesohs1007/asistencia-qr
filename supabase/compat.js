@@ -173,14 +173,10 @@ class _DocRef {
     if (this._col === 'config') return _setConfig(this._id, data, options);
     const row = _docToRow(data);
     row.id = this._id;
-    if (options.merge) {
-      // UPDATE solo los campos enviados
-      const { error } = await _sb.from(this._col).upsert(row, { onConflict: 'colegio_id,id' });
-      if (error) throw new Error(error.message);
-    } else {
-      const { error } = await _sb.from(this._col).upsert(row, { onConflict: 'colegio_id,id' });
-      if (error) throw new Error(error.message);
-    }
+    // apoderados usa alumno_id como FK histórica — siempre incluirlo
+    if (this._col === 'apoderados') row.alumno_id = this._id;
+    const { error } = await _sb.from(this._col).upsert(row, { onConflict: 'colegio_id,id' });
+    if (error) throw new Error(error.message);
   }
 
   async update(data) {
