@@ -462,17 +462,23 @@ function _mapUser(sbUser) {
     uid:   sbUser.id,
     email: sbUser.email,
     async getIdToken(forceRefresh) {
+      if (forceRefresh) {
+        const { data } = await _sb.auth.refreshSession();
+        return data?.session?.access_token || '';
+      }
       const { data: { session } } = await _sb.auth.getSession();
       return session?.access_token || '';
     },
     async updateProfile(profile) {
-      // displayName no es nativo en Supabase — ignorar o guardar en metadata
+      // displayName no es nativo en Supabase — ignorar
     },
     async reauthenticateWithCredential(cred) {
       const { error } = await _sb.auth.signInWithPassword({ email: cred.email, password: cred.pass });
       if (error) throw { code: 'auth/wrong-password', message: error.message };
     },
     async updatePassword(newPass) {
+      // Refrescar sesión antes de actualizar para evitar "Auth session missing"
+      await _sb.auth.refreshSession();
       const { error } = await _sb.auth.updateUser({ password: newPass });
       if (error) throw { code: 'auth/update-failed', message: error.message };
     },
