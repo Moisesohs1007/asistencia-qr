@@ -66,13 +66,13 @@ Deno.serve(async (req: Request) => {
           status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
       }
-      // Verificar que el DNI existe en alumnos del colegio
+      // Verificar que el DNI existe como alumno del colegio
       const dni = email.split('@')[0];
       const { data: alumno } = await supabaseAdmin
         .from('alumnos')
         .select('id')
         .eq('colegio_id', colegioId)
-        .or(`dni_apoderado.eq.${dni},dni_apoderado2.eq.${dni}`)
+        .eq('dni', dni)
         .maybeSingle();
       if (!alumno) {
         return new Response(JSON.stringify({ error: 'DNI no encontrado' }), {
