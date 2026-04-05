@@ -2014,7 +2014,6 @@
       <svg class="drop-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
       <div class="nav-dropdown" id="drop-aula">
         <div class="nav-drop-item" id="tab-alumnos" onclick="event.stopPropagation();showSection('alumnos');closeNavDrops()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>Alumnos</div>
-        <div class="nav-drop-item" id="tab-usuarios" onclick="event.stopPropagation();showSection('usuarios');closeNavDrops()" style="display:none;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Usuarios</div>
         <div class="nav-drop-sep"></div>
         <div class="nav-drop-item" onclick="event.stopPropagation();showSection('incidentes');closeNavDrops()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>Incidentes</div>
       </div>
@@ -2037,6 +2036,7 @@
       <svg class="drop-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
       <div class="nav-dropdown" id="drop-config">
         <div class="nav-drop-item" onclick="event.stopPropagation();showSection('config');closeNavDrops();if(typeof onShowConfig==='function')onShowConfig();"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/></svg>General</div>
+        <div class="nav-drop-item" id="tab-usuarios" onclick="event.stopPropagation();showSection('usuarios');closeNavDrops()" style="display:none;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Usuarios</div>
       </div>
     </button>
     <!-- Tabs ocultos para compatibilidad con aplicarPermisos -->
@@ -5176,7 +5176,7 @@ function onRegMesChange() {
   // Al cambiar el mes se limpian las fechas (son del mes anterior) y se recarga
   document.getElementById('filter-desde').value = '';
   document.getElementById('filter-hasta').value = '';
-  renderRegistros();
+  renderRegistro();
 }
 
 async function limpiarFiltrosRegistro() {
