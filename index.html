@@ -3125,69 +3125,44 @@ function getLogo() {
 }
 
 // ============================================================
-// ORDENAMIENTO ESTÁNDAR: grado (menor→mayor) → sección → apellido asc → nombre asc
-// Aplica en visualización, PDF y Excel cuando hay filtro de nivel/todos los grados
+// ORDENAMIENTO ESTÁNDAR: nivel → grado (numérico) → sección → apellido
 // ============================================================
-async function _buildGradoIdx() {
-  const cfg = await getConfig();
-  const ordenNiveles = (cfg.niveles || []).map(n => n.nombre);
-  const gradosCfg    = cfg.grados || {};
-  const idx = {};
-  ordenNiveles.forEach((niv, ni) => {
-    (gradosCfg[niv] || []).forEach((g, gi) => { idx[g] = { ni, gi }; });
-  });
-  return idx;
+const _NIVEL_ORDEN = { 'Inicial': 0, 'Primaria': 1, 'Secundaria': 2 };
+
+function _nivelIdx(turno) {
+  return _NIVEL_ORDEN[turno] !== undefined ? _NIVEL_ORDEN[turno] : 99;
 }
 
-// Orden de nivel para fallback (cuando gradoIdx no cubre el turno)
-const _ORDEN_NIVEL_DEFAULT = ['Inicial','Primaria','Secundaria'];
-
-// Comparar dos valores de grado con sort numérico natural: "3 años" < "4 años" < "10mo" < "11mo"
-function _cmpGrado(ga, gb) {
-  return (ga||'').localeCompare(gb||'', undefined, { numeric: true, sensitivity: 'base' });
+// Extrae el primer número de un string: "3 años"→3, "10mo"→10, "1er"→1
+function _gradoNum(g) {
+  const m = (g||'').match(/\d+/);
+  return m ? parseInt(m[0], 10) : 999;
 }
 
-// Comparador para filas con campo `nombre` = "APELLIDOS NOMBRES" (registros)
-function _cmpFilaReporte(a, b, gradoIdx) {
-  const ia = gradoIdx[a.grado];
-  const ib = gradoIdx[b.grado];
-  if(ia && ib) {
-    if(ia.ni !== ib.ni) return ia.ni - ib.ni;
-    if(ia.gi !== ib.gi) return ia.gi - ib.gi;
-  } else {
-    // fallback: comparar nivel por nombre, luego grado con sort numérico
-    const na = _ORDEN_NIVEL_DEFAULT.indexOf(a.turno||'');
-    const nb = _ORDEN_NIVEL_DEFAULT.indexOf(b.turno||'');
-    const nd = (na < 0 ? 99 : na) - (nb < 0 ? 99 : nb);
-    if(nd !== 0) return nd;
-    const gc = _cmpGrado(a.grado, b.grado);
-    if(gc !== 0) return gc;
-  }
+// Comparador principal: nivel → grado numérico → sección → nombre/apellido
+function _cmpFilaReporte(a, b) {
+  const nd = _nivelIdx(a.turno) - _nivelIdx(b.turno);
+  if(nd !== 0) return nd;
+  const gd = _gradoNum(a.grado) - _gradoNum(b.grado);
+  if(gd !== 0) return gd;
   const sc = (a.seccion||'').localeCompare(b.seccion||'');
   if(sc !== 0) return sc;
-  return (a.nombre||'').localeCompare(b.nombre||''); // nombre = "APELLIDOS NOMBRES"
+  return (a.nombre||'').localeCompare(b.nombre||'');
 }
-// Comparador para objetos alumno con campos `apellidos` y `nombres` separados
-function _cmpAlumnoReporte(a, b, gradoIdx) {
-  const ia = gradoIdx[a.grado];
-  const ib = gradoIdx[b.grado];
-  if(ia && ib) {
-    if(ia.ni !== ib.ni) return ia.ni - ib.ni;
-    if(ia.gi !== ib.gi) return ia.gi - ib.gi;
-  } else {
-    const na = _ORDEN_NIVEL_DEFAULT.indexOf(a.turno||'');
-    const nb = _ORDEN_NIVEL_DEFAULT.indexOf(b.turno||'');
-    const nd = (na < 0 ? 99 : na) - (nb < 0 ? 99 : nb);
-    if(nd !== 0) return nd;
-    const gc = _cmpGrado(a.grado, b.grado);
-    if(gc !== 0) return gc;
-  }
+
+function _cmpAlumnoReporte(a, b) {
+  const nd = _nivelIdx(a.turno) - _nivelIdx(b.turno);
+  if(nd !== 0) return nd;
+  const gd = _gradoNum(a.grado) - _gradoNum(b.grado);
+  if(gd !== 0) return gd;
   const sc = (a.seccion||'').localeCompare(b.seccion||'');
   if(sc !== 0) return sc;
   const ap = (a.apellidos||'').localeCompare(b.apellidos||'');
   if(ap !== 0) return ap;
   return (a.nombres||'').localeCompare(b.nombres||'');
 }
+
+async function _buildGradoIdx() { return {}; } // mantenido por compatibilidad
 
 // Aplica nombre, eslogan y logo del colegio en toda la app
 // COLEGIO_NOMBRE, COLEGIO_ESLOGAN y COLEGIO_LOGO vienen SOLO de compat.js — no se sobreescriben desde BD
