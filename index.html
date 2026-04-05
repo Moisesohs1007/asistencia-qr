@@ -1707,9 +1707,6 @@
       <button class="msb-subitem" onclick="msbPickSub(this,'alumnos','aula','👥 Alumnos')">
         <div class="msb-dot"><span></span></div><span class="msb-sublabel">Alumnos</span>
       </button>
-      <button class="msb-subitem" id="msb-sub-usuarios" onclick="msbPickSub(this,'usuarios','aula','👤 Usuarios')">
-        <div class="msb-dot"><span></span></div><span class="msb-sublabel">Usuarios</span>
-      </button>
       <button class="msb-subitem" onclick="msbPickSub(this,'incidentes','aula','🚨 Incidentes')">
         <div class="msb-dot"><span></span></div><span class="msb-sublabel">Incidentes</span>
       </button>
@@ -1732,7 +1729,7 @@
     </div>
 
     <!-- Configuración -->
-    <button class="msb-item" id="msb-btn-config" onclick="msbPickDirect(this,'config','⚙️ Configuración')">
+    <button class="msb-item" id="msb-btn-config" onclick="msbToggleSub('config')">
       <div class="msb-icon">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <circle cx="12" cy="12" r="3"/>
@@ -1740,7 +1737,16 @@
         </svg>
       </div>
       <span class="msb-label">Configuración</span>
+      <span class="msb-arrow">›</span>
     </button>
+    <div class="msb-sub" id="msb-sub-config">
+      <button class="msb-subitem" onclick="msbPickSub(this,'config','config','⚙️ General');if(typeof onShowConfig==='function')onShowConfig();">
+        <div class="msb-dot"><span></span></div><span class="msb-sublabel">General</span>
+      </button>
+      <button class="msb-subitem" id="msb-sub-usuarios" onclick="msbPickSub(this,'usuarios','config','👤 Usuarios')">
+        <div class="msb-dot"><span></span></div><span class="msb-sublabel">Usuarios</span>
+      </button>
+    </div>
 
   </div>
 
