@@ -375,7 +375,7 @@ const firebase = {
   }),
   initializeApp: (_config, name) => {
     // Usado para crear usuarios con app secundaria — delegar a Edge Function
-    return { auth: () => new _SecondaryAuth() };
+    return { auth: () => new _SecondaryAuth(), delete: async () => {} };
   },
   storage: () => ({
     ref: (path) => new _StorageRef(path),
