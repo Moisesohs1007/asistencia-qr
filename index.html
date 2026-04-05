@@ -3098,21 +3098,8 @@ const LOGO_B64 = 'img/logo-colegio.png';
 
 // Logo activo: usa el subido en config si existe, si no el hardcodeado
 // ═══════════════════════════════════════════════════════
-// ╔══════════════════════════════════════════════════════════════╗
-// ║  CONFIGURACIÓN DEL COLEGIO — EDITAR SOLO ESTAS 4 LÍNEAS    ║
-// ║  El cambio se aplica automáticamente en TODA la app:        ║
-// ║  header, login, reportes, PDFs, Excel, WhatsApp, incidentes ║
-// ║                                                              ║
-// ║  1. COLEGIO_NOMBRE  → nombre completo del colegio           ║
-// ║  2. COLEGIO_ESLOGAN → eslogan (o '' si no tiene)            ║
-// ║  3. COLEGIO_LOGO    → ruta de la imagen de la insignia      ║
-// ║     Para cambiar el logo: reemplaza img/logo-colegio.png    ║
-// ║  4. COLEGIO_ANIO    → año escolar actual                    ║
-// ╚══════════════════════════════════════════════════════════════╝
-let COLEGIO_NOMBRE  = 'Institución Educativa "SANTO DOMINGO DE GUZMAN"';
-let COLEGIO_ESLOGAN = '"SER SANTO DOMINGUINO ES, SER EL MEJOR"';
-let COLEGIO_LOGO    = 'img/logo-colegio.png';
-let COLEGIO_ANIO    = '2026';
+// Nombre, eslogan y logo vienen de compat.js (editar solo ahí)
+// COLEGIO_NOMBRE, COLEGIO_ESLOGAN, COLEGIO_LOGO, COLEGIO_ANIO ya están definidos
 // Dominio virtual de apoderados — cambiar aquí si se despliega en otro colegio
 // IMPORTANTE: también actualizar firestore.rules (función esEmailApoderado e isApoderado)
 const APO_DOMAIN      = '@apo.marello.pe';

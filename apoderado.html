@@ -660,12 +660,7 @@
 <script src="db_supabase.js"></script>
 <script>
 
-// ── Datos del colegio (fuente única de verdad) ──
-var COLEGIO_NOMBRE  = 'Institución Educativa "SANTO DOMINGO DE GUZMAN"';
-var COLEGIO_ESLOGAN = '"SER SANTO DOMINGUINO ES, SER EL MEJOR"';
-// Dominio virtual de apoderados — cambiar aquí si se despliega en otro colegio
-// IMPORTANTE: también actualizar firestore.rules (función esEmailApoderado e isApoderado)
-var APO_DOMAIN      = '@apo.marello.pe';
+// Nombre, eslogan, logo y APO_DOMAIN vienen de compat.js (editar solo ahí)
 
 var alumno    = null;
 var apoData   = {};
