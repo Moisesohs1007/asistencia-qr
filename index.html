@@ -1682,8 +1682,8 @@
       <button class="msb-subitem" onclick="msbPickSub(this,'scan','asistencia','📷 Escanear QR')">
         <div class="msb-dot"><span></span></div><span class="msb-sublabel">Escanear QR</span>
       </button>
-      <button class="msb-subitem" onclick="msbPickSub(this,'registro','asistencia','📋 Registro del día')">
-        <div class="msb-dot"><span></span></div><span class="msb-sublabel">Registro del día</span>
+      <button class="msb-subitem" onclick="msbPickSub(this,'registro','asistencia','📋 Registro de asistencia')">
+        <div class="msb-dot"><span></span></div><span class="msb-sublabel">Registro de asistencia</span>
       </button>
       <button class="msb-subitem" onclick="msbPickSub(this,'reportes','asistencia','📊 Reportes')">
         <div class="msb-dot"><span></span></div><span class="msb-sublabel">Reportes</span>
@@ -2003,7 +2003,7 @@
       <svg class="drop-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
       <div class="nav-dropdown" id="drop-asistencia">
         <div class="nav-drop-item" onclick="event.stopPropagation();showSection('scan');closeNavDrops()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>Escanear QR</div>
-        <div class="nav-drop-item" onclick="event.stopPropagation();showSection('registro');closeNavDrops()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Registro del día</div>
+        <div class="nav-drop-item" onclick="event.stopPropagation();showSection('registro');closeNavDrops()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Registro de asistencia</div>
         <div class="nav-drop-item" onclick="event.stopPropagation();showSection('reportes');closeNavDrops()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>Reportes</div>
       </div>
     </button>
@@ -9647,7 +9647,7 @@ function msbSetActive(sectionId) {
   if(!msbIsMobile()) return;
   // Actualizar el topbar con la sección activa
   const sectionLabels = {
-    inicio: '🏠 Inicio', scan: '📷 Escanear QR', registro: '📋 Registro del día',
+    inicio: '🏠 Inicio', scan: '📷 Escanear QR', registro: '📋 Registro de asistencia',
     reportes: '📊 Reportes', alumnos: '👥 Alumnos', usuarios: '👤 Usuarios',
     incidentes: '🚨 Incidentes', mensajes: '💬 Mensajes',
     config: '⚙️ Configuración',
@@ -9726,7 +9726,7 @@ function renderBottomNav() {
     { id: 'inicio', icon: '🏠', label: 'Inicio', action: () => { showSection('inicio'); closeMobileMenu(); } },
     { id: 'asistencia', icon: '✅', label: 'Asistencia', sub: [
       { id: 'scan',      icon: '📷', label: 'Escanear QR' },
-      { id: 'registro',  icon: '📋', label: 'Registro del día' },
+      { id: 'registro',  icon: '📋', label: 'Registro de asistencia' },
       { id: 'reportes',  icon: '📊', label: 'Reportes' },
     ]},
     { id: 'aula', icon: '👥', label: 'Aula', sub: [
