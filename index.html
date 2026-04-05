@@ -1971,7 +1971,7 @@
   <!-- IZQUIERDA: logo + menú -->
   <div style="display:flex;align-items:center;gap:0;flex:1;min-width:0;">
     <div style="display:flex;align-items:center;gap:10px;padding-right:16px;flex-shrink:0;">
-      <img src="img/logo-colegio.png" style="width:38px;height:38px;object-fit:contain;" alt="Insignia">
+      <img src="img/logo-colegio.png" style="width:28px;height:28px;object-fit:contain;" alt="Insignia">
       <div class="logo" style="font-size:0.75rem;white-space:nowrap;max-width:180px;line-height:1.2;">I.E.P.<span> "Santo Domingo de Guzmán"</span></div>
     </div>
   </div>
@@ -2420,20 +2420,54 @@
       </div>
     </div>
 
-    <!-- Inputs ocultos para compatibilidad con código existente -->
-    <input type="hidden" id="cfg-nombre-colegio">
+    <!-- Inputs ocultos para compatibilidad -->
     <input type="hidden" id="cfg-anio">
     <input type="hidden" id="cfg-telefono-colegio">
     <input type="hidden" id="cfg-direccion-colegio">
     <input type="hidden" id="cfg-email-colegio">
     <input type="hidden" id="cfg-horario-colegio">
-    <input type="hidden" id="cfg-logo-input">
     <span style="display:none;" id="cfg-logo-placeholder"></span>
     <button style="display:none;" id="cfg-logo-eliminar-btn"></button>
-    <div style="display:none;" id="cfg-logo-status"></div>
-    <img id="cfg-logo-preview" src="" style="display:none;">
     <div style="display:none;" id="cfg-nombre-display"></div>
     <div style="display:none;" id="cfg-anio-display"></div>
+
+    <!-- ═══ INFORMACIÓN DEL COLEGIO ═══ -->
+    <div class="card" style="margin-bottom:20px;padding:20px 24px;">
+      <div style="font-family:var(--font-display);font-size:1rem;font-weight:700;margin-bottom:4px;color:var(--accent);">🏫 Información del Colegio</div>
+      <div style="color:var(--muted);font-size:0.82rem;margin-bottom:16px;">El nombre, eslogan e insignia se aplicarán en toda la app: reportes, WhatsApp, PDFs y pantalla de inicio.</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
+        <div>
+          <label style="display:block;font-size:0.78rem;font-weight:600;color:var(--muted);margin-bottom:6px;text-transform:uppercase;">Nombre del colegio</label>
+          <input type="text" id="cfg-nombre-colegio" placeholder="Ej: Institución Educativa..." style="width:100%;background:var(--surface-2,#1e293b);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px 12px;font-size:0.85rem;">
+        </div>
+        <div>
+          <label style="display:block;font-size:0.78rem;font-weight:600;color:var(--muted);margin-bottom:6px;text-transform:uppercase;">Eslogan <span style="font-weight:400;">(opcional)</span></label>
+          <input type="text" id="cfg-eslogan-colegio" placeholder='Ej: "Ser el mejor..."' style="width:100%;background:var(--surface-2,#1e293b);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px 12px;font-size:0.85rem;">
+        </div>
+      </div>
+      <button class="btn btn-primary" onclick="guardarInfoColegio()" style="font-size:0.82rem;margin-bottom:20px;">💾 Guardar nombre y eslogan</button>
+
+      <div style="border-top:1px solid var(--border);padding-top:16px;margin-top:4px;">
+        <div style="font-size:0.85rem;font-weight:600;margin-bottom:10px;">Insignia / Logo</div>
+        <div style="display:flex;align-items:center;gap:16px;">
+          <img id="cfg-logo-preview" src="img/logo-colegio.png" style="width:64px;height:64px;object-fit:contain;border-radius:8px;border:1px solid var(--border);background:#fff;padding:4px;">
+          <div>
+            <label style="cursor:pointer;">
+              <input type="file" id="cfg-logo-input" accept="image/*" style="display:none;" onchange="
+                var f=this.files[0];if(!f)return;
+                var r=new FileReader();r.onload=function(e){
+                  var p=document.getElementById('cfg-logo-preview');if(p)p.src=e.target.result;
+                  document.getElementById('cfg-logo-status').textContent='✔ Lista para guardar';
+                };r.readAsDataURL(f);">
+              <span class="btn" style="font-size:0.82rem;">📁 Seleccionar imagen</span>
+            </label>
+            <button class="btn btn-primary" onclick="guardarLogo()" style="font-size:0.82rem;margin-left:8px;">💾 Subir insignia</button>
+            <div id="cfg-logo-status" style="font-size:0.75rem;color:var(--muted);margin-top:6px;"></div>
+            <div style="font-size:0.72rem;color:var(--muted);margin-top:4px;">Formato PNG o JPG recomendado. Dimensión: 200×200 px.</div>
+          </div>
+        </div>
+      </div>
+    </div>
 
     <!-- Niveles y horarios -->
     <div class="card" style="margin-bottom:20px;padding:20px 24px;">
@@ -3105,16 +3139,52 @@ const LOGO_B64 = 'img/logo-colegio.png';
 // ║     (ese archivo también se usa como ícono del sistema)     ║
 // ║  3. Actualiza el mismo COLEGIO_NOMBRE en apoderado.html     ║
 // ╚══════════════════════════════════════════════════════════════╝
-const COLEGIO_NOMBRE  = 'Institución Educativa "SANTO DOMINGO DE GUZMAN"';
-const COLEGIO_ANIO    = '2026';
-const COLEGIO_ESLOGAN = '"SER SANTO DOMINGUINO ES, SER EL MEJOR"';
-const COLEGIO_LOGO    = 'img/logo-colegio.png';
+let COLEGIO_NOMBRE  = 'Institución Educativa "SANTO DOMINGO DE GUZMAN"';
+let COLEGIO_ANIO    = '2026';
+let COLEGIO_ESLOGAN = '"SER SANTO DOMINGUINO ES, SER EL MEJOR"';
+let COLEGIO_LOGO    = 'img/logo-colegio.png';
 // Dominio virtual de apoderados — cambiar aquí si se despliega en otro colegio
 // IMPORTANTE: también actualizar firestore.rules (función esEmailApoderado e isApoderado)
 const APO_DOMAIN      = '@apo.marello.pe';
 
 function getLogo() {
   return COLEGIO_LOGO;
+}
+
+// Aplica nombre, eslogan y logo del colegio en toda la app
+function _aplicarConfigColegio(cfg) {
+  if (!cfg) return;
+  if (cfg.nombreColegio) COLEGIO_NOMBRE = cfg.nombreColegio;
+  if (cfg.eslogan)       COLEGIO_ESLOGAN = cfg.eslogan;
+  if (cfg.logoUrl)       { COLEGIO_LOGO = cfg.logoUrl; _logoB64 = null; }
+
+  // Header: logo + nombre
+  const headerImg = document.querySelector('#app-header img[alt="Insignia"]');
+  if (headerImg && cfg.logoUrl) headerImg.src = cfg.logoUrl;
+  const headerTxt = document.querySelector('#app-header .logo');
+  if (headerTxt) {
+    const partes = COLEGIO_NOMBRE.match(/^(Institución Educativa|I\.E\.P\.?|I\.E\.)\s+(.+)$/i);
+    headerTxt.innerHTML = partes
+      ? `I.E.P.<span> "${partes[2].replace(/^["']+|["']+$/g,'')}"</span>`
+      : COLEGIO_NOMBRE;
+  }
+  // Login
+  const loginImg = document.getElementById('login-img-colegio');
+  if (loginImg && cfg.logoUrl) loginImg.src = cfg.logoUrl;
+  // Sidebar móvil
+  const msbImg = document.getElementById('msb-logo-img');
+  if (msbImg && cfg.logoUrl) msbImg.src = cfg.logoUrl;
+  const msbName = document.getElementById('msb-school-name');
+  if (msbName) msbName.textContent = COLEGIO_NOMBRE;
+  // Login título y eslogan
+  cargarInfoColegioLogin();
+  // Campos de configuración visibles
+  const cfgNombre = document.getElementById('cfg-nombre-colegio');
+  if (cfgNombre && cfgNombre.type !== 'hidden') cfgNombre.value = COLEGIO_NOMBRE;
+  const cfgEslogan = document.getElementById('cfg-eslogan-colegio');
+  if (cfgEslogan) cfgEslogan.value = COLEGIO_ESLOGAN;
+  const cfgLogoPreview = document.getElementById('cfg-logo-preview');
+  if (cfgLogoPreview && cfg.logoUrl) { cfgLogoPreview.src = cfg.logoUrl; cfgLogoPreview.style.display = 'block'; }
 }
 const firebaseConfig = {
   apiKey: "AIzaSyBLI0I41vWjMK2q1ZjH1c1BK4SAFno7sfY",
@@ -8143,7 +8213,7 @@ async function getConfig() {
   if(configCache) return configCache;
   // Intentar desde localStorage
   const lsConfig = LSC.get('config');
-  if(lsConfig) { configCache = lsConfig; return configCache; }
+  if(lsConfig) { configCache = lsConfig; _aplicarConfigColegio(configCache); return configCache; }
   try {
     const doc = await db.collection('config').doc('general').get();
     configCache = doc.exists ? { ...CONFIG_DEFAULTS, ...doc.data() } : { ...CONFIG_DEFAULTS };
@@ -8151,6 +8221,7 @@ async function getConfig() {
   } catch(e) {
     configCache = { ...CONFIG_DEFAULTS };
   }
+  _aplicarConfigColegio(configCache);
   return configCache;
 }
 
@@ -8439,14 +8510,50 @@ function previsualizarLogo(input) {
 }
 
 async function guardarLogo() {
-  toast('La insignia está fijada en el código fuente. Edita COLEGIO_LOGO en index.html','info');
+  const fileInput = document.getElementById('cfg-logo-input');
+  const file = fileInput?.files?.[0];
+  if (!file) { toast('Selecciona una imagen primero','warning'); return; }
+  try {
+    toast('Subiendo insignia...','info');
+    const path = `${window.COLEGIO_ID}/logo-colegio.png`;
+    await _sbStorage.upload('logos', path, file, file.type || 'image/png');
+    const { data: pubData } = _sb.storage.from('logos').getPublicUrl(path);
+    const logoUrl = pubData.publicUrl + '?t=' + Date.now();
+    await db.collection('config').doc('general').set({ logoUrl }, { merge: true });
+    invalidateConfig();
+    _aplicarConfigColegio({ logoUrl });
+    toast('Insignia actualizada correctamente','success');
+  } catch(e) {
+    toast('Error al subir insignia: ' + e.message,'error');
+  }
 }
 async function eliminarLogo() {
-  toast('La insignia está fijada en el código fuente','info');
+  try {
+    const path = `${window.COLEGIO_ID}/logo-colegio.png`;
+    await _sbStorage.remove('logos', path);
+    await db.collection('config').doc('general').set({ logoUrl: '' }, { merge: true });
+    invalidateConfig();
+    _aplicarConfigColegio({ logoUrl: 'img/logo-colegio.png' });
+    toast('Insignia eliminada','success');
+  } catch(e) {
+    toast('Error: ' + e.message,'error');
+  }
 }
 
 async function guardarInfoColegio() {
-  toast("Nombre e insignia están fijados en el código fuente","info");
+  const nombreEl  = document.getElementById('cfg-nombre-colegio');
+  const esloganEl = document.getElementById('cfg-eslogan-colegio');
+  const nombre  = nombreEl?.value?.trim();
+  const eslogan = esloganEl?.value?.trim() || '';
+  if (!nombre) { toast('Ingresa el nombre del colegio','warning'); return; }
+  try {
+    await db.collection('config').doc('general').set({ nombreColegio: nombre, eslogan }, { merge: true });
+    invalidateConfig();
+    _aplicarConfigColegio({ nombreColegio: nombre, eslogan });
+    toast('Información del colegio actualizada','success');
+  } catch(e) {
+    toast('Error: ' + e.message,'error');
+  }
 }
 
 async function guardarHorarios() {
