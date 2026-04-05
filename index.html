@@ -2421,53 +2421,20 @@
     </div>
 
     <!-- Inputs ocultos para compatibilidad -->
+    <input type="hidden" id="cfg-nombre-colegio">
     <input type="hidden" id="cfg-anio">
     <input type="hidden" id="cfg-telefono-colegio">
     <input type="hidden" id="cfg-direccion-colegio">
     <input type="hidden" id="cfg-email-colegio">
     <input type="hidden" id="cfg-horario-colegio">
+    <input type="hidden" id="cfg-logo-input">
+    <input type="hidden" id="cfg-eslogan-colegio">
     <span style="display:none;" id="cfg-logo-placeholder"></span>
     <button style="display:none;" id="cfg-logo-eliminar-btn"></button>
+    <div style="display:none;" id="cfg-logo-status"></div>
+    <img id="cfg-logo-preview" src="" style="display:none;">
     <div style="display:none;" id="cfg-nombre-display"></div>
     <div style="display:none;" id="cfg-anio-display"></div>
-
-    <!-- ═══ INFORMACIÓN DEL COLEGIO ═══ -->
-    <div class="card" style="margin-bottom:20px;padding:20px 24px;">
-      <div style="font-family:var(--font-display);font-size:1rem;font-weight:700;margin-bottom:4px;color:var(--accent);">🏫 Información del Colegio</div>
-      <div style="color:var(--muted);font-size:0.82rem;margin-bottom:16px;">El nombre, eslogan e insignia se aplicarán en toda la app: reportes, WhatsApp, PDFs y pantalla de inicio.</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
-        <div>
-          <label style="display:block;font-size:0.78rem;font-weight:600;color:var(--muted);margin-bottom:6px;text-transform:uppercase;">Nombre del colegio</label>
-          <input type="text" id="cfg-nombre-colegio" placeholder="Ej: Institución Educativa..." style="width:100%;background:var(--surface-2,#1e293b);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px 12px;font-size:0.85rem;">
-        </div>
-        <div>
-          <label style="display:block;font-size:0.78rem;font-weight:600;color:var(--muted);margin-bottom:6px;text-transform:uppercase;">Eslogan <span style="font-weight:400;">(opcional)</span></label>
-          <input type="text" id="cfg-eslogan-colegio" placeholder='Ej: "Ser el mejor..."' style="width:100%;background:var(--surface-2,#1e293b);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px 12px;font-size:0.85rem;">
-        </div>
-      </div>
-      <button class="btn btn-primary" onclick="guardarInfoColegio()" style="font-size:0.82rem;margin-bottom:20px;">💾 Guardar nombre y eslogan</button>
-
-      <div style="border-top:1px solid var(--border);padding-top:16px;margin-top:4px;">
-        <div style="font-size:0.85rem;font-weight:600;margin-bottom:10px;">Insignia / Logo</div>
-        <div style="display:flex;align-items:center;gap:16px;">
-          <img id="cfg-logo-preview" src="img/logo-colegio.png" style="width:64px;height:64px;object-fit:contain;border-radius:8px;border:1px solid var(--border);background:#fff;padding:4px;">
-          <div>
-            <label style="cursor:pointer;">
-              <input type="file" id="cfg-logo-input" accept="image/*" style="display:none;" onchange="
-                var f=this.files[0];if(!f)return;
-                var r=new FileReader();r.onload=function(e){
-                  var p=document.getElementById('cfg-logo-preview');if(p)p.src=e.target.result;
-                  document.getElementById('cfg-logo-status').textContent='✔ Lista para guardar';
-                };r.readAsDataURL(f);">
-              <span class="btn" style="font-size:0.82rem;">📁 Seleccionar imagen</span>
-            </label>
-            <button class="btn btn-primary" onclick="guardarLogo()" style="font-size:0.82rem;margin-left:8px;">💾 Subir insignia</button>
-            <div id="cfg-logo-status" style="font-size:0.75rem;color:var(--muted);margin-top:6px;"></div>
-            <div style="font-size:0.72rem;color:var(--muted);margin-top:4px;">Formato PNG o JPG recomendado. Dimensión: 200×200 px.</div>
-          </div>
-        </div>
-      </div>
-    </div>
 
     <!-- Niveles y horarios -->
     <div class="card" style="margin-bottom:20px;padding:20px 24px;">
@@ -3132,17 +3099,20 @@ const LOGO_B64 = 'img/logo-colegio.png';
 // Logo activo: usa el subido en config si existe, si no el hardcodeado
 // ═══════════════════════════════════════════════════════
 // ╔══════════════════════════════════════════════════════════════╗
-// ║  CONFIGURACIÓN DEL COLEGIO — editar solo aquí               ║
-// ║  Para cambiar de colegio:                                   ║
-// ║  1. Cambia COLEGIO_NOMBRE y COLEGIO_ESLOGAN                 ║
-// ║  2. Reemplaza img/logo-colegio.png con el nuevo logo        ║
-// ║     (ese archivo también se usa como ícono del sistema)     ║
-// ║  3. Actualiza el mismo COLEGIO_NOMBRE en apoderado.html     ║
+// ║  CONFIGURACIÓN DEL COLEGIO — EDITAR SOLO ESTAS 4 LÍNEAS    ║
+// ║  El cambio se aplica automáticamente en TODA la app:        ║
+// ║  header, login, reportes, PDFs, Excel, WhatsApp, incidentes ║
+// ║                                                              ║
+// ║  1. COLEGIO_NOMBRE  → nombre completo del colegio           ║
+// ║  2. COLEGIO_ESLOGAN → eslogan (o '' si no tiene)            ║
+// ║  3. COLEGIO_LOGO    → ruta de la imagen de la insignia      ║
+// ║     Para cambiar el logo: reemplaza img/logo-colegio.png    ║
+// ║  4. COLEGIO_ANIO    → año escolar actual                    ║
 // ╚══════════════════════════════════════════════════════════════╝
 let COLEGIO_NOMBRE  = 'Institución Educativa "SANTO DOMINGO DE GUZMAN"';
-let COLEGIO_ANIO    = '2026';
 let COLEGIO_ESLOGAN = '"SER SANTO DOMINGUINO ES, SER EL MEJOR"';
 let COLEGIO_LOGO    = 'img/logo-colegio.png';
+let COLEGIO_ANIO    = '2026';
 // Dominio virtual de apoderados — cambiar aquí si se despliega en otro colegio
 // IMPORTANTE: también actualizar firestore.rules (función esEmailApoderado e isApoderado)
 const APO_DOMAIN      = '@apo.marello.pe';
@@ -3362,6 +3332,8 @@ function cargarInfoColegioLogin() {
   if(esloganEl) esloganEl.textContent = COLEGIO_ESLOGAN;
 }
 cargarInfoColegioLogin();
+// Aplicar nombre/logo en header, sidebar, etc. con los valores del código
+_aplicarConfigColegio({ nombreColegio: COLEGIO_NOMBRE, eslogan: COLEGIO_ESLOGAN, logoUrl: COLEGIO_LOGO });
 
 // ── Banner login ──
 var _bannerCurrent = 0;
@@ -8510,50 +8482,13 @@ function previsualizarLogo(input) {
 }
 
 async function guardarLogo() {
-  const fileInput = document.getElementById('cfg-logo-input');
-  const file = fileInput?.files?.[0];
-  if (!file) { toast('Selecciona una imagen primero','warning'); return; }
-  try {
-    toast('Subiendo insignia...','info');
-    const path = `${window.COLEGIO_ID}/logo-colegio.png`;
-    await _sbStorage.upload('logos', path, file, file.type || 'image/png');
-    const { data: pubData } = _sb.storage.from('logos').getPublicUrl(path);
-    const logoUrl = pubData.publicUrl + '?t=' + Date.now();
-    await db.collection('config').doc('general').set({ logoUrl }, { merge: true });
-    invalidateConfig();
-    _aplicarConfigColegio({ logoUrl });
-    toast('Insignia actualizada correctamente','success');
-  } catch(e) {
-    toast('Error al subir insignia: ' + e.message,'error');
-  }
+  toast('Para cambiar la insignia: reemplaza el archivo img/logo-colegio.png y actualiza COLEGIO_LOGO en el código','info');
 }
 async function eliminarLogo() {
-  try {
-    const path = `${window.COLEGIO_ID}/logo-colegio.png`;
-    await _sbStorage.remove('logos', path);
-    await db.collection('config').doc('general').set({ logoUrl: '' }, { merge: true });
-    invalidateConfig();
-    _aplicarConfigColegio({ logoUrl: 'img/logo-colegio.png' });
-    toast('Insignia eliminada','success');
-  } catch(e) {
-    toast('Error: ' + e.message,'error');
-  }
+  toast('Para cambiar la insignia: reemplaza el archivo img/logo-colegio.png','info');
 }
-
 async function guardarInfoColegio() {
-  const nombreEl  = document.getElementById('cfg-nombre-colegio');
-  const esloganEl = document.getElementById('cfg-eslogan-colegio');
-  const nombre  = nombreEl?.value?.trim();
-  const eslogan = esloganEl?.value?.trim() || '';
-  if (!nombre) { toast('Ingresa el nombre del colegio','warning'); return; }
-  try {
-    await db.collection('config').doc('general').set({ nombreColegio: nombre, eslogan }, { merge: true });
-    invalidateConfig();
-    _aplicarConfigColegio({ nombreColegio: nombre, eslogan });
-    toast('Información del colegio actualizada','success');
-  } catch(e) {
-    toast('Error: ' + e.message,'error');
-  }
+  toast('Para cambiar nombre o eslogan: edita COLEGIO_NOMBRE y COLEGIO_ESLOGAN en el código','info');
 }
 
 async function guardarHorarios() {
