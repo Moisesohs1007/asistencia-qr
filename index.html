@@ -4200,8 +4200,8 @@ document.addEventListener('click', function(e) {
 function showSection(id) {
   try { sessionStorage.setItem('asmqr_lastSection', id); } catch(e) {}
   showSectionDirect(id);
-  // Guardar pestaña activa
   try { localStorage.setItem('asmqr_lastTab', id); } catch(e) {}
+  if(id === 'inicio') cargarDashboardInicio();
 }
 
 // ============================================================
