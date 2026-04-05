@@ -2405,6 +2405,15 @@
 
   <!-- ===== CONFIGURACION ===== -->
   <div class="section" id="sec-config">
+    <!-- Encabezado del colegio -->
+    <div style="display:flex;align-items:center;gap:18px;padding:14px 0 18px 0;border-bottom:1px solid rgba(255,255,255,0.08);margin-bottom:20px;">
+      <img id="cfg-school-logo" src="img/logo-colegio.png" style="width:72px;height:72px;object-fit:contain;flex-shrink:0;">
+      <div>
+        <div style="font-family:var(--font-display);font-size:1.05rem;font-weight:700;color:#fff;line-height:1.2;" id="cfg-school-nombre"></div>
+        <div style="font-size:0.76rem;color:rgba(255,255,255,0.45);font-style:italic;margin-top:3px;" id="cfg-school-eslogan"></div>
+        <div style="font-size:0.7rem;color:var(--accent);margin-top:5px;">Año escolar <span id="cfg-school-anio"></span></div>
+      </div>
+    </div>
     <div class="page-title">Configuración</div>
     <div class="page-sub">Ajustes generales del sistema escolar</div>
 
@@ -2435,7 +2444,7 @@
     <span style="display:none;" id="cfg-logo-placeholder"></span>
     <button style="display:none;" id="cfg-logo-eliminar-btn"></button>
     <div style="display:none;" id="cfg-logo-status"></div>
-    <img id="cfg-logo-preview" src="" style="display:none;">
+    <img id="cfg-logo-preview" src="" style="display:none!important;">
     <div style="display:none;" id="cfg-nombre-display"></div>
     <div style="display:none;" id="cfg-anio-display"></div>
 
@@ -3145,8 +3154,13 @@ function _aplicarConfigColegio(cfg) {
   if (cfgNombre && cfgNombre.type !== 'hidden') cfgNombre.value = COLEGIO_NOMBRE;
   const cfgEslogan = document.getElementById('cfg-eslogan-colegio');
   if (cfgEslogan) cfgEslogan.value = COLEGIO_ESLOGAN;
-  const cfgLogoPreview = document.getElementById('cfg-logo-preview');
-  if (cfgLogoPreview && cfg.logoUrl) { cfgLogoPreview.src = cfg.logoUrl; cfgLogoPreview.style.display = 'block'; }
+  // Encabezado colegio en sección Configuración
+  const schLogo2 = document.getElementById('cfg-school-logo');
+  if (schLogo2 && cfg.logoUrl) schLogo2.src = cfg.logoUrl;
+  const schNom2 = document.getElementById('cfg-school-nombre');
+  if (schNom2) schNom2.textContent = COLEGIO_NOMBRE;
+  const schEsl2 = document.getElementById('cfg-school-eslogan');
+  if (schEsl2) schEsl2.textContent = COLEGIO_ESLOGAN || '';
 }
 const firebaseConfig = {
   apiKey: "AIzaSyBLI0I41vWjMK2q1ZjH1c1BK4SAFno7sfY",
@@ -8280,13 +8294,15 @@ function cerrarConfigAvanzada() {
 async function renderConfig() {
   const cfg = await getConfig();
 
-  // Info colegio — datos hardcodeados, solo mostrar en pantalla
-  const nomDisplay = document.getElementById('cfg-nombre-display');
-  const anioDisplay = document.getElementById('cfg-anio-display');
-  const logoPreview = document.getElementById('cfg-logo-preview');
-  if(nomDisplay) nomDisplay.textContent = COLEGIO_NOMBRE;
-  if(anioDisplay) anioDisplay.textContent = 'Año escolar ' + COLEGIO_ANIO;
-  if(logoPreview) { logoPreview.src = COLEGIO_LOGO; logoPreview.style.display = 'block'; }
+  // Info colegio — encabezado visible en sección configuración
+  const schLogo   = document.getElementById('cfg-school-logo');
+  const schNombre = document.getElementById('cfg-school-nombre');
+  const schEslogan= document.getElementById('cfg-school-eslogan');
+  const schAnio   = document.getElementById('cfg-school-anio');
+  if(schLogo)    schLogo.src          = COLEGIO_LOGO;
+  if(schNombre)  schNombre.textContent = COLEGIO_NOMBRE;
+  if(schEslogan) schEslogan.textContent= COLEGIO_ESLOGAN || '';
+  if(schAnio)    schAnio.textContent   = COLEGIO_ANIO;
 
   // Niveles y horarios
   const nivelesEl = document.getElementById('cfg-niveles-list');
