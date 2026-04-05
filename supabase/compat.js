@@ -484,7 +484,11 @@ class _SecondaryAuth {
     // La Edge Function verifica el DNI en la tabla alumnos
     const res = await fetch(`${SUPABASE_URL}/functions/v1/crear-usuario`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+        'apikey': SUPABASE_ANON_KEY,
+      },
       body: JSON.stringify({ email, password: pass, colegioId: COLEGIO_ID }),
     });
     const result = await res.json();

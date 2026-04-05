@@ -5,6 +5,13 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+function isAnonToken(token: string): boolean {
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    return payload.role === 'anon';
+  } catch { return false; }
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
@@ -29,7 +36,10 @@ Deno.serve(async (req: Request) => {
     const authHeader = req.headers.get('Authorization');
     const token = authHeader?.replace('Bearer ', '');
 
-    if (token) {
+    // Si hay token Y no es el anon key → es staff autenticado
+    const isStaff = token && !isAnonToken(token);
+
+    if (isStaff) {
       // Staff autenticado creando cuenta → verificar permisos
       const { data: { user: caller }, error: callerError } = await supabaseAdmin.auth.getUser(token);
       if (callerError || !caller) {
@@ -50,7 +60,7 @@ Deno.serve(async (req: Request) => {
         });
       }
     } else {
-      // Sin token → solo se permite crear apoderados (self-registro primer login)
+      // Sin token / anon key → solo se permite crear apoderados (self-registro primer login)
       if (rolNuevo !== 'apoderado') {
         return new Response(JSON.stringify({ error: 'No autorizado' }), {
           status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
