@@ -8111,16 +8111,24 @@ async function poblarFiltroSeccion(selectId, grado) {
   const cfg = await getConfig();
   const el = document.getElementById(selectId);
   if(!el) return;
-  let secciones = cfg.secciones || ['A','B','C','D'];
 
-  // Obtener secciones que realmente tienen alumnos
+  // Obtener secciones reales de los alumnos
   const alumnos = await DB.getAlumnos();
   const seccionesConAlumnos = new Set(
     alumnos
       .filter(a => !grado || grado === 'TODOS' || a.grado === grado)
-      .map(a => a.seccion)
+      .map(a => a.seccion).filter(Boolean)
   );
-  secciones = secciones.filter(s => seccionesConAlumnos.has(s));
+
+  // Intentar usar cfg.secciones como orden preferido; si no cubre todo, caer a alumnos
+  const seccCfg = cfg.secciones || [];
+  let secciones = seccCfg.length > 0
+    ? seccCfg.filter(s => seccionesConAlumnos.has(s))
+    : [];
+  // Si la config no cubre las secciones reales, usar directamente las de alumnos
+  if(secciones.length === 0 && seccionesConAlumnos.size > 0) {
+    secciones = [...seccionesConAlumnos].sort();
+  }
 
   if(currentRol === 'profesor' && currentPrivilegios.restringir) {
     const asig = currentPrivilegios.asignaciones || {};

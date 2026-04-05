@@ -438,14 +438,16 @@ const auth = {
 
     // Suscribirse a cambios de sesión
     const { data: { subscription } } = _sb.auth.onAuthStateChange((_event, session) => {
-      // TOKEN_REFRESHED = Supabase refrescó el JWT al volver el foco a la pestaña.
-      // No re-ejecutar la inicialización completa — solo actualizar el usuario en memoria.
+      // TOKEN_REFRESHED y SIGNED_IN repetidos: Supabase refresca el JWT al volver
+      // el foco a la pestaña. Solo actualizar en memoria, NO re-inicializar la app.
       if (_event === 'TOKEN_REFRESHED') {
-        if (session) {
-          _currentAuthUser = _mapUser(session.user);
-          auth.currentUser = _currentAuthUser;
-        }
-        return; // NO llamar callback → evita re-inicializar filtros y borrar resultados
+        if (session) { _currentAuthUser = _mapUser(session.user); auth.currentUser = _currentAuthUser; }
+        return;
+      }
+      if (_event === 'SIGNED_IN' && _currentAuthUser) {
+        // Ya estaba autenticado — solo actualizar token silenciosamente
+        if (session) { _currentAuthUser = _mapUser(session.user); auth.currentUser = _currentAuthUser; }
+        return;
       }
       if (session) {
         _currentAuthUser = _mapUser(session.user);
