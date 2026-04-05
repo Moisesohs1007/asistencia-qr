@@ -477,10 +477,15 @@ function _mapUser(sbUser) {
       if (error) throw { code: 'auth/wrong-password', message: error.message };
     },
     async updatePassword(newPass) {
-      // Refrescar sesión antes de actualizar para evitar "Auth session missing"
       await _sb.auth.refreshSession();
       const { error } = await _sb.auth.updateUser({ password: newPass });
-      if (error) throw { code: 'auth/update-failed', message: error.message };
+      if (error) {
+        const esMismaPass = error.message.toLowerCase().includes('different');
+        throw {
+          code: esMismaPass ? 'auth/same-password' : 'auth/update-failed',
+          message: esMismaPass ? 'La nueva contraseña debe ser diferente a la actual.' : error.message,
+        };
+      }
     },
   };
 }
