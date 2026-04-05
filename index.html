@@ -9696,9 +9696,12 @@ function msbInit() {
   if(schoolEl) try { schoolEl.textContent = COLEGIO_NOMBRE || 'I.E.P.'; } catch(e){}
   // Nombre usuario
   msbUpdateUser();
-  // Visibilidad usuarios según rol
+  // Visibilidad según rol en móvil
   const usuariosBtn = document.getElementById('msb-sub-usuarios');
   if(usuariosBtn) usuariosBtn.style.display = (currentRol==='profesor'||currentRol==='portero') ? 'none' : 'flex';
+  const configBtn = document.getElementById('msb-btn-config');
+  const tieneConfig = ['admin','director'].includes(currentRol);
+  if(configBtn) configBtn.style.display = tieneConfig ? '' : 'none';
   // Topbar right (iniciales)
   const tbRight = document.getElementById('mobile-topbar-right');
   if(tbRight) {
