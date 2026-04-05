@@ -1971,8 +1971,11 @@
   <!-- IZQUIERDA: logo + menú -->
   <div style="display:flex;align-items:center;gap:0;flex:1;min-width:0;">
     <div style="display:flex;align-items:center;gap:10px;padding-right:16px;flex-shrink:0;">
-      <img src="img/logo-colegio.png" style="width:28px;height:28px;object-fit:contain;" alt="Insignia">
-      <div class="logo" style="font-size:0.75rem;white-space:nowrap;max-width:180px;line-height:1.2;">I.E.P.<span> "Santo Domingo de Guzmán"</span></div>
+      <img id="header-logo-img" src="img/logo-colegio.png" style="width:40px;height:40px;object-fit:contain;flex-shrink:0;" alt="Insignia">
+      <div style="display:flex;flex-direction:column;justify-content:center;line-height:1.1;">
+        <div class="logo" id="header-nombre-txt" style="font-size:0.75rem;white-space:nowrap;max-width:220px;"></div>
+        <div id="header-eslogan-txt" style="font-size:0.58rem;color:rgba(255,255,255,0.45);font-style:italic;white-space:nowrap;max-width:220px;overflow:hidden;text-overflow:ellipsis;margin-top:1px;"></div>
+      </div>
     </div>
   </div>
   <!-- DERECHA: año + iniciales -->
@@ -3115,16 +3118,18 @@ function _aplicarConfigColegio(cfg) {
   if (cfg.eslogan)       COLEGIO_ESLOGAN = cfg.eslogan;
   if (cfg.logoUrl)       { COLEGIO_LOGO = cfg.logoUrl; _logoB64 = null; }
 
-  // Header: logo + nombre
-  const headerImg = document.querySelector('#app-header img[alt="Insignia"]');
+  // Header: logo + nombre + eslogan
+  const headerImg = document.getElementById('header-logo-img');
   if (headerImg && cfg.logoUrl) headerImg.src = cfg.logoUrl;
-  const headerTxt = document.querySelector('#app-header .logo');
+  const headerTxt = document.getElementById('header-nombre-txt');
   if (headerTxt) {
     const partes = COLEGIO_NOMBRE.match(/^(Institución Educativa|I\.E\.P\.?|I\.E\.)\s+(.+)$/i);
     headerTxt.innerHTML = partes
       ? `I.E.P.<span> "${partes[2].replace(/^["']+|["']+$/g,'')}"</span>`
       : COLEGIO_NOMBRE;
   }
+  const headerEslogan = document.getElementById('header-eslogan-txt');
+  if (headerEslogan) headerEslogan.textContent = COLEGIO_ESLOGAN || '';
   // Login
   const loginImg = document.getElementById('login-img-colegio');
   if (loginImg && cfg.logoUrl) loginImg.src = cfg.logoUrl;
