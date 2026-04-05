@@ -423,41 +423,31 @@ const auth = {
   },
 
   onAuthStateChanged(callback) {
-    // Llamar con sesión actual si existe
+    // 1. Estado inicial — una sola llamada al callback
     _sb.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
-        _currentAuthUser = _mapUser(session.user);
-        auth.currentUser = _currentAuthUser;
-        callback(_currentAuthUser);
-      } else {
-        _currentAuthUser = null;
-        auth.currentUser = null;
-        callback(null);
-      }
+      _currentAuthUser = session ? _mapUser(session.user) : null;
+      auth.currentUser = _currentAuthUser;
+      callback(_currentAuthUser);
     });
 
-    // Suscribirse a cambios de sesión
+    // 2. Escuchar solo cambios REALES de estado (login ↔ logout)
+    //    Ignorar TOKEN_REFRESHED, INITIAL_SESSION y SIGNED_IN repetidos
     const { data: { subscription } } = _sb.auth.onAuthStateChange((_event, session) => {
-      // TOKEN_REFRESHED y SIGNED_IN repetidos: Supabase refresca el JWT al volver
-      // el foco a la pestaña. Solo actualizar en memoria, NO re-inicializar la app.
-      if (_event === 'TOKEN_REFRESHED') {
+      if (_event === 'TOKEN_REFRESHED' || _event === 'INITIAL_SESSION') {
         if (session) { _currentAuthUser = _mapUser(session.user); auth.currentUser = _currentAuthUser; }
         return;
       }
-      if (_event === 'SIGNED_IN' && _currentAuthUser) {
-        // Ya estaba autenticado — solo actualizar token silenciosamente
+      const eraAuth = !!_currentAuthUser;
+      const esAuth  = !!session;
+      if (eraAuth === esAuth) {
+        // Mismo estado (ej: SIGNED_IN repetido al volver pestaña) → solo actualizar token
         if (session) { _currentAuthUser = _mapUser(session.user); auth.currentUser = _currentAuthUser; }
         return;
       }
-      if (session) {
-        _currentAuthUser = _mapUser(session.user);
-        auth.currentUser = _currentAuthUser;
-        callback(_currentAuthUser);
-      } else {
-        _currentAuthUser = null;
-        auth.currentUser = null;
-        callback(null);
-      }
+      // Cambio real → notificar
+      _currentAuthUser = session ? _mapUser(session.user) : null;
+      auth.currentUser = _currentAuthUser;
+      callback(_currentAuthUser);
     });
 
     return () => subscription.unsubscribe();
