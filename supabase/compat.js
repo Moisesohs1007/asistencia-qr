@@ -480,19 +480,8 @@ function _mapUser(sbUser) {
 // ============================================================
 class _SecondaryAuth {
   async createUserWithEmailAndPassword(email, pass) {
-    // Verificar si hay un usuario realmente autenticado (no solo sesión en caché)
-    let token = null;
-    try {
-      const { data: { user }, error } = await _sb.auth.getUser();
-      if (user && !error) {
-        const { data: { session } } = await _sb.auth.getSession();
-        token = session?.access_token || null;
-      }
-    } catch(e) { token = null; }
-
-    const headers = { 'Content-Type': 'application/json' };
-    if (token) headers['Authorization'] = `Bearer ${token}`;
-
+    // _SecondaryAuth solo crea apoderados (self-registro sin token)
+    // La Edge Function verifica el DNI en la tabla alumnos
     const res = await fetch(`${SUPABASE_URL}/functions/v1/crear-usuario`, {
       method: 'POST',
       headers,
