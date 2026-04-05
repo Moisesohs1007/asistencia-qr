@@ -8112,23 +8112,18 @@ async function poblarFiltroSeccion(selectId, grado) {
   const el = document.getElementById(selectId);
   if(!el) return;
 
-  // Obtener secciones reales de los alumnos
+  // Obtener secciones reales de los alumnos (incluir vacíos como 'A' por defecto)
   const alumnos = await DB.getAlumnos();
-  const seccionesConAlumnos = new Set(
-    alumnos
-      .filter(a => !grado || grado === 'TODOS' || a.grado === grado)
-      .map(a => a.seccion).filter(Boolean)
-  );
+  const alumnosFiltrados = alumnos.filter(a => !grado || grado === 'TODOS' || a.grado === grado);
+  const seccionesDeAlumnos = [...new Set(alumnosFiltrados.map(a => a.seccion || 'A').filter(Boolean))].sort();
 
-  // Intentar usar cfg.secciones como orden preferido; si no cubre todo, caer a alumnos
-  const seccCfg = cfg.secciones || [];
+  // Usar config como orden preferido; si no hay coincidencias, usar secciones de alumnos directamente
+  const seccCfg = (cfg.secciones || []).filter(Boolean);
   let secciones = seccCfg.length > 0
-    ? seccCfg.filter(s => seccionesConAlumnos.has(s))
-    : [];
-  // Si la config no cubre las secciones reales, usar directamente las de alumnos
-  if(secciones.length === 0 && seccionesConAlumnos.size > 0) {
-    secciones = [...seccionesConAlumnos].sort();
-  }
+    ? seccCfg.filter(s => seccionesDeAlumnos.includes(s))
+    : seccionesDeAlumnos;
+  // Si la config no cubrió ninguna sección real, mostrar las de alumnos
+  if(secciones.length === 0) secciones = seccionesDeAlumnos.length > 0 ? seccionesDeAlumnos : seccCfg;
 
   if(currentRol === 'profesor' && currentPrivilegios.restringir) {
     const asig = currentPrivilegios.asignaciones || {};
