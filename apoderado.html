@@ -654,22 +654,11 @@
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <!-- html2canvas para carnet -->
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-<!-- Firebase -->
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<!-- Supabase -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="compat.js"></script>
+<script src="db_supabase.js"></script>
 <script>
-firebase.initializeApp({
-  apiKey: "AIzaSyBLI0I41vWjMK2q1ZjH1c1BK4SAFno7sfY",
-  authDomain: "asistencia-qr-a3346.firebaseapp.com",
-  projectId: "asistencia-qr-a3346",
-  storageBucket: "asistencia-qr-a3346.firebasestorage.app",
-  messagingSenderId: "617000910031",
-  appId: "1:617000910031:web:ccc2454260d8b4e7704bba"
-});
-var auth = firebase.auth();
-var db   = firebase.firestore();
-auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
 
 // ── Datos del colegio (fuente única de verdad) ──
 var COLEGIO_NOMBRE  = 'Institución Educativa "SANTO DOMINGO DE GUZMAN"';
