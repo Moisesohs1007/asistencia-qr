@@ -5411,7 +5411,45 @@ async function renderRegistro() {
       });
     }
 
-    // Ordenar según modo:
+    // 3b. Si hay filtro de nivel/grado (sin búsqueda por texto), agregar "Sin registro"
+    //     para alumnos del nivel/grado que no tienen registro en el período
+    if(!q && (nivel || grado)) {
+      const rangoDesde = desde || mesSel + '-01';
+      const rangoHasta = hasta || (() => {
+        const [y,m] = mesSel.split('-').map(Number);
+        const hoyStr = hoy();
+        const finMes = mesSel + '-' + String(new Date(y,m,0).getDate()).padStart(2,'0');
+        return finMes < hoyStr ? finMes : hoyStr;
+      })();
+
+      const todosAlumnos = await getAlumnosFiltrados();
+      const alumnosFilt = todosAlumnos.filter(a => {
+        if(nivel && nivel !== 'TODOS' && (a.turno||'') !== nivel) return false;
+        if(grado && grado !== 'TODOS' && (a.grado||'') !== grado) return false;
+        if(seccion && seccion !== 'TODOS' && (a.seccion||'') !== seccion) return false;
+        return true;
+      });
+
+      const fechasHabiles = [];
+      let cur = new Date(rangoDesde + 'T12:00:00');
+      const fin = new Date(rangoHasta + 'T12:00:00');
+      while(cur <= fin) {
+        const dia = cur.getDay();
+        if(dia !== 0 && dia !== 6) fechasHabiles.push(cur.toISOString().slice(0,10));
+        cur.setDate(cur.getDate() + 1);
+      }
+
+      alumnosFilt.forEach(a => {
+        fechasHabiles.forEach(fecha => {
+          const key = a.id + '_' + fecha;
+          if(!grupos[key]) {
+            filas.push({ alumnoId: a.id, nombre: ((a.apellidos||'') + ' ' + (a.nombres||'')).trim() || a.nombre || '', grado: a.grado, seccion: a.seccion, turno: a.turno||'-', fecha, ingreso: null, salida: null, estadoIngreso: 'Sin registro' });
+          }
+        });
+      });
+    }
+
+
     // - Todos/nivel: nivel asc → grado asc → sección asc → nombre asc
     // - Grado específico: fecha desc → nombre asc
     const esTodos = (!grado || grado === 'TODOS');
