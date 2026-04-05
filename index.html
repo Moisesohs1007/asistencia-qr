@@ -3124,6 +3124,43 @@ function getLogo() {
   return COLEGIO_LOGO;
 }
 
+// ============================================================
+// ORDENAMIENTO ESTÁNDAR: grado (menor→mayor) → apellido asc → nombre asc
+// Aplica en visualización, PDF y Excel cuando hay filtro de nivel/todos los grados
+// ============================================================
+async function _buildGradoIdx() {
+  const cfg = await getConfig();
+  const ordenNiveles = (cfg.niveles || []).map(n => n.nombre);
+  const gradosCfg    = cfg.grados || {};
+  const idx = {};
+  ordenNiveles.forEach((niv, ni) => {
+    (gradosCfg[niv] || []).forEach((g, gi) => { idx[g] = { ni, gi }; });
+  });
+  return idx;
+}
+// Comparador para filas con campo `nombre` = "APELLIDOS NOMBRES" (registros)
+function _cmpFilaReporte(a, b, gradoIdx) {
+  const ia = gradoIdx[a.grado] || { ni: 999, gi: 999 };
+  const ib = gradoIdx[b.grado] || { ni: 999, gi: 999 };
+  if(ia.ni !== ib.ni) return ia.ni - ib.ni;
+  if(ia.gi !== ib.gi) return ia.gi - ib.gi;
+  const sc = (a.seccion||'').localeCompare(b.seccion||'');
+  if(sc !== 0) return sc;
+  return (a.nombre||'').localeCompare(b.nombre||''); // nombre = "APELLIDOS NOMBRES"
+}
+// Comparador para objetos alumno con campos `apellidos` y `nombres` separados
+function _cmpAlumnoReporte(a, b, gradoIdx) {
+  const ia = gradoIdx[a.grado] || { ni: 999, gi: 999 };
+  const ib = gradoIdx[b.grado] || { ni: 999, gi: 999 };
+  if(ia.ni !== ib.ni) return ia.ni - ib.ni;
+  if(ia.gi !== ib.gi) return ia.gi - ib.gi;
+  const sc = (a.seccion||'').localeCompare(b.seccion||'');
+  if(sc !== 0) return sc;
+  const ap = (a.apellidos||'').localeCompare(b.apellidos||'');
+  if(ap !== 0) return ap;
+  return (a.nombres||'').localeCompare(b.nombres||'');
+}
+
 // Aplica nombre, eslogan y logo del colegio en toda la app
 // COLEGIO_NOMBRE, COLEGIO_ESLOGAN y COLEGIO_LOGO vienen SOLO de compat.js — no se sobreescriben desde BD
 function _aplicarConfigColegio(cfg) {
@@ -5450,32 +5487,18 @@ async function renderRegistro() {
     }
 
 
-    // - Todos/nivel: nivel asc → grado asc → sección asc → nombre asc
-    // - Grado específico: fecha desc → nombre asc
+    // Ordenar: grado (menor→mayor según config) → sección → apellido → nombre
+    // Para vista de grado específico: fecha desc → apellido → nombre
     const esTodos = (!grado || grado === 'TODOS');
+    const gradoIdx = await _buildGradoIdx();
     if(esTodos) {
-      const cfg2 = await getConfig();
-      // Construir índice respetando orden de niveles y grados en config
-      const ordenNiveles = (cfg2.niveles || []).map(n => n.nombre);
-      const gradosCfg    = cfg2.grados || {};
-      // Mapa: grado → { nivelIdx, gradoIdx }
-      const gradoIdx = {};
-      ordenNiveles.forEach((niv, ni) => {
-        (gradosCfg[niv] || []).forEach((g, gi) => {
-          gradoIdx[g] = { ni, gi };
-        });
-      });
-      filas.sort((a, b) => {
-        const ia = gradoIdx[a.grado] || { ni: 999, gi: 999 };
-        const ib = gradoIdx[b.grado] || { ni: 999, gi: 999 };
-        if(ia.ni !== ib.ni) return ia.ni - ib.ni;       // nivel
-        if(ia.gi !== ib.gi) return ia.gi - ib.gi;       // grado dentro del nivel
-        const sc = (a.seccion||'').localeCompare(b.seccion||'');
-        if(sc !== 0) return sc;                          // sección
-        return (a.nombre||'').localeCompare(b.nombre||''); // nombre
-      });
+      filas.sort((a, b) => _cmpFilaReporte(a, b, gradoIdx));
     } else {
-      filas.sort((a,b) => b.fecha.localeCompare(a.fecha) || a.nombre.localeCompare(b.nombre));
+      filas.sort((a, b) => {
+        const fc = (b.fecha||'').localeCompare(a.fecha||'');
+        if(fc !== 0) return fc;
+        return (a.nombre||'').localeCompare(b.nombre||'');
+      });
     }
 
     // Filtrar por tipo si está seleccionado
@@ -5639,10 +5662,9 @@ async function getRegistrosFiltrados() {
     });
   }
 
-  // Ordenar por fecha desc luego nombre — defensivo contra undefined
-  return filasPDF.sort((a,b) =>
-    (b.fecha||'').localeCompare(a.fecha||'') || (a.nombre||'').localeCompare(b.nombre||'')
-  );
+  // Ordenar: grado (menor→mayor) → sección → apellido → nombre
+  const gIdx = await _buildGradoIdx();
+  return filasPDF.sort((a, b) => _cmpFilaReporte(a, b, gIdx));
 }
 
 async function exportCSV() {
@@ -5710,7 +5732,7 @@ async function exportXLSX() {
     const todosAlumnos = await DB.getAlumnos();
     const alumnosAula = todosAlumnos
       .filter(a => a.grado===grado && a.seccion===seccion)
-      .sort((a,b)=>((a.apellidos||'')+(a.nombres||'')).localeCompare((b.apellidos||'')+(b.nombres||'')));
+      .sort((a,b)=>(a.apellidos||'').localeCompare(b.apellidos||'')||( a.nombres||'').localeCompare(b.nombres||''));
 
     // Días hábiles del rango
     const diasHabiles=[];
@@ -5907,7 +5929,7 @@ async function exportPDFRegistro() {
     const todosAlumnos = await DB.getAlumnos();
     const alumnosAula = todosAlumnos
       .filter(a=>a.grado===grado&&a.seccion===seccion)
-      .sort((a,b)=>((a.apellidos||'')+(a.nombres||'')).localeCompare((b.apellidos||'')+(b.nombres||'')));
+      .sort((a,b)=>(a.apellidos||'').localeCompare(b.apellidos||'')||( a.nombres||'').localeCompare(b.nombres||''));
 
     const diasHabiles=[];
     let cur=new Date(desde+'T12:00:00'),fin=new Date(hasta+'T12:00:00');
@@ -6071,14 +6093,7 @@ async function exportPDFAlumnos() {
   ordenNiveles.forEach((niv,ni) => {
     (gradosCfg[niv]||[]).forEach((g,gi) => { gradoIdx[g] = {ni,gi}; });
   });
-  alumnos.sort((a,b) => {
-    const ia = gradoIdx[a.grado] || {ni:999,gi:999};
-    const ib = gradoIdx[b.grado] || {ni:999,gi:999};
-    if(ia.ni !== ib.ni) return ia.ni - ib.ni;
-    if(ia.gi !== ib.gi) return ia.gi - ib.gi;
-    if((a.seccion||'') !== (b.seccion||'')) return (a.seccion||'').localeCompare(b.seccion||'');
-    return ((a.apellidos||'')+(a.nombres||'')).localeCompare((b.apellidos||'')+(b.nombres||''));
-  });
+  alumnos.sort((a, b) => _cmpAlumnoReporte(a, b, gradoIdx));
 
   await cargarJsPDF();
   if(!window.jspdf) { toast('Error cargando jsPDF','error'); return; }
