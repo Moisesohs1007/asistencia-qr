@@ -2180,7 +2180,11 @@
         <div class="manual-input">
           <div class="form-group">
             <label>O ingresa ID manualmente</label>
-            <input type="text" id="manual-id" placeholder="Ej: 12345678" maxlength="8" oninput="this.value=this.value.replace(/\D/g,'')" onkeydown="if(event.key==='Enter') manualRegister()">
+            <input type="text" id="manual-id" placeholder="Ej: 12345678" maxlength="8"
+              oninput="this.value=this.value.replace(/\D/g,'')"
+              onkeydown="if(event.key==='Enter') manualRegister()"
+              onfocus="_pausarEscaner()"
+              onblur="_reanudarEscaner()">
           </div>
           <button class="btn btn-ghost" onclick="manualRegister()">Registrar</button>
         </div>
@@ -4282,6 +4286,14 @@ function stopScanner() {
   setUIScanning(false);
   showPlaceholder(true);
   document.getElementById('scan-status').textContent = 'Cámara detenida — presiona Iniciar para escanear';
+}
+
+// Pausa temporal del escáner mientras el usuario escribe el DNI manual
+function _pausarEscaner() {
+  if(scannerRunning) scannerRunning = false;
+}
+function _reanudarEscaner() {
+  if(videoStream && scanInterval) scannerRunning = true;
 }
 
 async function escanearFotoQR(input) {
@@ -8032,18 +8044,21 @@ async function poblarFiltroGrado(selectId, nivel) {
   const cfg = await getConfig();
   const el = document.getElementById(selectId);
   if(!el) return;
-  let grados = nivel && nivel !== 'TODOS'
+
+  // Obtener alumnos (siempre cacheado)
+  const alumnos = await DB.getAlumnos();
+  const alumnosFiltrados = alumnos.filter(a => !nivel || nivel === 'TODOS' || a.turno === nivel);
+  const gradosConAlumnos = new Set(alumnosFiltrados.map(a => a.grado).filter(Boolean));
+
+  // Intentar obtener grados ordenados desde config; si no hay, usar los de alumnos directamente
+  let gradosCfg = nivel && nivel !== 'TODOS'
     ? (cfg.grados||{})[nivel] || []
     : [...new Set(Object.values(cfg.grados||{}).flat())];
 
-  // Solo grados que tienen alumnos
-  const alumnos = await DB.getAlumnos();
-  const gradosConAlumnos = new Set(
-    alumnos
-      .filter(a => !nivel || nivel === 'TODOS' || a.turno === nivel)
-      .map(a => a.grado)
-  );
-  grados = grados.filter(g => gradosConAlumnos.has(g));
+  // Si config no tiene grados configurados para este nivel, caer al set de alumnos
+  let grados = gradosCfg.length > 0
+    ? gradosCfg.filter(g => gradosConAlumnos.has(g))
+    : [...gradosConAlumnos].sort();
 
   // Si es profesor con restricciones, solo sus grados
   if(currentRol === 'profesor' && currentPrivilegios.restringir) {
