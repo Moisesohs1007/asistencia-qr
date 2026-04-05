@@ -480,8 +480,15 @@ function _mapUser(sbUser) {
 // ============================================================
 class _SecondaryAuth {
   async createUserWithEmailAndPassword(email, pass) {
-    const { data: { session } } = await _sb.auth.getSession();
-    const token = session?.access_token;
+    // Verificar si hay un usuario realmente autenticado (no solo sesión en caché)
+    let token = null;
+    try {
+      const { data: { user }, error } = await _sb.auth.getUser();
+      if (user && !error) {
+        const { data: { session } } = await _sb.auth.getSession();
+        token = session?.access_token || null;
+      }
+    } catch(e) { token = null; }
 
     const headers = { 'Content-Type': 'application/json' };
     if (token) headers['Authorization'] = `Bearer ${token}`;
