@@ -3121,11 +3121,11 @@ function getLogo() {
 }
 
 // Aplica nombre, eslogan y logo del colegio en toda la app
+// COLEGIO_NOMBRE, COLEGIO_ESLOGAN y COLEGIO_LOGO vienen SOLO de compat.js — no se sobreescriben desde BD
 function _aplicarConfigColegio(cfg) {
   if (!cfg) return;
-  if (cfg.nombreColegio) COLEGIO_NOMBRE = cfg.nombreColegio;
-  if (cfg.eslogan)       COLEGIO_ESLOGAN = cfg.eslogan;
-  if (cfg.logoUrl)       { COLEGIO_LOGO = cfg.logoUrl; _logoB64 = null; }
+  // NO sobreescribir COLEGIO_NOMBRE / COLEGIO_ESLOGAN / COLEGIO_LOGO desde BD
+  // Editar solo en compat.js
 
   // Header: logo + nombre + eslogan
   const headerImg = document.getElementById('header-logo-img');
