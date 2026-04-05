@@ -4797,6 +4797,7 @@ async function saveAlumno() {
       toast('Alumno registrado','success');
     }
     DB.bumpAlumnosVersion(); // Notificar a otros dispositivos
+    _invalidarCacheAlumnos();
     closeModal('modal-alumno');
     renderAlumnos();
     updateStats();
@@ -4877,6 +4878,7 @@ async function deleteAlumno(id) {
     // Eliminar alumno
     await DB.deleteAlumno(id);
     DB.bumpAlumnosVersion(); // Notificar a otros dispositivos
+    _invalidarCacheAlumnos();
     toast('Alumno y sus registros eliminados','info');
     renderAlumnos();
     updateStats();
@@ -5490,12 +5492,11 @@ async function renderRegistro() {
     }
 
 
-    // Ordenar: grado (menor→mayor según config) → sección → apellido → nombre
+    // Ordenar: nivel → grado numérico → sección → apellido
     // Para vista de grado específico: fecha desc → apellido → nombre
     const esTodos = (!grado || grado === 'TODOS');
-    const gradoIdx = await _buildGradoIdx();
     if(esTodos) {
-      filas.sort((a, b) => _cmpFilaReporte(a, b, gradoIdx));
+      filas.sort(_cmpFilaReporte);
     } else {
       filas.sort((a, b) => {
         const fc = (b.fecha||'').localeCompare(a.fecha||'');
@@ -5594,6 +5595,7 @@ async function getRegistrosFiltrados() {
         fecha:    r.fecha,
         dni:      r.alumnoId,
         nombre:   nombreNorm2,
+        turno:    r.turno || '-',
         nivel:    r.turno || '-',
         grado:    r.grado,
         seccion:  r.seccion,
@@ -5659,15 +5661,14 @@ async function getRegistrosFiltrados() {
       fechasHabiles.forEach(fecha => {
         const key = a.id + '_' + fecha;
         if(!grupos[key]) {
-          filasPDF.push({ fecha, dni: a.id, nombre: ((a.apellidos||'') + ' ' + (a.nombres||'')).trim() || a.nombre || '', nivel: a.turno||'-', grado: a.grado, seccion: a.seccion, ingreso: null, salida: null, estado: 'Sin registro' });
+          filasPDF.push({ fecha, dni: a.id, nombre: ((a.apellidos||'') + ' ' + (a.nombres||'')).trim() || a.nombre || '', turno: a.turno||'-', nivel: a.turno||'-', grado: a.grado, seccion: a.seccion, ingreso: null, salida: null, estado: 'Sin registro' });
         }
       });
     });
   }
 
-  // Ordenar: grado (menor→mayor) → sección → apellido → nombre
-  const gIdx = await _buildGradoIdx();
-  return filasPDF.sort((a, b) => _cmpFilaReporte(a, b, gIdx));
+  // Ordenar: nivel → grado numérico → sección → apellido → nombre
+  return filasPDF.sort(_cmpFilaReporte);
 }
 
 async function exportCSV() {
@@ -6088,15 +6089,8 @@ async function exportPDFAlumnos() {
 
   if(!alumnos.length) { toast('No hay alumnos para exportar','warning'); return; }
 
-  // Ordenar: nivel → grado → sección → apellidos
-  const cfg2 = await getConfig();
-  const ordenNiveles = (cfg2.niveles||[]).map(n => n.nombre);
-  const gradosCfg = cfg2.grados || {};
-  const gradoIdx = {};
-  ordenNiveles.forEach((niv,ni) => {
-    (gradosCfg[niv]||[]).forEach((g,gi) => { gradoIdx[g] = {ni,gi}; });
-  });
-  alumnos.sort((a, b) => _cmpAlumnoReporte(a, b, gradoIdx));
+  // Ordenar: nivel → grado numérico → sección → apellidos
+  alumnos.sort(_cmpAlumnoReporte);
 
   await cargarJsPDF();
   if(!window.jspdf) { toast('Error cargando jsPDF','error'); return; }
@@ -8064,12 +8058,20 @@ function aplicarFiltroProfesor(alumnos) {
 // Para profesores con restricciones usa getAlumnosScoped() —
 // consulta Firestore solo por sus grados/secciones (28 lecturas vs 1,300).
 // Para admins/directores/sin restricción usa getAlumnos() (cache completo).
+let _alumnosCacheFull = null;
+let _alumnosCacheTs = 0;
+function _invalidarCacheAlumnos() { _alumnosCacheFull = null; _alumnosCacheTs = 0; }
+
 async function getAlumnosFiltrados() {
   if(currentRol === 'profesor' && currentPrivilegios?.restringir) {
     const asig = currentPrivilegios.asignaciones || {};
     if(Object.keys(asig).length) return DB.getAlumnosScoped(asig);
   }
-  return DB.getAlumnos();
+  const now = Date.now();
+  if(_alumnosCacheFull && now - _alumnosCacheTs < 90000) return _alumnosCacheFull;
+  _alumnosCacheFull = await DB.getAlumnos();
+  _alumnosCacheTs = now;
+  return _alumnosCacheFull;
 }
 
 // ============================================================
