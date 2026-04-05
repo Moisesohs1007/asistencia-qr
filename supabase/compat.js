@@ -461,7 +461,13 @@ function _mapUser(sbUser) {
   return {
     uid:   sbUser.id,
     email: sbUser.email,
-    // Métodos de instancia para cambiar contraseña, etc.
+    async getIdToken(forceRefresh) {
+      const { data: { session } } = await _sb.auth.getSession();
+      return session?.access_token || '';
+    },
+    async updateProfile(profile) {
+      // displayName no es nativo en Supabase — ignorar o guardar en metadata
+    },
     async reauthenticateWithCredential(cred) {
       const { error } = await _sb.auth.signInWithPassword({ email: cred.email, password: cred.pass });
       if (error) throw { code: 'auth/wrong-password', message: error.message };
