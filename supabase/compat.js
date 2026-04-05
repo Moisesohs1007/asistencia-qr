@@ -16,7 +16,18 @@
 // El resto de index.html no necesita cambios.
 // ============================================================
 
-// ── CONFIGURACIÓN — editar por colegio ───────────────────────
+// ╔══════════════════════════════════════════════════════════════╗
+// ║  CONFIGURACIÓN DEL COLEGIO — EDITAR SOLO AQUÍ              ║
+// ║  Aplica en toda la app: index.html Y apoderado.html        ║
+// ║  header, login, reportes, PDFs, Excel, WhatsApp            ║
+// ╚══════════════════════════════════════════════════════════════╝
+window.COLEGIO_NOMBRE  = 'Institución Educativa "SANTO DOMINGO DE GUZMAN"';
+window.COLEGIO_ESLOGAN = '"SER SANTO DOMINGUINO ES, SER EL MEJOR"';
+window.COLEGIO_LOGO    = 'img/logo-colegio.png'; // reemplaza este archivo para cambiar el logo
+window.COLEGIO_ANIO    = '2026';
+window.APO_DOMAIN      = '@apo.marello.pe';      // dominio de cuentas de apoderados
+
+// ── Conexión Supabase — no editar ────────────────────────────
 const SUPABASE_URL      = 'https://bqnhlzwdibcmstqzspmj.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJxbmhsendkaWJjbXN0cXpzcG1qIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUwODY2MTAsImV4cCI6MjA5MDY2MjYxMH0.mm7eMEOMzylzKeWJbcI_gHaHbwnGpQo0UVhZUOB9q2s';
 window.COLEGIO_ID       = 'sigece'; // slug del colegio, debe existir en tabla colegios

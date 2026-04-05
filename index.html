@@ -1971,7 +1971,7 @@
   <!-- IZQUIERDA: logo + menú -->
   <div style="display:flex;align-items:center;gap:0;flex:1;min-width:0;">
     <div style="display:flex;align-items:center;gap:10px;padding-right:16px;flex-shrink:0;">
-      <img src="img/logo-colegio.png" style="width:38px;height:38px;object-fit:contain;" alt="Insignia">
+      <img src="img/logo-colegio.png" style="width:28px;height:28px;object-fit:contain;" alt="Insignia">
       <div class="logo" style="font-size:0.75rem;white-space:nowrap;max-width:180px;line-height:1.2;">I.E.P.<span> "Santo Domingo de Guzmán"</span></div>
     </div>
   </div>
@@ -2420,7 +2420,7 @@
       </div>
     </div>
 
-    <!-- Inputs ocultos para compatibilidad con código existente -->
+    <!-- Inputs ocultos para compatibilidad -->
     <input type="hidden" id="cfg-nombre-colegio">
     <input type="hidden" id="cfg-anio">
     <input type="hidden" id="cfg-telefono-colegio">
@@ -2428,6 +2428,7 @@
     <input type="hidden" id="cfg-email-colegio">
     <input type="hidden" id="cfg-horario-colegio">
     <input type="hidden" id="cfg-logo-input">
+    <input type="hidden" id="cfg-eslogan-colegio">
     <span style="display:none;" id="cfg-logo-placeholder"></span>
     <button style="display:none;" id="cfg-logo-eliminar-btn"></button>
     <div style="display:none;" id="cfg-logo-status"></div>
@@ -3097,24 +3098,50 @@ const LOGO_B64 = 'img/logo-colegio.png';
 
 // Logo activo: usa el subido en config si existe, si no el hardcodeado
 // ═══════════════════════════════════════════════════════
-// ╔══════════════════════════════════════════════════════════════╗
-// ║  CONFIGURACIÓN DEL COLEGIO — editar solo aquí               ║
-// ║  Para cambiar de colegio:                                   ║
-// ║  1. Cambia COLEGIO_NOMBRE y COLEGIO_ESLOGAN                 ║
-// ║  2. Reemplaza img/logo-colegio.png con el nuevo logo        ║
-// ║     (ese archivo también se usa como ícono del sistema)     ║
-// ║  3. Actualiza el mismo COLEGIO_NOMBRE en apoderado.html     ║
-// ╚══════════════════════════════════════════════════════════════╝
-const COLEGIO_NOMBRE  = 'Institución Educativa "SANTO DOMINGO DE GUZMAN"';
-const COLEGIO_ANIO    = '2026';
-const COLEGIO_ESLOGAN = '"SER SANTO DOMINGUINO ES, SER EL MEJOR"';
-const COLEGIO_LOGO    = 'img/logo-colegio.png';
+// Nombre, eslogan y logo vienen de compat.js (editar solo ahí)
+// COLEGIO_NOMBRE, COLEGIO_ESLOGAN, COLEGIO_LOGO, COLEGIO_ANIO ya están definidos
 // Dominio virtual de apoderados — cambiar aquí si se despliega en otro colegio
 // IMPORTANTE: también actualizar firestore.rules (función esEmailApoderado e isApoderado)
 const APO_DOMAIN      = '@apo.marello.pe';
 
 function getLogo() {
   return COLEGIO_LOGO;
+}
+
+// Aplica nombre, eslogan y logo del colegio en toda la app
+function _aplicarConfigColegio(cfg) {
+  if (!cfg) return;
+  if (cfg.nombreColegio) COLEGIO_NOMBRE = cfg.nombreColegio;
+  if (cfg.eslogan)       COLEGIO_ESLOGAN = cfg.eslogan;
+  if (cfg.logoUrl)       { COLEGIO_LOGO = cfg.logoUrl; _logoB64 = null; }
+
+  // Header: logo + nombre
+  const headerImg = document.querySelector('#app-header img[alt="Insignia"]');
+  if (headerImg && cfg.logoUrl) headerImg.src = cfg.logoUrl;
+  const headerTxt = document.querySelector('#app-header .logo');
+  if (headerTxt) {
+    const partes = COLEGIO_NOMBRE.match(/^(Institución Educativa|I\.E\.P\.?|I\.E\.)\s+(.+)$/i);
+    headerTxt.innerHTML = partes
+      ? `I.E.P.<span> "${partes[2].replace(/^["']+|["']+$/g,'')}"</span>`
+      : COLEGIO_NOMBRE;
+  }
+  // Login
+  const loginImg = document.getElementById('login-img-colegio');
+  if (loginImg && cfg.logoUrl) loginImg.src = cfg.logoUrl;
+  // Sidebar móvil
+  const msbImg = document.getElementById('msb-logo-img');
+  if (msbImg && cfg.logoUrl) msbImg.src = cfg.logoUrl;
+  const msbName = document.getElementById('msb-school-name');
+  if (msbName) msbName.textContent = COLEGIO_NOMBRE;
+  // Login título y eslogan
+  cargarInfoColegioLogin();
+  // Campos de configuración visibles
+  const cfgNombre = document.getElementById('cfg-nombre-colegio');
+  if (cfgNombre && cfgNombre.type !== 'hidden') cfgNombre.value = COLEGIO_NOMBRE;
+  const cfgEslogan = document.getElementById('cfg-eslogan-colegio');
+  if (cfgEslogan) cfgEslogan.value = COLEGIO_ESLOGAN;
+  const cfgLogoPreview = document.getElementById('cfg-logo-preview');
+  if (cfgLogoPreview && cfg.logoUrl) { cfgLogoPreview.src = cfg.logoUrl; cfgLogoPreview.style.display = 'block'; }
 }
 const firebaseConfig = {
   apiKey: "AIzaSyBLI0I41vWjMK2q1ZjH1c1BK4SAFno7sfY",
@@ -3292,6 +3319,8 @@ function cargarInfoColegioLogin() {
   if(esloganEl) esloganEl.textContent = COLEGIO_ESLOGAN;
 }
 cargarInfoColegioLogin();
+// Aplicar nombre/logo en header, sidebar, etc. con los valores del código
+_aplicarConfigColegio({ nombreColegio: COLEGIO_NOMBRE, eslogan: COLEGIO_ESLOGAN, logoUrl: COLEGIO_LOGO });
 
 // ── Banner login ──
 var _bannerCurrent = 0;
@@ -8143,7 +8172,7 @@ async function getConfig() {
   if(configCache) return configCache;
   // Intentar desde localStorage
   const lsConfig = LSC.get('config');
-  if(lsConfig) { configCache = lsConfig; return configCache; }
+  if(lsConfig) { configCache = lsConfig; _aplicarConfigColegio(configCache); return configCache; }
   try {
     const doc = await db.collection('config').doc('general').get();
     configCache = doc.exists ? { ...CONFIG_DEFAULTS, ...doc.data() } : { ...CONFIG_DEFAULTS };
@@ -8151,6 +8180,7 @@ async function getConfig() {
   } catch(e) {
     configCache = { ...CONFIG_DEFAULTS };
   }
+  _aplicarConfigColegio(configCache);
   return configCache;
 }
 
@@ -8439,14 +8469,13 @@ function previsualizarLogo(input) {
 }
 
 async function guardarLogo() {
-  toast('La insignia está fijada en el código fuente. Edita COLEGIO_LOGO en index.html','info');
+  toast('Para cambiar la insignia: reemplaza el archivo img/logo-colegio.png y actualiza COLEGIO_LOGO en el código','info');
 }
 async function eliminarLogo() {
-  toast('La insignia está fijada en el código fuente','info');
+  toast('Para cambiar la insignia: reemplaza el archivo img/logo-colegio.png','info');
 }
-
 async function guardarInfoColegio() {
-  toast("Nombre e insignia están fijados en el código fuente","info");
+  toast('Para cambiar nombre o eslogan: edita COLEGIO_NOMBRE y COLEGIO_ESLOGAN en el código','info');
 }
 
 async function guardarHorarios() {
