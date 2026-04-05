@@ -4627,8 +4627,10 @@ async function autoRegistrar(alumno) {
     }
 
   } catch(e) {
-    showOverlay('nored', nombre, grado, 'Error al registrar', 'Intenta de nuevo');
-    console.error(e);
+    const errMsg = e?.message || String(e) || 'Error desconocido';
+    console.error('[registrar]', errMsg, e);
+    showOverlay('nored', nombre, grado, 'Error al registrar', errMsg.length < 60 ? errMsg : 'Ver consola (F12)');
+    toast('❌ Error: ' + errMsg, 'error');
   }
 }
 
