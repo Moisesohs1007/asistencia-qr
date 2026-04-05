@@ -72,7 +72,7 @@ Deno.serve(async (req: Request) => {
         .from('alumnos')
         .select('id')
         .eq('colegio_id', colegioId)
-        .eq('dni', dni)
+        .eq('id', dni)
         .maybeSingle();
       if (!alumno) {
         return new Response(JSON.stringify({ error: 'DNI no encontrado' }), {
