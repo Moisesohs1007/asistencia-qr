@@ -516,8 +516,17 @@ function _mapUser(sbUser) {
 // ============================================================
 class _SecondaryAuth {
   async createUserWithEmailAndPassword(email, pass, opts = {}) {
-    const token = _currentAccessToken || SUPABASE_ANON_KEY;
     const rolNuevo = opts.rolNuevo || 'apoderado';
+    // Forzar refresh del token para obtener JWT firmado con ECC (nueva clave de Supabase)
+    let token = _currentAccessToken;
+    try {
+      const { data: { session } } = await _sb.auth.refreshSession();
+      if (session?.access_token) {
+        token = session.access_token;
+        _currentAccessToken = token;
+      }
+    } catch(e) { /* sin sesión → usa token actual o anon */ }
+    if (!token) token = SUPABASE_ANON_KEY;
     let res, result;
     try {
       res = await fetch(`${SUPABASE_URL}/functions/v1/crear-usuario`, {
