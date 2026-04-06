@@ -1561,6 +1561,27 @@
     }
   }
 
+  /* ── Modal Incidente: z-index máximo + bloqueo de nav ── */
+  #modal-incidente {
+    z-index: 10001 !important; /* sobre header, nav dropdowns y todo */
+    padding: 8px 12px 20px;
+    align-items: flex-start;
+  }
+
+  /* Cuando el modal de incidente está abierto: bloquear toda la navegación */
+  body.inc-modal-open header,
+  body.inc-modal-open nav,
+  body.inc-modal-open .nav-tabs,
+  body.inc-modal-open #mobile-topbar,
+  body.inc-modal-open .bottom-nav,
+  body.inc-modal-open .nav-dropdown,
+  body.inc-modal-open #sidebar {
+    pointer-events: none !important;
+    user-select: none;
+    opacity: 0.4;
+    transition: opacity 0.2s;
+  }
+
   /* ── Modal Incidente: layout horizontal solo en PC ── */
   @media (min-width: 768px) {
     #modal-incidente .modal {
@@ -2766,7 +2787,7 @@
     <div class="modal" onclick="event.stopPropagation()" style="max-width:560px;">
       <div class="modal-header">
         <div class="modal-title">🚨 Nuevo Reporte de Incidente</div>
-        <button class="modal-close" onclick="closeModal('modal-incidente')">✕</button>
+        <button class="modal-close" onclick="cerrarModalIncidente()">✕</button>
       </div>
 
       <!-- Layout: en PC usa dos columnas (inc-body-pc), en celular es bloque normal -->
@@ -2856,7 +2877,7 @@
 
       <div style="display:flex;gap:10px;margin-top:20px;">
         <button class="btn btn-primary" onclick="guardarIncidente()" style="flex:1;justify-content:center;background:linear-gradient(135deg,#ef4444,#f97316);">🖨️ Guardar y Generar PDF</button>
-        <button class="btn btn-ghost" onclick="closeModal('modal-incidente')" style="justify-content:center;">Cancelar</button>
+        <button class="btn btn-ghost" onclick="cerrarModalIncidente()" style="justify-content:center;">Cancelar</button>
       </div>
     </div>
   </div>
@@ -9006,6 +9027,12 @@ function abrirModalIncidente() {
   document.getElementById('inc-foto').value = '';
   document.querySelector('input[name="inc-sev"][value="Moderado"]').checked = true;
   const mInc = document.getElementById('modal-incidente'); if(mInc){mInc.style.display='';mInc.classList.add('open');}
+  document.body.classList.add('inc-modal-open'); // bloquear nav
+}
+
+function cerrarModalIncidente() {
+  document.body.classList.remove('inc-modal-open'); // re-habilitar nav
+  closeModal('modal-incidente');
 }
 
 async function buscarAlumnoIncidente(q) {
@@ -9202,7 +9229,7 @@ async function guardarIncidente() {
     _invalidarIncidentes();
     toast('Reporte guardado','success');
     reactivarBtn();
-    closeModal('modal-incidente');
+    cerrarModalIncidente();
     renderIncidentes();
 
     // 2. Mostrar botón de llamada INMEDIATAMENTE en móvil
