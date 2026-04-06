@@ -4280,6 +4280,7 @@ let scannerRunning = false;
 let scanInterval = null;
 let lastScanned = '';
 let lastScanTime = 0;
+let _scanKeepalive = null; // keepalive: resetea inactividad mientras cámara está activa
 let pendingStudent = null;
 let currentSection = 'scan';
 
@@ -4377,6 +4378,9 @@ function startScanner() {
         document.getElementById('scan-status').textContent = '🟢 Cámara activa — apunta al QR';
         anunciarCamaraActiva();
         startScanLoop();
+        // Keepalive: resetear inactividad cada 60s mientras cámara esté activa
+        if(_scanKeepalive) clearInterval(_scanKeepalive);
+        _scanKeepalive = setInterval(() => { if(scannerRunning) resetInactTimer(); }, 60000);
       };
       video.onloadedmetadata = onReady;
       video.oncanplay = onReady;
@@ -4393,6 +4397,7 @@ function startScanner() {
 function stopScanner() {
   scannerRunning = false;
   if(scanInterval) { clearInterval(scanInterval); scanInterval = null; }
+  if(_scanKeepalive) { clearInterval(_scanKeepalive); _scanKeepalive = null; }
   detenerHoyRegsListener();
   if(videoStream) { videoStream.getTracks().forEach(t => t.stop()); videoStream = null; }
   const video = document.getElementById('qr-video');
@@ -4509,6 +4514,7 @@ function startScanLoop() {
 }
 
 function onQRSuccess(text) {
+  resetInactTimer(); // cada QR escaneado reinicia el temporizador de inactividad
   processQR(text.trim());
 }
 
