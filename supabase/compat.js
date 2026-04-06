@@ -186,7 +186,9 @@ class _DocRef {
     row.id = this._id;
     // apoderados usa alumno_id como FK histórica — siempre incluirlo
     if (this._col === 'apoderados') row.alumno_id = this._id;
-    const { error } = await _sb.from(this._col).upsert(row, { onConflict: 'colegio_id,id' });
+    // usuarios tiene PK solo en id (no colegio_id,id como las otras tablas)
+    const conflictCol = this._col === 'usuarios' ? 'id' : 'colegio_id,id';
+    const { error } = await _sb.from(this._col).upsert(row, { onConflict: conflictCol });
     if (error) throw new Error(error.message);
   }
 
