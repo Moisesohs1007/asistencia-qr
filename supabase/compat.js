@@ -174,8 +174,10 @@ class _DocRef {
       };
     }
 
+    // apoderados: PK es (colegio_id, alumno_id) — sin columna 'id'
+    const pkField = this._col === 'apoderados' ? 'alumno_id' : 'id';
     const { data, error } = await _sb.from(this._col).select('*')
-      .eq('colegio_id', COLEGIO_ID).eq('id', this._id).maybeSingle();
+      .eq('colegio_id', COLEGIO_ID).eq(pkField, this._id).maybeSingle();
     console.log('[compat.get]', this._col, this._id, 'data:', data, 'error:', error);
     if (error) throw new Error(error.message);
     return {
@@ -188,9 +190,19 @@ class _DocRef {
   async set(data, options = {}) {
     if (this._col === 'config') return _setConfig(this._id, data, options);
     const row = _docToRow(data);
+
+    // apoderados: PK es (colegio_id, alumno_id) — sin columna 'id'
+    if (this._col === 'apoderados') {
+      row.alumno_id = this._id;
+      // Solo columnas que existen en la tabla
+      const _APO_COLS = new Set(['colegio_id', 'alumno_id', 'primer_ingreso', 'ultima_visita', 'notif_ingreso', 'notif_salida']);
+      Object.keys(row).forEach(k => { if (!_APO_COLS.has(k)) delete row[k]; });
+      const { error } = await _sb.from('apoderados').upsert(row, { onConflict: 'colegio_id,alumno_id' });
+      if (error) throw new Error(error.message);
+      return;
+    }
+
     row.id = this._id;
-    // apoderados usa alumno_id como FK histórica — siempre incluirlo
-    if (this._col === 'apoderados') row.alumno_id = this._id;
     // usuarios tiene PK solo en id (no colegio_id,id como las otras tablas)
     const conflictCol = this._col === 'usuarios' ? 'id' : 'colegio_id,id';
     const { error } = await _sb.from(this._col).upsert(row, { onConflict: conflictCol });
@@ -204,12 +216,28 @@ class _DocRef {
       if (v && v.__type === 'serverTimestamp') { update[_toSnake(k)] = new Date().toISOString(); continue; }
       update[_toSnake(k)] = v;
     }
+    // apoderados: filtrar solo columnas válidas y usar alumno_id
+    if (this._col === 'apoderados') {
+      const _APO_COLS = new Set(['primer_ingreso', 'ultima_visita', 'notif_ingreso', 'notif_salida']);
+      Object.keys(update).forEach(k => { if (!_APO_COLS.has(k)) delete update[k]; });
+      const { error } = await _sb.from('apoderados')
+        .update(update).eq('colegio_id', COLEGIO_ID).eq('alumno_id', this._id);
+      if (error) throw new Error(error.message);
+      return;
+    }
     const { error } = await _sb.from(this._col)
       .update(update).eq('colegio_id', COLEGIO_ID).eq('id', this._id);
     if (error) throw new Error(error.message);
   }
 
   async delete() {
+    // apoderados: PK es alumno_id
+    if (this._col === 'apoderados') {
+      const { error } = await _sb.from('apoderados')
+        .delete().eq('colegio_id', COLEGIO_ID).eq('alumno_id', this._id);
+      if (error) throw new Error(error.message);
+      return;
+    }
     const { error } = await _sb.from(this._col)
       .delete().eq('colegio_id', COLEGIO_ID).eq('id', this._id);
     if (error) throw new Error(error.message);

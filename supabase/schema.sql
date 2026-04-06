@@ -162,6 +162,7 @@ CREATE TABLE IF NOT EXISTS incidentes (
 CREATE TABLE IF NOT EXISTS apoderados (
   colegio_id          TEXT        NOT NULL REFERENCES colegios(id) ON DELETE CASCADE,
   alumno_id           TEXT        NOT NULL,   -- DNI = identificador de la cuenta
+  primer_ingreso      BOOLEAN     NOT NULL DEFAULT TRUE,  -- fuerza cambio de contraseña al 1er login
   ultima_visita       TIMESTAMPTZ,
   notif_ingreso       BOOLEAN     NOT NULL DEFAULT TRUE,
   notif_salida        BOOLEAN     NOT NULL DEFAULT TRUE,
