@@ -466,6 +466,12 @@
       gap: 8px; padding: 6px 0 4px;
     }
     #result-student .btn-action-group { display: none; }
+    /* Ocultar info-grid (ID/Grado/Hora) en móvil — ya visible en el badge y el header */
+    #result-student .info-grid { display: none; }
+    /* Card más compacto en móvil */
+    #sec-scan .result-student { padding: 10px !important; gap: 6px !important; }
+    #sec-scan .student-row { gap: 10px !important; }
+    #sec-scan .student-avatar { width: 40px !important; height: 40px !important; font-size: 1rem !important; }
   }
 
   /* Desktop: barra fija oculta */
@@ -4521,6 +4527,7 @@ function hideOverlay() {
 }
 
 let _procesandoQR = false;
+let _registrando  = false;
 async function processQR(rawId) {
   if(_procesandoQR) return;
   _procesandoQR = true;
@@ -4692,11 +4699,19 @@ async function autoRegistrar(alumno) {
   }
 }
 
-// Mantener confirmRegister por compatibilidad (ya no se usa en flujo normal)
 async function confirmRegister(tipo) {
-  if(!pendingStudent){ return; }
-  const alumno = pendingStudent;
-  await autoRegistrar(alumno);
+  if(!pendingStudent || _registrando) return;
+  _registrando = true;
+  // Deshabilitar botones inmediatamente para evitar doble tap
+  document.querySelectorAll('#scan-action-bar button, #result-student .btn-action-group button')
+    .forEach(b => { b.disabled = true; b.style.opacity = '0.5'; });
+  try {
+    await autoRegistrar(pendingStudent);
+  } finally {
+    _registrando = false;
+    document.querySelectorAll('#scan-action-bar button, #result-student .btn-action-group button')
+      .forEach(b => { b.disabled = false; b.style.opacity = ''; });
+  }
 }
 
 // ============================================================
