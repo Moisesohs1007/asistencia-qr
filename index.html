@@ -543,6 +543,16 @@
     background: var(--surface2);
   }
   #scan-result-overlay.show { display: flex; }
+  /* Móvil: overlay cubre toda la pantalla (no solo result-box) */
+  @media(max-width:700px) {
+    #scan-result-overlay {
+      position: fixed;
+      inset: 52px 0 62px 0; /* debajo del topbar, encima del bottom-nav */
+      border-radius: 0;
+      z-index: 9000;
+      overflow-y: auto;
+    }
+  }
 
   /* Círculo SVG animado */
   .sro-circle {
@@ -4524,6 +4534,7 @@ function hideOverlay() {
   if(el) el.className = '';
   document.getElementById('result-empty').style.display = 'flex';
   pendingStudent = null;
+  _reanudarEscaner(); // reactivar scanner después de mostrar resultado
 }
 
 let _procesandoQR = false;
@@ -4702,6 +4713,7 @@ async function autoRegistrar(alumno) {
 async function confirmRegister(tipo) {
   if(!pendingStudent || _registrando) return;
   _registrando = true;
+  _pausarEscaner(); // evitar que el scanner re-detecte el mismo QR durante el registro
   // Deshabilitar botones inmediatamente para evitar doble tap
   document.querySelectorAll('#scan-action-bar button, #result-student .btn-action-group button')
     .forEach(b => { b.disabled = true; b.style.opacity = '0.5'; });
@@ -4711,6 +4723,7 @@ async function confirmRegister(tipo) {
     _registrando = false;
     document.querySelectorAll('#scan-action-bar button, #result-student .btn-action-group button')
       .forEach(b => { b.disabled = false; b.style.opacity = ''; });
+    // El scanner se reactiva cuando el overlay cierra (hideOverlay llama _reanudarEscaner)
   }
 }
 
