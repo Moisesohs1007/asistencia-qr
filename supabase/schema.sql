@@ -210,20 +210,24 @@ CREATE INDEX IF NOT EXISTS idx_usuarios_colegio
 -- funciones isAdmin(), isStaff(), etc. de firestore.rules
 -- ============================================================
 
--- Retorna el colegio_id del usuario autenticado (desde app_metadata del JWT)
+-- Retorna el colegio_id del usuario autenticado
+-- Primero lee app_metadata del JWT; si no tiene, consulta la tabla usuarios (SECURITY DEFINER omite RLS)
 CREATE OR REPLACE FUNCTION auth_colegio_id()
 RETURNS TEXT LANGUAGE sql STABLE SECURITY DEFINER AS $$
   SELECT COALESCE(
-    auth.jwt() -> 'app_metadata' ->> 'colegio_id',
+    NULLIF(auth.jwt() -> 'app_metadata' ->> 'colegio_id', ''),
+    (SELECT colegio_id FROM usuarios WHERE id = auth.uid() LIMIT 1),
     ''
   )
 $$;
 
 -- Retorna el rol del usuario ('admin','director','profesor','portero','apoderado')
+-- Primero lee app_metadata del JWT; si no tiene, consulta la tabla usuarios (SECURITY DEFINER omite RLS)
 CREATE OR REPLACE FUNCTION auth_rol()
 RETURNS TEXT LANGUAGE sql STABLE SECURITY DEFINER AS $$
   SELECT COALESCE(
-    auth.jwt() -> 'app_metadata' ->> 'rol',
+    NULLIF(auth.jwt() -> 'app_metadata' ->> 'rol', ''),
+    (SELECT rol FROM usuarios WHERE id = auth.uid() LIMIT 1),
     ''
   )
 $$;
