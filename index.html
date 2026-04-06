@@ -7841,7 +7841,7 @@ async function saveUsuario() {
       if(!pass || pass.length < 6){ toast('La contraseña debe tener al menos 6 caracteres','warning'); return; }
       const secondaryApp = firebase.initializeApp(firebaseConfig, 'secondary_' + Date.now());
       const secondaryAuth = secondaryApp.auth();
-      const cred = await secondaryAuth.createUserWithEmailAndPassword(email, pass);
+      const cred = await secondaryAuth.createUserWithEmailAndPassword(email, pass, { rolNuevo: rol });
       const uid = cred.user.uid;
       await secondaryAuth.signOut();
       await secondaryApp.delete();

@@ -504,17 +504,19 @@ function _mapUser(sbUser) {
 // En Supabase esto requiere una Edge Function con service_role key.
 // ============================================================
 class _SecondaryAuth {
-  async createUserWithEmailAndPassword(email, pass) {
-    // _SecondaryAuth solo crea apoderados (self-registro sin token)
-    // La Edge Function verifica el DNI en la tabla alumnos
+  async createUserWithEmailAndPassword(email, pass, opts = {}) {
+    // Usar JWT del admin si hay sesión activa; si no, usar anon key (self-registro apoderado)
+    const { data: sessionData } = await _sb.auth.getSession();
+    const token = sessionData?.session?.access_token || SUPABASE_ANON_KEY;
+    const rolNuevo = opts.rolNuevo || 'apoderado';
     const res = await fetch(`${SUPABASE_URL}/functions/v1/crear-usuario`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+        'Authorization': `Bearer ${token}`,
         'apikey': SUPABASE_ANON_KEY,
       },
-      body: JSON.stringify({ email, password: pass, colegioId: COLEGIO_ID }),
+      body: JSON.stringify({ email, password: pass, colegioId: COLEGIO_ID, rolNuevo }),
     });
     const result = await res.json();
     if (!res.ok) {
