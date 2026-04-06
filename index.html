@@ -4606,9 +4606,10 @@ async function autoRegistrar(alumno) {
       tieneSalida  = regsHoy.some(r => r.tipo === 'SALIDA');
     }
 
-    // ── Ya registró INGRESO y SALIDA ──
-    if(tieneIngreso && tieneSalida) {
-      showOverlay('yasal', nombre, grado, 'Ya registró ingreso y salida hoy', '');
+    // ── Ya tiene registro de salida (con o sin ingreso previo) ──
+    if(tieneSalida) {
+      const msg = tieneIngreso ? 'Ya registró ingreso y salida hoy' : 'Ya registró salida hoy';
+      showOverlay('yasal', nombre, grado, msg, '');
       return;
     }
 
