@@ -29,7 +29,7 @@ window.APO_DOMAIN      = '@apo.marello.pe';      // dominio de cuentas de apoder
 
 // ── Conexión Supabase — no editar ────────────────────────────
 const SUPABASE_URL      = 'https://bqnhlzwdibcmstqzspmj.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJxbmhsendkaWJjbXN0cXpzcG1qIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUwODY2MTAsImV4cCI6MjA5MDY2MjYxMH0.mm7eMEOMzylzKeWJbcI_gHaHbwnGpQo0UVhZUOB9q2s';
+const SUPABASE_ANON_KEY = 'sb_publishable_g1852YnblY7Z8lOL-1mSTQ_bbd6TYeG';
 window.COLEGIO_ID       = 'sigece'; // slug del colegio, debe existir en tabla colegios
 
 // ── Inicializar cliente Supabase ─────────────────────────────

@@ -13,6 +13,9 @@ function decodeJwtPayload(token: string): Record<string, unknown> | null {
 }
 
 function isAnonToken(token: string): boolean {
+  // Nuevo formato publishable key (sb_publishable_...)
+  if (token.startsWith('sb_publishable_')) return true;
+  // Formato legacy JWT anon
   const payload = decodeJwtPayload(token);
   return payload?.role === 'anon';
 }
