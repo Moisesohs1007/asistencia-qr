@@ -8416,17 +8416,17 @@ function iniciarAlumnosListener() {
 let _configUnsubscribe = null;
 function iniciarConfigListener() {
   if(_configUnsubscribe) return; // ya activo
-  let _primerFire = true; // ignorar el disparo inicial
   _configUnsubscribe = db.collection('config').doc('general')
     .onSnapshot(snap => {
-      if(_primerFire) { _primerFire = false; return; } // skip estado inicial
       if(!snap.exists) return;
-      // Invalidar cache local — fuerza re-fetch desde Firestore en próximo getConfig()
-      configCache = null;
-      LSC.del('config');
+      const data = snap.data();
+      // Actualizar siempre el cache con el valor real de la BD
+      configCache = { ...CONFIG_DEFAULTS, ...data };
+      LSC.set('config', configCache, LSC.TTL_CONFIG);
+      _aplicarConfigColegio(configCache);
       // Si el tab config está visible, re-renderizar para reflejar los cambios
       const secConfig = document.getElementById('sec-config');
-      if(secConfig && secConfig.style.display !== 'none' && secConfig.style.display !== '') {
+      if(secConfig && secConfig.classList.contains('active')) {
         renderConfig();
       }
     }, err => {
