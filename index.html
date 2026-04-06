@@ -932,7 +932,7 @@
   .modal-bg {
     position: fixed; inset:0;
     background: rgba(0,0,0,0.7);
-    z-index: 200;
+    z-index: 700;
     display: flex; align-items: center; justify-content: center;
     padding: 20px;
     backdrop-filter: blur(4px);
@@ -1571,10 +1571,11 @@
 
   /* ══ Modal Alumno: solo PC ≥768px — layout compacto ══ */
   @media (min-width: 768px) {
+    /* Overlay: scrollable para que el modal quepa en pantallas pequeñas */
     #modal-alumno {
       align-items: flex-start !important;
       overflow-y: auto !important;
-      padding: 8px 20px 8px !important;
+      padding: 56px 20px 16px !important;
     }
     #modal-alumno .modal {
       max-width: 700px !important;
@@ -3745,18 +3746,22 @@ auth.onAuthStateChanged(async user => {
 
     // ── ES PERSONAL DEL COLEGIO ──
     let doc;
-    try {
-      doc = await db.collection('usuarios').doc(user.uid).get();
-    } catch(e) {
-      console.error('Firestore error:', e);
-      document.getElementById('login-screen').style.display = 'flex';
-      document.getElementById('login-loading').style.display = 'none';
-      document.getElementById('btn-login').disabled = false;
-      const errEl = document.getElementById('login-error');
-      errEl.textContent = 'Error de conexión a la base de datos: ' + e.message;
-      errEl.style.display = 'block';
-      auth.signOut();
-      return;
+    // Intentar obtener perfil hasta 3 veces (errores de red transitorios no cierran sesión)
+    for (let _intento = 0; _intento < 3; _intento++) {
+      try {
+        doc = await db.collection('usuarios').doc(user.uid).get();
+        break; // éxito
+      } catch(e) {
+        console.warn('[auth] intento ' + (_intento+1) + ' get perfil:', e.message);
+        if (_intento < 2) { await new Promise(r => setTimeout(r, 1500 * (_intento + 1))); continue; }
+        // Último intento fallido: mostrar error pero NO cerrar sesión (error de red)
+        console.error('Firestore error:', e);
+        const errEl = document.getElementById('login-error');
+        if (errEl) { errEl.textContent = 'Error de conexión. Recarga la página.'; errEl.style.display = 'block'; }
+        document.getElementById('login-loading').style.display = 'none';
+        document.getElementById('btn-login').disabled = false;
+        return; // mantener sesión activa, el usuario puede recargar
+      }
     }
     if(!doc.exists) {
       auth.signOut();
