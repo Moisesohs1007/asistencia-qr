@@ -1,0 +1,2 @@
+[functions.crear-usuario]
+verify_jwt = false
