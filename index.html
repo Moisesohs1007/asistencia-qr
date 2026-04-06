@@ -4564,14 +4564,14 @@ function showOverlay(tipo, nombre, grado, msg, sub) {
 
   const configs = {
     loading:     { icon: `<div class="sro-spinner"></div>`, dur: null,  badge: null },
-    ok:          { icon: iconOk,          dur: 800,   badge: { bg: '#10b981', text: '✔ INGRESO PUNTUAL' } },
-    tardanza:    { icon: iconTardanza,    dur: 800,   badge: { bg: '#f59e0b', text: '⚠ TARDANZA' } },
-    sinIngreso:  { icon: iconSinIngreso,  dur: 800,   badge: { bg: '#f97316', text: '⚠ SALIDA SIN INGRESO PREVIO' } },
-    yaing:       { icon: iconError,       dur: 800,   badge: { bg: '#6b7280', text: 'ℹ YA REGISTRADO' } },
-    yasal:       { icon: iconError,       dur: 800,   badge: { bg: '#6b7280', text: 'ℹ YA REGISTRADO' } },
-    noqr:        { icon: iconError,       dur: 800,   badge: { bg: '#ef4444', text: '✗ QR INVÁLIDO' } },
-    nored:       { icon: iconError,       dur: 800,   badge: { bg: '#ef4444', text: '✗ SIN CONEXIÓN' } },
-    salida:      { icon: iconOk,          dur: 800,   badge: { bg: '#3b82f6', text: '🚪 SALIDA REGISTRADA' } },
+    ok:          { icon: iconOk,          dur: 1800,  badge: { bg: '#10b981', text: '✔ INGRESO PUNTUAL' } },
+    tardanza:    { icon: iconTardanza,    dur: 1800,  badge: { bg: '#f59e0b', text: '⚠ TARDANZA' } },
+    sinIngreso:  { icon: iconSinIngreso,  dur: 1800,  badge: { bg: '#f97316', text: '⚠ SALIDA SIN INGRESO PREVIO' } },
+    yaing:       { icon: iconError,       dur: 1800,  badge: { bg: '#6b7280', text: 'ℹ YA REGISTRADO' } },
+    yasal:       { icon: iconError,       dur: 1800,  badge: { bg: '#6b7280', text: 'ℹ YA REGISTRADO' } },
+    noqr:        { icon: iconError,       dur: 1800,  badge: { bg: '#ef4444', text: '✗ QR INVÁLIDO' } },
+    nored:       { icon: iconError,       dur: 1800,  badge: { bg: '#ef4444', text: '✗ SIN CONEXIÓN' } },
+    salida:      { icon: iconOk,          dur: 1800,  badge: { bg: '#3b82f6', text: '🚪 SALIDA REGISTRADA' } },
   };
   const cfg = configs[tipo] || configs.noqr;
 
