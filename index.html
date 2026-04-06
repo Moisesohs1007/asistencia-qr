@@ -549,7 +549,7 @@
       position: fixed;
       inset: 52px 0 62px 0; /* debajo del topbar, encima del bottom-nav */
       border-radius: 0;
-      z-index: 9000;
+      z-index: 10000;
       overflow-y: auto;
     }
   }
@@ -592,6 +592,16 @@
   .sro-sub {
     font-size: clamp(0.72rem, 1.5vw, 0.85rem);
     color: var(--muted);
+  }
+  .sro-badge {
+    display: inline-block;
+    padding: 5px 18px;
+    border-radius: 999px;
+    font-size: clamp(0.72rem, 2.5vw, 0.85rem);
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    color: #fff;
+    text-transform: uppercase;
   }
 
   /* ── RESULT-BOX (card alumno) — solo dentro del scanner ── */
@@ -4505,20 +4515,25 @@ function showOverlay(tipo, nombre, grado, msg, sub) {
     `<text x="52" y="62" text-anchor="middle" font-size="34" fill="#f97316" font-family="sans-serif">!</text>`);
 
   const configs = {
-    loading:     { icon: `<div class="sro-spinner"></div>`, dur: null  },
-    ok:          { icon: iconOk,          dur: 3000  },
-    tardanza:    { icon: iconTardanza,    dur: 3500  },
-    sinIngreso:  { icon: iconSinIngreso,  dur: 4000  },
-    yaing:       { icon: iconError,       dur: 3000  },
-    yasal:       { icon: iconError,       dur: 3000  },
-    noqr:        { icon: iconError,       dur: 2500  },
-    nored:       { icon: iconError,       dur: 3000  },
-    salida:      { icon: iconOk,          dur: 3000  },
+    loading:     { icon: `<div class="sro-spinner"></div>`, dur: null,  badge: null },
+    ok:          { icon: iconOk,          dur: 3000,  badge: { bg: '#10b981', text: '✔ INGRESO PUNTUAL' } },
+    tardanza:    { icon: iconTardanza,    dur: 3500,  badge: { bg: '#f59e0b', text: '⚠ TARDANZA' } },
+    sinIngreso:  { icon: iconSinIngreso,  dur: 4000,  badge: { bg: '#f97316', text: '⚠ SALIDA SIN INGRESO PREVIO' } },
+    yaing:       { icon: iconError,       dur: 3000,  badge: { bg: '#6b7280', text: 'ℹ YA REGISTRADO' } },
+    yasal:       { icon: iconError,       dur: 3000,  badge: { bg: '#6b7280', text: 'ℹ YA REGISTRADO' } },
+    noqr:        { icon: iconError,       dur: 2500,  badge: { bg: '#ef4444', text: '✗ QR INVÁLIDO' } },
+    nored:       { icon: iconError,       dur: 3000,  badge: { bg: '#ef4444', text: '✗ SIN CONEXIÓN' } },
+    salida:      { icon: iconOk,          dur: 3000,  badge: { bg: '#3b82f6', text: '🚪 SALIDA REGISTRADA' } },
   };
   const cfg = configs[tipo] || configs.noqr;
 
+  const badgeHtml = cfg.badge
+    ? `<div class="sro-badge" style="background:${cfg.badge.bg}">${cfg.badge.text}</div>`
+    : '';
+
   el.className = 'show';
   el.innerHTML = cfg.icon
+    + badgeHtml
     + (nombre ? `<div class="sro-name">${nombre}</div>` : '')
     + (grado  ? `<div class="sro-sub">${grado}</div>` : '')
     + `<div class="sro-msg">${msg}</div>`
