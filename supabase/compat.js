@@ -517,32 +517,23 @@ function _mapUser(sbUser) {
 class _SecondaryAuth {
   async createUserWithEmailAndPassword(email, pass, opts = {}) {
     const rolNuevo = opts.rolNuevo || 'apoderado';
-    // Forzar refresh del token para obtener JWT firmado con ECC (nueva clave de Supabase)
-    let token = _currentAccessToken;
-    try {
-      const { data: { session } } = await _sb.auth.refreshSession();
-      if (session?.access_token) {
-        token = session.access_token;
-        _currentAccessToken = token;
-      }
-    } catch(e) { /* sin sesión → usa token actual o anon */ }
-    if (!token) token = SUPABASE_ANON_KEY;
+    // Para creación de staff: pasar UID del admin en el body (verificado server-side con service role)
+    const callerUid = _currentAuthUser?.uid || null;
     let res, result;
     try {
       res = await fetch(`${SUPABASE_URL}/functions/v1/crear-usuario`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
           'apikey': SUPABASE_ANON_KEY,
         },
-        body: JSON.stringify({ email, password: pass, colegioId: COLEGIO_ID, rolNuevo }),
+        body: JSON.stringify({ email, password: pass, colegioId: COLEGIO_ID, rolNuevo, callerUid }),
       });
       result = await res.json();
     } catch(fetchErr) {
       throw { code: 'network/error', message: 'Error de red: ' + fetchErr.message };
     }
-    console.log('[crear-usuario] status:', res.status, 'body:', JSON.stringify(result), 'token_type:', token === SUPABASE_ANON_KEY ? 'anon' : 'user_jwt');
     if (!res.ok) {
       const code = result.code || result.statusCode || res.status || 'auth/unknown';
       const msg  = result.error || result.message || result.msg || 'Error creando usuario (' + res.status + ')';

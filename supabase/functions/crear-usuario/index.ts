@@ -5,21 +5,6 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-function decodeJwtPayload(token: string): Record<string, unknown> | null {
-  try {
-    const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
-    return payload;
-  } catch { return null; }
-}
-
-function isAnonToken(token: string): boolean {
-  // Nuevo formato publishable key (sb_publishable_...)
-  if (token.startsWith('sb_publishable_')) return true;
-  // Formato legacy JWT anon
-  const payload = decodeJwtPayload(token);
-  return payload?.role === 'anon';
-}
-
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
@@ -33,7 +18,7 @@ Deno.serve(async (req: Request) => {
     );
 
     const body = await req.json();
-    const { email, password, colegioId, rolNuevo = 'apoderado', alumnoId = null } = body;
+    const { email, password, colegioId, rolNuevo = 'apoderado', alumnoId = null, callerUid = null } = body;
 
     if (!email || !password || !colegioId) {
       return new Response(JSON.stringify({ error: 'Faltan parámetros' }), {
@@ -41,60 +26,32 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    const authHeader = req.headers.get('Authorization');
-    const token = authHeader?.replace('Bearer ', '');
-
-    // Si hay token Y no es el anon key → es staff autenticado
-    const isStaff = token && !isAnonToken(token);
-
-    if (isStaff) {
-      // Decodificar JWT para obtener el user_id sin llamar a auth.getUser
-      const payload = decodeJwtPayload(token!);
-      const callerId = payload?.sub as string | undefined;
-
-      if (!callerId) {
-        return new Response(JSON.stringify({ error: 'Token inválido (sin sub)' }), {
+    if (rolNuevo !== 'apoderado') {
+      // Creación de staff: verificar que callerUid es admin/director
+      if (!callerUid) {
+        return new Response(JSON.stringify({ error: 'Se requiere autenticación de admin' }), {
           status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
       }
+      const { data: callerProfile } = await supabaseAdmin
+        .from('usuarios').select('rol, colegio_id').eq('id', callerUid).maybeSingle();
 
-      // Verificar perfil del llamante en la tabla usuarios
-      const { data: callerProfile, error: profileError } = await supabaseAdmin
-        .from('usuarios').select('rol, colegio_id').eq('id', callerId).maybeSingle();
-
-      if (profileError || !callerProfile) {
-        return new Response(JSON.stringify({ error: 'Perfil no encontrado', detail: profileError?.message }), {
-          status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        });
-      }
-
-      if (callerProfile.colegio_id !== colegioId) {
+      if (!callerProfile || callerProfile.colegio_id !== colegioId) {
         return new Response(JSON.stringify({ error: 'Sin permisos para este colegio' }), {
           status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
       }
-
-      const rolesPermitidos = ['admin', 'director'];
-      if (rolNuevo !== 'apoderado' && !rolesPermitidos.includes(callerProfile.rol)) {
+      if (!['admin', 'director'].includes(callerProfile.rol)) {
         return new Response(JSON.stringify({ error: 'Solo admin o director puede crear staff' }), {
           status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
       }
     } else {
-      // Sin token / anon key → solo se permite crear apoderados (self-registro primer login)
-      if (rolNuevo !== 'apoderado') {
-        return new Response(JSON.stringify({ error: 'No autorizado' }), {
-          status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        });
-      }
-      // Verificar que el DNI existe como alumno del colegio
+      // Apoderado self-registro: verificar que el DNI existe como alumno
       const dni = email.split('@')[0];
       const { data: alumno } = await supabaseAdmin
-        .from('alumnos')
-        .select('id')
-        .eq('colegio_id', colegioId)
-        .eq('id', dni)
-        .maybeSingle();
+        .from('alumnos').select('id')
+        .eq('colegio_id', colegioId).eq('id', dni).maybeSingle();
       if (!alumno) {
         return new Response(JSON.stringify({ error: 'DNI no encontrado' }), {
           status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
