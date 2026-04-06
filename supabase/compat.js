@@ -391,6 +391,7 @@ const firebase = {
 
 // Estado global del usuario autenticado (actualizado por onAuthStateChange)
 let _currentAuthUser = null;
+let _currentAccessToken = null; // JWT de sesión activa para llamadas a Edge Functions
 firebase.auth = () => ({ currentUser: _currentAuthUser });
 
 // ============================================================
@@ -426,6 +427,7 @@ const auth = {
     // 1. Estado inicial — una sola llamada al callback
     _sb.auth.getSession().then(({ data: { session } }) => {
       _currentAuthUser = session ? _mapUser(session.user) : null;
+      _currentAccessToken = session?.access_token || null;
       auth.currentUser = _currentAuthUser;
       callback(_currentAuthUser);
     });
@@ -434,18 +436,27 @@ const auth = {
     //    Ignorar TOKEN_REFRESHED, INITIAL_SESSION y SIGNED_IN repetidos
     const { data: { subscription } } = _sb.auth.onAuthStateChange((_event, session) => {
       if (_event === 'TOKEN_REFRESHED' || _event === 'INITIAL_SESSION') {
-        if (session) { _currentAuthUser = _mapUser(session.user); auth.currentUser = _currentAuthUser; }
+        if (session) {
+          _currentAuthUser = _mapUser(session.user);
+          _currentAccessToken = session.access_token;
+          auth.currentUser = _currentAuthUser;
+        }
         return;
       }
       const eraAuth = !!_currentAuthUser;
       const esAuth  = !!session;
       if (eraAuth === esAuth) {
         // Mismo estado (ej: SIGNED_IN repetido al volver pestaña) → solo actualizar token
-        if (session) { _currentAuthUser = _mapUser(session.user); auth.currentUser = _currentAuthUser; }
+        if (session) {
+          _currentAuthUser = _mapUser(session.user);
+          _currentAccessToken = session.access_token;
+          auth.currentUser = _currentAuthUser;
+        }
         return;
       }
       // Cambio real → notificar
       _currentAuthUser = session ? _mapUser(session.user) : null;
+      _currentAccessToken = session?.access_token || null;
       auth.currentUser = _currentAuthUser;
       callback(_currentAuthUser);
     });
@@ -506,8 +517,7 @@ function _mapUser(sbUser) {
 class _SecondaryAuth {
   async createUserWithEmailAndPassword(email, pass, opts = {}) {
     // Usar JWT del admin si hay sesión activa; si no, usar anon key (self-registro apoderado)
-    const { data: sessionData } = await _sb.auth.getSession();
-    const token = sessionData?.session?.access_token || SUPABASE_ANON_KEY;
+    const token = _currentAccessToken || SUPABASE_ANON_KEY;
     const rolNuevo = opts.rolNuevo || 'apoderado';
     const res = await fetch(`${SUPABASE_URL}/functions/v1/crear-usuario`, {
       method: 'POST',

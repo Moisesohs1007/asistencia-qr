@@ -5,11 +5,16 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-function isAnonToken(token: string): boolean {
+function decodeJwtPayload(token: string): Record<string, unknown> | null {
   try {
-    const payload = JSON.parse(atob(token.split('.')[1]));
-    return payload.role === 'anon';
-  } catch { return false; }
+    const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+    return payload;
+  } catch { return null; }
+}
+
+function isAnonToken(token: string): boolean {
+  const payload = decodeJwtPayload(token);
+  return payload?.role === 'anon';
 }
 
 Deno.serve(async (req: Request) => {
@@ -40,22 +45,35 @@ Deno.serve(async (req: Request) => {
     const isStaff = token && !isAnonToken(token);
 
     if (isStaff) {
-      // Staff autenticado creando cuenta → verificar permisos
-      const { data: { user: caller }, error: callerError } = await supabaseAdmin.auth.getUser(token);
-      if (callerError || !caller) {
-        return new Response(JSON.stringify({ error: 'Token inválido' }), {
+      // Decodificar JWT para obtener el user_id sin llamar a auth.getUser
+      const payload = decodeJwtPayload(token!);
+      const callerId = payload?.sub as string | undefined;
+
+      if (!callerId) {
+        return new Response(JSON.stringify({ error: 'Token inválido (sin sub)' }), {
           status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
       }
-      const { data: callerProfile } = await supabaseAdmin
-        .from('usuarios').select('rol, colegio_id').eq('id', caller.id).single();
-      if (!callerProfile || callerProfile.colegio_id !== colegioId) {
-        return new Response(JSON.stringify({ error: 'Sin permisos' }), {
+
+      // Verificar perfil del llamante en la tabla usuarios
+      const { data: callerProfile, error: profileError } = await supabaseAdmin
+        .from('usuarios').select('rol, colegio_id').eq('id', callerId).maybeSingle();
+
+      if (profileError || !callerProfile) {
+        return new Response(JSON.stringify({ error: 'Perfil no encontrado', detail: profileError?.message }), {
           status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
       }
-      if (rolNuevo !== 'apoderado' && callerProfile.rol !== 'admin') {
-        return new Response(JSON.stringify({ error: 'Solo admin puede crear staff' }), {
+
+      if (callerProfile.colegio_id !== colegioId) {
+        return new Response(JSON.stringify({ error: 'Sin permisos para este colegio' }), {
+          status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+
+      const rolesPermitidos = ['admin', 'director'];
+      if (rolNuevo !== 'apoderado' && !rolesPermitidos.includes(callerProfile.rol)) {
+        return new Response(JSON.stringify({ error: 'Solo admin o director puede crear staff' }), {
           status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
       }
