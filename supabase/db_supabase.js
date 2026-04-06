@@ -10,6 +10,10 @@
 // eslint-disable-next-line no-var
 var supabase = window._sb; // sobreescribir referencia de librería con el cliente activo
 
+function _debounce(fn, ms) {
+  let t; return function(...args) { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };
+}
+
 const DB = {
 
   // ── ALUMNOS ───────────────────────────────────────────────
@@ -383,10 +387,27 @@ function iniciarRealtimeListeners() {
       () => {
         if (typeof invalidateConfig === 'function') invalidateConfig();
         const secConfig = document.getElementById('sec-config');
-        if (secConfig && secConfig.style.display !== 'none' && secConfig.style.display !== '') {
+        if (secConfig && secConfig.classList.contains('active')) {
           if (typeof renderConfig === 'function') renderConfig();
         }
       }
+    )
+
+    // Nuevos registros de asistencia → invalidar cache y refrescar secciones activas
+    .on('postgres_changes',
+      { event: 'INSERT', schema: 'public', table: 'registros', filter: `colegio_id=eq.${COLEGIO_ID}` },
+      _debounce((payload) => {
+        const fecha = payload.new?.fecha;
+        DB.invalidarRegistros(fecha || null);
+        const secRep = document.getElementById('sec-reportes');
+        if (secRep && secRep.classList.contains('active')) {
+          if (typeof renderReportes === 'function') renderReportes();
+        }
+        const secReg = document.getElementById('sec-registro');
+        if (secReg && secReg.classList.contains('active')) {
+          if (typeof renderRegistro === 'function') renderRegistro();
+        }
+      }, 1500)
     )
 
     .subscribe();

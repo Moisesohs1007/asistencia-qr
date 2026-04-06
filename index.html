@@ -7215,7 +7215,12 @@ async function onRepNivelChange() {
   gradoEl.value = ''; secEl.value = '';
   if(nivel) {
     const cfg = await getConfig();
-    const grados = (cfg.grados||{})[nivel] || [];
+    let grados = (cfg.grados||{})[nivel] || [];
+    // Fallback: usar grados reales de alumnos si config no tiene para este nivel
+    if(!grados.length) {
+      const alumnos = await DB.getAlumnos();
+      grados = [...new Set(alumnos.filter(a => !nivel || a.turno === nivel).map(a => a.grado).filter(Boolean))].sort();
+    }
     grados.forEach(g => { gradoEl.innerHTML += `<option value="${g}">${g}</option>`; });
     gradoEl.disabled = false; gradoEl.style.opacity = '1';
   } else {
@@ -8378,7 +8383,19 @@ async function getConfig() {
   if(lsConfig) { configCache = lsConfig; _aplicarConfigColegio(configCache); return configCache; }
   try {
     const doc = await db.collection('config').doc('general').get();
-    configCache = doc.exists ? { ...CONFIG_DEFAULTS, ...doc.data() } : { ...CONFIG_DEFAULTS };
+    if (doc.exists) {
+      // Filtrar valores nulos/vacíos para que CONFIG_DEFAULTS actúe como respaldo
+      const raw = doc.data();
+      const clean = Object.fromEntries(Object.entries(raw).filter(([, v]) => {
+        if (v == null) return false;
+        if (Array.isArray(v) && !v.length) return false;
+        if (v && typeof v === 'object' && !Array.isArray(v) && !Object.keys(v).length) return false;
+        return true;
+      }));
+      configCache = { ...CONFIG_DEFAULTS, ...clean };
+    } else {
+      configCache = { ...CONFIG_DEFAULTS };
+    }
     LSC.set('config', configCache, LSC.TTL_CONFIG);
   } catch(e) {
     configCache = { ...CONFIG_DEFAULTS };
@@ -8739,7 +8756,12 @@ async function cargarGradosPorNivel(nivelParam) {
   gradoSel.innerHTML = '<option value="">Seleccionar</option>';
   if(!nivel) return;
   const cfg = await getConfig();
-  const grados = (cfg.grados||{})[nivel] || [];
+  let grados = (cfg.grados||{})[nivel] || [];
+  // Fallback: usar grados reales de alumnos si config no tiene para este nivel
+  if(!grados.length) {
+    const alumnos = await DB.getAlumnos();
+    grados = [...new Set(alumnos.filter(a => a.turno === nivel).map(a => a.grado).filter(Boolean))].sort();
+  }
   grados.forEach(g => {
     const opt = document.createElement('option');
     opt.value = g; opt.textContent = g;
