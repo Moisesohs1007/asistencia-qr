@@ -3867,37 +3867,56 @@ auth.onAuthStateChanged(async user => {
 
 function aplicarPermisos(rol) {
   setTimeout(renderBottomNav, 100);
-  // Pestañas visibles según rol
   const permisos = {
     admin:    ['inicio','scan','alumnos','registro','reportes','incidentes','usuarios','config'],
     director: ['inicio','registro','reportes','incidentes'],
     profesor: ['inicio','alumnos','registro','incidentes'],
-    portero:  ['inicio','scan'],
+    portero:  ['scan'],
   };
   const tabs = permisos[rol] || ['scan'];
 
-  // Mostrar/ocultar tabs
+  // Mostrar/ocultar tabs ocultos (compatibilidad)
   ['scan','alumnos','registro','reportes','incidentes','usuarios','config'].forEach(t => {
     const el = document.getElementById('tab-'+t);
     if(el) el.style.display = tabs.includes(t) ? '' : 'none';
   });
 
-  // Desktop nav: mostrar/ocultar menús principales según rol
   const esPortero = rol === 'portero';
-  const tabAula   = document.getElementById('tab-aula');
-  const tabCom    = document.getElementById('tab-comunicacion');
-  const tabCfg    = document.getElementById('tab-config');
-  if(tabAula) tabAula.style.display   = esPortero ? 'none' : '';
-  if(tabCom)  tabCom.style.display    = esPortero ? 'none' : '';
-  if(tabCfg)  tabCfg.style.display    = ['admin','director'].includes(rol) ? '' : 'none';
-  // Dropdown Asistencia: para portero solo mostrar Escanear QR
+
+  // Desktop nav: para portero solo Asistencia visible (sin dropdown, directo a scan)
+  const tabInicio      = document.getElementById('tab-inicio');
+  const tabAsistencia  = document.getElementById('tab-asistencia');
+  const tabAula        = document.getElementById('tab-aula');
+  const tabCom         = document.getElementById('tab-comunicacion');
+  const tabCfg         = document.getElementById('tab-config');
   const dropAsistencia = document.getElementById('drop-asistencia');
-  if(dropAsistencia) {
-    const items = dropAsistencia.querySelectorAll('.nav-drop-item');
-    items.forEach((item, i) => {
-      // i=0 Escanear QR, i=1 Registro, i=2 Reportes
-      if(i > 0) item.style.display = esPortero ? 'none' : '';
-    });
+
+  if(tabInicio)     tabInicio.style.display     = esPortero ? 'none' : '';
+  if(tabAula)       tabAula.style.display        = esPortero ? 'none' : '';
+  if(tabCom)        tabCom.style.display         = esPortero ? 'none' : '';
+  if(tabCfg)        tabCfg.style.display         = ['admin','director'].includes(rol) ? '' : 'none';
+
+  if(esPortero && tabAsistencia) {
+    // Portero: botón Asistencia va directo a scan, sin dropdown
+    tabAsistencia.onclick = () => { showSection('scan'); setActiveTab('tab-asistencia'); };
+    tabAsistencia.onmouseenter = null;
+    if(dropAsistencia) dropAsistencia.style.display = 'none';
+    const arrow = tabAsistencia.querySelector('.drop-arrow');
+    if(arrow) arrow.style.display = 'none';
+  } else if(tabAsistencia) {
+    // Restaurar comportamiento normal
+    tabAsistencia.onclick = function(){ openNavDrop('drop-asistencia', this); };
+    tabAsistencia.onmouseenter = function(){ openNavDrop('drop-asistencia', this); };
+    if(dropAsistencia) dropAsistencia.style.display = '';
+    const arrow = tabAsistencia.querySelector('.drop-arrow');
+    if(arrow) arrow.style.display = '';
+  }
+
+  // Si portero: ir directamente a scan al cargar
+  if(esPortero) {
+    showSectionDirect('scan');
+    setActiveTab('tab-asistencia');
+    return; // no continuar con la lógica de última sección
   }
 
   // Restaurar última sección activa si existe y está permitida
@@ -4534,14 +4553,14 @@ function showOverlay(tipo, nombre, grado, msg, sub) {
 
   const configs = {
     loading:     { icon: `<div class="sro-spinner"></div>`, dur: null,  badge: null },
-    ok:          { icon: iconOk,          dur: 1500,  badge: { bg: '#10b981', text: '✔ INGRESO PUNTUAL' } },
-    tardanza:    { icon: iconTardanza,    dur: 2000,  badge: { bg: '#f59e0b', text: '⚠ TARDANZA' } },
-    sinIngreso:  { icon: iconSinIngreso,  dur: 2500,  badge: { bg: '#f97316', text: '⚠ SALIDA SIN INGRESO PREVIO' } },
-    yaing:       { icon: iconError,       dur: 1500,  badge: { bg: '#6b7280', text: 'ℹ YA REGISTRADO' } },
-    yasal:       { icon: iconError,       dur: 1500,  badge: { bg: '#6b7280', text: 'ℹ YA REGISTRADO' } },
-    noqr:        { icon: iconError,       dur: 1500,  badge: { bg: '#ef4444', text: '✗ QR INVÁLIDO' } },
-    nored:       { icon: iconError,       dur: 1500,  badge: { bg: '#ef4444', text: '✗ SIN CONEXIÓN' } },
-    salida:      { icon: iconOk,          dur: 1500,  badge: { bg: '#3b82f6', text: '🚪 SALIDA REGISTRADA' } },
+    ok:          { icon: iconOk,          dur: 800,   badge: { bg: '#10b981', text: '✔ INGRESO PUNTUAL' } },
+    tardanza:    { icon: iconTardanza,    dur: 1000,  badge: { bg: '#f59e0b', text: '⚠ TARDANZA' } },
+    sinIngreso:  { icon: iconSinIngreso,  dur: 1200,  badge: { bg: '#f97316', text: '⚠ SALIDA SIN INGRESO PREVIO' } },
+    yaing:       { icon: iconError,       dur: 1000,  badge: { bg: '#6b7280', text: 'ℹ YA REGISTRADO' } },
+    yasal:       { icon: iconError,       dur: 1000,  badge: { bg: '#6b7280', text: 'ℹ YA REGISTRADO' } },
+    noqr:        { icon: iconError,       dur: 1000,  badge: { bg: '#ef4444', text: '✗ QR INVÁLIDO' } },
+    nored:       { icon: iconError,       dur: 1000,  badge: { bg: '#ef4444', text: '✗ SIN CONEXIÓN' } },
+    salida:      { icon: iconOk,          dur: 800,   badge: { bg: '#3b82f6', text: '🚪 SALIDA REGISTRADA' } },
   };
   const cfg = configs[tipo] || configs.noqr;
 
@@ -9765,16 +9784,23 @@ function msbInit() {
   const configBtn = document.getElementById('msb-btn-config');
   const tieneConfig = ['admin','director'].includes(currentRol);
   if(configBtn) configBtn.style.display = tieneConfig ? '' : 'none';
-  // Para portero: ocultar Aula y Comunicación en sidebar móvil
-  const msbAulaBtn = document.getElementById('msb-btn-aula');
-  const msbComBtn  = document.getElementById('msb-btn-comunicacion');
-  if(msbAulaBtn) msbAulaBtn.style.display = _esPorteroMsb ? 'none' : '';
-  if(msbComBtn)  msbComBtn.style.display  = _esPorteroMsb ? 'none' : '';
-  // Para portero en asistencia: ocultar sub-items de registro y reportes
-  const msbSubRegistro  = document.getElementById('msb-sub-item-registro');
-  const msbSubReportes  = document.getElementById('msb-sub-item-reportes');
+  // Para portero: ocultar todo excepto Asistencia → Escanear QR
+  const _msbHideIds = ['msb-btn-inicio','msb-btn-aula','msb-btn-comunicacion'];
+  _msbHideIds.forEach(id => {
+    const el = document.getElementById(id);
+    if(el) el.style.display = _esPorteroMsb ? 'none' : '';
+  });
+  const msbSubRegistro = document.getElementById('msb-sub-item-registro');
+  const msbSubReportes = document.getElementById('msb-sub-item-reportes');
   if(msbSubRegistro) msbSubRegistro.style.display = _esPorteroMsb ? 'none' : '';
   if(msbSubReportes) msbSubReportes.style.display = _esPorteroMsb ? 'none' : '';
+  // Para portero: expandir automáticamente sub-menú Asistencia
+  if(_esPorteroMsb) {
+    const subAsis = document.getElementById('msb-sub-asistencia');
+    const btnAsis = document.getElementById('msb-btn-asistencia');
+    if(subAsis) subAsis.style.display = 'flex';
+    if(btnAsis) btnAsis.classList.add('active');
+  }
   // Topbar right (iniciales)
   const tbRight = document.getElementById('mobile-topbar-right');
   if(tbRight) {
