@@ -9954,22 +9954,30 @@ async function crearCuentaApoderado(alumno) {
           </div>`;
         overlay.addEventListener('click', function(e){ if(e.target===overlay) overlay.remove(); });
         document.body.appendChild(overlay);
-        // Aun así actualizar Firestore con primerIngreso:true
+        // Aun así guardar primerIngreso:true en apoderados (silencioso)
+        try {
+          await db.collection('apoderados').doc(alumno.id).set({
+            alumnoId: alumno.id, email, primerIngreso: true,
+            telefono: alumno.telefono || '',
+            creadoEn: firebase.firestore.FieldValue.serverTimestamp()
+          }, { merge: false });
+        } catch(saveErr) {
+          console.warn('[crearCuentaApoderado] no se pudo guardar en apoderados:', saveErr.message);
+        }
+        return true;
+      }
+      await tmpAuth.signOut();
+      await tmpApp.delete();
+      // Guardar primerIngreso:true para forzar cambio de contraseña al primer ingreso
+      try {
         await db.collection('apoderados').doc(alumno.id).set({
           alumnoId: alumno.id, email, primerIngreso: true,
           telefono: alumno.telefono || '',
           creadoEn: firebase.firestore.FieldValue.serverTimestamp()
         }, { merge: false });
-        return true;
+      } catch(saveErr) {
+        console.warn('[crearCuentaApoderado] no se pudo guardar en apoderados:', saveErr.message);
       }
-      await tmpAuth.signOut();
-      await tmpApp.delete();
-      // Al reingresar alumno: resetear primerIngreso a true para forzar cambio de contraseña
-      await db.collection('apoderados').doc(alumno.id).set({
-        alumnoId: alumno.id, email, primerIngreso: true,
-        telefono: alumno.telefono || '',
-        creadoEn: firebase.firestore.FieldValue.serverTimestamp()
-      }, { merge: false }); // merge:false para resetear completamente
       return true;
     } catch(e) {
       intentos++;
